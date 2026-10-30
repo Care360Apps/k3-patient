@@ -13,6 +13,27 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - name: Reclaim disk from unused GitHub-hosted toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Available disk before cleanup:"
+          df -h /
+          # This is a disposable Ubuntu runner. These preinstalled toolchains
+          # are unrelated to Flutter, Gradle, Java or the Android SDK.
+          for target in /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [[ -d "$target" ]]; then
+              echo "Removing unused runner toolchain: $target"
+              sudo rm -rf -- "$target"
+            fi
+          done
+          echo "Available disk after cleanup:"
+          df -h /
+          available_kib="$(df -Pk / | awk 'NR==2 {print $4}')"
+          if (( available_kib < 8 * 1024 * 1024 )); then
+            echo "::error::Less than 8 GiB available after cleanup; aborting expensive Android compilation."
+            exit 1
+          fi
       - name: Verify source has no sensitive build files
         run: |
           python3 tools/k3_preflight.py
@@ -46,6 +67,17 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
       - name: Preserve environment-defined Retrofit base URL
         run: python3 tools/k3_rewrite_generated_url.py
+      - name: Check disk budget before Android compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Available disk before Gradle/NDK:"
+          df -h /
+          available_kib="$(df -Pk / | awk 'NR==2 {print $4}')"
+          if (( available_kib < 5 * 1024 * 1024 )); then
+            echo "::error::Less than 5 GiB free before Android compilation; adjust runner storage rather than repeatedly patch dependencies."
+            exit 1
+          fi
       - name: Compile debug-only Android APK
         run: >-
           flutter build apk --debug
