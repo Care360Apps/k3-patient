@@ -15,8 +15,11 @@ gradle = pub_cache / 'hosted' / 'pub.dev' / 'agora_rtc_engine-6.2.6' / 'android'
 if not gradle.is_file():
     sys.exit(f'Agora Android Gradle file not found: {gradle}')
 text = gradle.read_text(encoding='utf-8')
-pattern = re.compile(r'(?m)(\bminSdk(?:Version)?\s*(?:=\s*|\(\s*)?)16\b')
-updated, count = pattern.subn(lambda m: m.group(1) + '21', text)
+# Match the verified Agora 6.2.6 fallback, not arbitrary minSdk lines.
+pattern = re.compile(
+    r"""(?m)^(\s*minSdkVersion\s+safeExtGet\(\s*['"]minSdkVersion['"]\s*,\s*)16(\s*\)\s*)$"""
+)
+updated, count = pattern.subn(lambda m: m.group(1) + '21' + m.group(2), text)
 if count != 1:
     sys.exit(f'Expected exactly one Agora minSdk=16 declaration; found {count}. Review dependency before patching.')
 gradle.write_text(updated, encoding='utf-8')
