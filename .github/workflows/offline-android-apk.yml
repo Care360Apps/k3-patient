@@ -1,9 +1,6 @@
 name: K3 offline Android APK (synthetic services; not clinical)
 on:
   pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,7 +13,33 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Determine whether native compilation is needed
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: python
+        run: |
+          import os
+          import subprocess
+          
+          build = True
+          if os.environ["EVENT_NAME"] == "pull_request":
+              base = os.environ["BASE_SHA"]
+              head = os.environ["HEAD_SHA"]
+              changed = subprocess.check_output(
+                  ["git", "diff", "--name-only", "-z", f"{base}...{head}"]
+              ).decode("utf-8", errors="surrogateescape").split("\0")
+              paths = [path for path in changed if path]
+              build = any(not (path.endswith(".md") or path.startswith("docs/")) for path in paths)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"build={str(build).lower()}\n")
+          print("Native APK build required." if build else "Documentation-only change; native compilation skipped.")
       - name: Reclaim disk from unused GitHub-hosted toolchains
+        if: steps.scope.outputs.build == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -38,45 +61,60 @@ jobs:
             exit 1
           fi
       - name: Verify source has no sensitive build files
+        if: steps.scope.outputs.build == 'true'
         run: |
           python3 tools/k3_preflight.py
           python3 tools/k3_notification_preflight.py
       - name: Verify Gradle Wrapper
+        if: steps.scope.outputs.build == 'true'
         uses: gradle/actions/wrapper-validation@v6
       - uses: actions/setup-java@v4
+        if: steps.scope.outputs.build == 'true'
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
       - uses: subosito/flutter-action@v2
+        if: steps.scope.outputs.build == 'true'
         with:
           flutter-version: '3.38.3'
           channel: stable
           cache: true
       - name: Enable Swift Package Manager (needed to resolve Paystack plugin metadata)
+        if: steps.scope.outputs.build == 'true'
         run: flutter config --enable-swift-package-manager
       - name: Create synthetic offline-only Firebase/API config and unique debug app ID
+        if: steps.scope.outputs.build == 'true'
         run: python3 tools/k3_offline_build_fixture.py
       - name: Resolve Flutter packages
+        if: steps.scope.outputs.build == 'true'
         run: flutter pub get
       - name: Ensure Flutter dependencies match the committed lockfile
+        if: steps.scope.outputs.build == 'true'
         run: |
           flutter pub get --enforce-lockfile
           git diff --exit-code -- pubspec.lock
       - name: Patch Agora 6.2.6 minSdk only in temporary CI pub cache
+        if: steps.scope.outputs.build == 'true'
         run: python3 tools/k3_agora_ci_patch.py
       - name: Patch legacy Google API Headers namespace in temporary pub cache
+        if: steps.scope.outputs.build == 'true'
         run: python3 tools/k3_google_api_headers_ci_patch.py
       - name: Patch Iris native minSdk in temporary CI pub cache
+        if: steps.scope.outputs.build == 'true'
         run: python3 tools/k3_iris_ci_patch.py
       # razorpay_flutter 1.4.7 contains the Android namespace and no removed v1 Registrar.
       - name: Detect obsolete Flutter Android v1 embedding APIs before Gradle
+        if: steps.scope.outputs.build == 'true'
         run: python3 tools/k3_v1_embedding_scan.py
       - name: Generate retrofit code
+        if: steps.scope.outputs.build == 'true'
         run: dart run build_runner build --delete-conflicting-outputs
       - name: Preserve environment-defined Retrofit base URL
+        if: steps.scope.outputs.build == 'true'
         run: python3 tools/k3_rewrite_generated_url.py
       - name: Check disk budget before Android compilation
+        if: steps.scope.outputs.build == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -88,11 +126,13 @@ jobs:
             exit 1
           fi
       - name: Compile debug-only Android APK
+        if: steps.scope.outputs.build == 'true'
         run: >-
           flutter build apk --debug
           --dart-define=K3_BUILD_ENV=staging
           --dart-define-from-file="${{ runner.temp }}/k3_offline_dart_defines.json"
       - name: Package isolated APK
+        if: steps.scope.outputs.build == 'true'
         run: |
           test -s build/app/outputs/flutter-apk/app-debug.apk
           mkdir -p dist
@@ -104,6 +144,7 @@ jobs:
           payments, real user accounts, or App Store/Play Store submission.
           TXT
       - uses: actions/upload-artifact@v4
+        if: steps.scope.outputs.build == 'true'
         with:
           name: k3-offline-android-debug-apk
           path: dist/
