@@ -1,6 +1,7 @@
 import 'package:doctro_patient/Screen/Onboarding/Onboarding.dart';
 import 'package:doctro_patient/const/care360_theme.dart';
 import 'package:doctro_patient/widgets/care360_quick_access.dart';
+import 'package:doctro_patient/widgets/care360_master_brand.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,6 +14,15 @@ void main() {
     ));
     expect(find.text('Care that fits your life.'), findsOneWidget);
     expect(find.text('1 / 3'), findsOneWidget);
+    expect(find.text('Care360 Patient'), findsOneWidget);
+    expect(find.byType(Care360MasterBrand), findsOneWidget);
+    expect(
+      find.byWidgetPredicate((widget) =>
+          widget is Image &&
+          widget.image is AssetImage &&
+          (widget.image as AssetImage).assetName == 'assets/images/appicon.png'),
+      findsOneWidget,
+    );
     expect(find.text('NIGERIA TO THE WORLD'), findsOneWidget);
     expect(find.text('A product of CNU Medical Institute'), findsOneWidget);
 
