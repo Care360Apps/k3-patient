@@ -9,6 +9,7 @@ on:
       - 'ios/**'
       - 'tools/k3_offline_build_fixture.py'
       - 'tools/k3_offline_ios_fixture.py'
+      - 'tools/k3_razorpay_ios_simulator_patch.py'
       - '.github/workflows/offline-ios-simulator.yml'
   workflow_dispatch:
 permissions:
@@ -46,6 +47,8 @@ jobs:
           python3 tools/k3_staging_config.py --platform ios --firebase ios/Runner/GoogleService-Info.plist --out "$RUNNER_TEMP/k3_offline_ios.json"
       - name: Install packages
         run: flutter pub get
+      - name: Apply fail-closed Razorpay analytics compatibility patch in temporary simulator cache
+        run: python3 tools/k3_razorpay_ios_simulator_patch.py
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
       - name: Rewrite generated Retrofit URL to use Dart environment
