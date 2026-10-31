@@ -1,6 +1,9 @@
 name: K3 offline Android APK (synthetic services; not clinical)
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -44,6 +47,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.38.3'
