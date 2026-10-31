@@ -1,5 +1,15 @@
 name: K3 offline iOS Simulator (synthetic services; not clinical)
 on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'ios/**'
+      - 'tools/k3_offline_build_fixture.py'
+      - 'tools/k3_offline_ios_fixture.py'
+      - '.github/workflows/offline-ios-simulator.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,6 +34,9 @@ jobs:
         run: flutter config --enable-swift-package-manager
       - name: Create synthetic-only iOS Firebase plist and compile-time API configuration
         run: |
+          # Use the same isolated onboarding preview as Android.
+          # This edits only the temporary runner checkout, never release code.
+          python3 tools/k3_offline_build_fixture.py
           python3 tools/k3_offline_ios_fixture.py
           python3 tools/k3_staging_config.py --platform ios --firebase ios/Runner/GoogleService-Info.plist --out "$RUNNER_TEMP/k3_offline_ios.json"
       - name: Install packages
