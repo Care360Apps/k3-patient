@@ -93,11 +93,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   padding: const EdgeInsets.fromLTRB(22, 12, 18, 0),
                   child: Row(
                     children: [
-                      const Care360MasterBrand(
-                        productName: 'Care360 Patient',
-                        logoSize: 60,
+                      const Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Care360MasterBrand(
+                            productName: 'Care360 Patient',
+                            logoSize: 60,
+                          ),
+                        ),
                       ),
-                      const Spacer(),
                       TextButton(
                         onPressed: _finishing ? null : () => _finishOnboarding(context),
                         child: const Text('Skip', style: TextStyle(fontWeight: FontWeight.w600)),
