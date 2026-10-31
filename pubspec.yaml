@@ -69,6 +69,9 @@ dependencies:
   geolocator: ^14.0.1
   google_api_headers: ^1.3.0
   google_maps_flutter: ^2.2.2
+  # 2.6.2 uses Flutter's removed v1 Android embedding; 2.8.1 removes it.
+  # Pin the Android implementation until the full Google Maps package upgrade is tested.
+  google_maps_flutter_android: 2.8.1
   google_maps_webservice: ^0.0.20-nullsafety.5
   google_sign_in: ^7.2.0
   html: ^0.15.1
