@@ -24,11 +24,20 @@ xml = manifest.read_text(encoding="utf-8")
 group = "group 'io.github.zeshuaro.google_api_headers'"
 if group not in source:
     sys.exit("Unexpected google_api_headers Gradle group; manual review required")
-if re.search(r"(?m)^\s*namespace\s", source):
-    sys.exit("Namespace already defined; do not patch automatically")
+if re.search(r"(?m)^\s*(namespace|compileOptions|kotlinOptions)\s", source):
+    sys.exit("Namespace or JVM compatibility already configured; refusing to patch")
 gradle_pattern = re.compile(r"(?m)^(android\s*\{)$")
 new_source, n_gradle = gradle_pattern.subn(
-    lambda m: m.group(1) + "\n    namespace 'io.github.zeshuaro.google_api_headers'",
+    lambda m: m.group(1) + (
+        "\n    namespace 'io.github.zeshuaro.google_api_headers'"
+        "\n    compileOptions {"
+        "\n        sourceCompatibility JavaVersion.VERSION_17"
+        "\n        targetCompatibility JavaVersion.VERSION_17"
+        "\n    }"
+        "\n    kotlinOptions {"
+        "\n        jvmTarget = '17'"
+        "\n    }"
+    ),
     source,
 )
 manifest_pattern = re.compile(
@@ -45,6 +54,6 @@ if n_gradle != 1 or n_xml != 1:
 
 gradle.write_text(new_source, encoding="utf-8")
 manifest.write_text(new_xml, encoding="utf-8")
-print("CI-ONLY: added Android namespace for google_api_headers 1.6.0")
+print("CI-ONLY: added Android namespace and aligned Java/Kotlin JVM targets to 17 for google_api_headers 1.6.0")
 print("CI-ONLY: removed legacy AndroidManifest package attribute")
 print("K3 app and production dependencies remain unchanged")
