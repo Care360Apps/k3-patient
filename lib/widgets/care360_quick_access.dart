@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../const/Palette.dart';
 import '../const/care360_theme.dart';
+import 'care360_brand_signature.dart';
 
 /// Visual-only shortcuts into existing Care360 routes.
 /// The destination screens retain their own permission and login checks.
@@ -98,6 +99,8 @@ class Care360QuickAccess extends StatelessWidget {
               );
             },
           ),
+          const SizedBox(height: 20),
+          const Center(child: Care360BrandSignature(compact: true)),
         ],
       ),
     );
