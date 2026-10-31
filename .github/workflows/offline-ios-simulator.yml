@@ -45,6 +45,22 @@ jobs:
           python3 tools/k3_offline_build_fixture.py
           python3 tools/k3_offline_ios_fixture.py
           python3 tools/k3_staging_config.py --platform ios --firebase ios/Runner/GoogleService-Info.plist --out "$RUNNER_TEMP/k3_offline_ios.json"
+      - name: Validate synthetic Firebase plist matches Xcode project layout
+        run: |
+          test -f ios/GoogleService-Info.plist
+          test -f ios/Runner/GoogleService-Info.plist
+          cmp ios/GoogleService-Info.plist ios/Runner/GoogleService-Info.plist
+          plutil -lint ios/GoogleService-Info.plist
+          plutil -lint ios/Runner/GoogleService-Info.plist
+          # No real Firebase credentials should be required for the isolated CI preview.
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+          config = plistlib.loads(Path('ios/GoogleService-Info.plist').read_bytes())
+          assert config['PROJECT_ID'] == 'k3-synthetic-build-invalid'
+          assert config['BUNDLE_ID'] == 'com.cnu.patient'
+          print('Verified synthetic-only Firebase settings and Xcode file path')
+          PY
       - name: Install packages
         run: flutter pub get
       - name: Apply fail-closed Razorpay analytics compatibility patch in temporary simulator cache
