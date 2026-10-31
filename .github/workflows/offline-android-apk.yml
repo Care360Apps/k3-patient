@@ -129,6 +129,7 @@ jobs:
         if: steps.scope.outputs.build == 'true'
         run: >-
           flutter build apk --debug
+          --target-platform=android-arm64
           --dart-define=K3_BUILD_ENV=staging
           --dart-define-from-file="${{ runner.temp }}/k3_offline_dart_defines.json"
       - name: Package isolated APK
@@ -136,11 +137,11 @@ jobs:
         run: |
           test -s build/app/outputs/flutter-apk/app-debug.apk
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-debug.apk dist/k3-offline-sandbox-debug.apk
+          ln build/app/outputs/flutter-apk/app-debug.apk dist/k3-offline-sandbox-debug.apk
           cat > dist/README.txt <<'TXT'
           K3 synthetic OFFLINE debug build. It is deliberately disconnected
           from K3 production and staging API/Firebase services. This APK is
-          for installation and compilation checks only, NOT clinical testing,
+          for ARM64 Android installation and compilation checks only (not x86 emulators), NOT clinical testing,
           payments, real user accounts, or App Store/Play Store submission.
           TXT
       - uses: actions/upload-artifact@v4
