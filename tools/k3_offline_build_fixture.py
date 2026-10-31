@@ -93,7 +93,7 @@ onboarding_path.write_text(onboarding_source)
 # The preview's real onboarding is imported from a separate generated Dart file.
 preview_main = preview_main.replace(
     "import 'package:flutter/material.dart';",
-    "import 'package:flutter/material.dart';\\nimport 'Screen/Onboarding/Onboarding.dart';",
+    "import 'package:flutter/material.dart';\nimport 'Screen/Onboarding/Onboarding.dart';",
 ).replace('home: const PreviewHome(),', 'home: const OnboardingScreen(),')
 (root / 'lib/offline_preview_home.dart').write_text(
     preview_main.replace('void main() {', 'void previewOnlyUnusedMain() {')
