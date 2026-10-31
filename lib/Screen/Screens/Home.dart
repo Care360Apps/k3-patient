@@ -35,6 +35,8 @@ import '../../FirebaseProviders/home_provider.dart';
 import '../../api/base_model.dart';
 import '../../api/server_error.dart';
 import '../../const/Palette.dart';
+import '../../const/care360_theme.dart';
+import '../../widgets/care360_quick_access.dart';
 import '../../const/app_string.dart';
 import '../../localization/localization_constant.dart';
 import '../../model/detail_setting_model.dart';
@@ -449,6 +451,7 @@ class _HomeState extends State<Home> {
             FocusScope.of(context).requestFocus(new FocusNode());
           },
           child: Scaffold(
+            backgroundColor: Care360Theme.canvas,
             key: _scaffoldKey,
 
             /// Drawer ///
@@ -1312,6 +1315,7 @@ class _HomeState extends State<Home> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                        const Care360QuickAccess(),
                         /// Upcoming Appointment ///
                         upcomingAppointment.length != 0
                             ? Column(
@@ -1828,7 +1832,7 @@ class _HomeState extends State<Home> {
                                                   child: Text(
                                                     treatmentList[index].name!,
                                                     style: TextStyle(
-                                                      fontSize: 8,
+                                                      fontSize: 12,
                                                       color: Palette.dark_blue,
                                                       fontWeight: FontWeight.w600,
                                                     ),

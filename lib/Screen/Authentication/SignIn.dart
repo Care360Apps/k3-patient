@@ -17,6 +17,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:doctro_patient/api/base_model.dart';
 import 'package:doctro_patient/api/server_error.dart';
 import 'package:doctro_patient/const/Palette.dart';
+import 'package:doctro_patient/const/care360_theme.dart';
+import 'package:doctro_patient/widgets/care360_brand_signature.dart';
+import 'package:doctro_patient/widgets/care360_master_brand.dart';
 import 'package:doctro_patient/const/app_string.dart';
 import 'package:doctro_patient/localization/localization_constant.dart';
 import 'package:doctro_patient/model/detail_setting_model.dart';
@@ -69,229 +72,207 @@ class _SignInState extends State<SignIn> {
   @override
   Widget build(BuildContext context) {
     authProvider = Provider.of<AuthProvider>(context);
-    double width;
-    width = MediaQuery.of(context).size.width;
-    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).requestFocus(new FocusNode());
-        },
-        child: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              children: [
-                Container(
-                  height: size.height * 1,
-                  width: width * 1,
-                  child: Stack(
+      backgroundColor: Care360Theme.canvas,
+      body: SafeArea(
+        child: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Image.asset(
-                        "assets/images/confident-doctor-half.jpg",
-                        height: size.height * 0.5,
-                        width: width * 1,
-                        fit: BoxFit.cover,
-                      ),
-                      Positioned(
-                        top: size.height * 0.35,
-                        child: Container(
-                          width: width * 1,
-                          height: size.height * 1,
-                          decoration: BoxDecoration(
-                            color: Palette.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(width * 0.1),
-                              topRight: Radius.circular(width * 0.1),
-                            ),
-                          ),
-                          child: ListView(
-                            physics: NeverScrollableScrollPhysics(),
-                            children: [
-                              Column(
-                                children: [
-                                  Container(
-                                    margin: EdgeInsets.only(top: width * 0.08),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          getTranslated(context, AppString.signIn_welcome).toString(),
-                                          style: TextStyle(fontSize: width * 0.1, fontWeight: FontWeight.bold, color: Palette.light_black),
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          getTranslated(context, AppString.signIn_title).toString(),
-                                          style: TextStyle(fontSize: width * 0.04, color: Palette.dark_grey1),
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 30,
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 15,
-                                      ),
-                                      decoration: BoxDecoration(color: Palette.dark_white, borderRadius: BorderRadius.circular(10)),
-                                      child: TextFormField(
-                                        controller: emailController,
-                                        keyboardType: TextInputType.text,
-                                        textAlignVertical: TextAlignVertical.center,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Palette.dark_blue,
-                                        ),
-                                        decoration: InputDecoration(
-                                          border: InputBorder.none,
-                                          hintText: getTranslated(context, AppString.signIn_email_hint).toString(),
-                                          hintStyle: TextStyle(
-                                            fontSize: 16,
-                                            color: Palette.dark_grey,
-                                          ),
-                                        ),
-                                        validator: (String? value) {
-                                          if (value!.isEmpty) {
-                                            return getTranslated(context, AppString.signIn_email_validator1).toString();
-                                          }
-                                          if (!RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)) {
-                                            return getTranslated(context, AppString.signIn_email_validator2).toString();
-                                          }
-                                          return null;
-                                        },
-                                        onSaved: (String? name) {},
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 15,
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 15,
-                                      ),
-                                      decoration: BoxDecoration(color: Palette.dark_white, borderRadius: BorderRadius.circular(10)),
-                                      child: TextFormField(
-                                        controller: passwordController,
-                                        keyboardType: TextInputType.text,
-                                        textAlignVertical: TextAlignVertical.center,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Palette.dark_blue,
-                                        ),
-                                        decoration: InputDecoration(
-                                          border: InputBorder.none,
-                                          hintText: getTranslated(context, AppString.signIn_password_hint).toString(),
-                                          hintStyle: TextStyle(
-                                            fontSize: 16,
-                                            color: Palette.dark_grey,
-                                          ),
-                                          suffixIcon: IconButton(
-                                            icon: Icon(
-                                              _isHidden ? Icons.visibility : Icons.visibility_off,
-                                              color: Palette.grey,
-                                            ),
-                                            onPressed: () {
-                                              setState(() {
-                                                _isHidden = !_isHidden;
-                                              });
-                                            },
-                                          ),
-                                        ),
-                                        obscureText: _isHidden,
-                                        validator: (String? value) {
-                                          if (value!.isEmpty) {
-                                            return getTranslated(context, AppString.signIn_password_validator).toString();
-                                          }
-                                          return null;
-                                        },
-                                        onSaved: (String? name) {},
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 20,
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
-                                    child: Container(
-                                      width: width * 1,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: ElevatedButton(
-                                        child: Text(
-                                          getTranslated(context, AppString.signIn_signIn_button).toString(),
-                                          style: TextStyle(fontSize: 18),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        onPressed: () {
-                                          if (formKey.currentState!.validate()) {
-                                            callForLogin();
-                                          } else {
-                                            print('Not Login');
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  TextButton(
-                                    child: Text(
-                                      getTranslated(context, AppString.signIn_forgotPassword_button).toString(),
-                                      style: TextStyle(fontSize: 16, color: Palette.dark_grey),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    onPressed: () {
-                                      Navigator.pushNamed(context, 'ForgotPasswordScreen');
-                                    },
-                                  ),
-                                  SizedBox(
-                                    height: 20,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        getTranslated(context, AppString.signIn_notAccount).toString(),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Palette.dark_grey,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 10,
-                                      ),
-                                      GestureDetector(
-                                        onTap: () {
-                                          Navigator.pushNamed(context, 'SignUp');
-                                        },
-                                        child: Text(
-                                          getTranslated(context, AppString.signIn_signUp_button).toString(),
-                                          style: TextStyle(fontSize: 16, color: Palette.blue, fontWeight: FontWeight.bold),
-                                        ),
-                                      )
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(24, 26, 24, 30),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Palette.dark_blue, Color(0xFF1571BA)],
                           ),
                         ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Center(
+                              child: Care360MasterBrand(
+                                productName: 'Care360 Patient',
+                                onDark: true,
+                                logoSize: 80,
+                              ),
+                            ),
+                            const SizedBox(height: 35),
+                            Text(
+                              getTranslated(context, AppString.signIn_welcome).toString(),
+                              style: const TextStyle(
+                                fontSize: 29,
+                                height: 1.2,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: -0.6,
+                              ),
+                            ),
+                            const SizedBox(height: 9),
+                            Text(
+                              getTranslated(context, AppString.signIn_title).toString(),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                height: 1.5,
+                                color: Color(0xFFE4F1FF),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                        decoration: BoxDecoration(
+                          color: Palette.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Care360Theme.border),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Palette.dark_blue.withOpacity(0.035),
+                              blurRadius: 22,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Sign in to your account',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Care360Theme.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              getTranslated(context, AppString.signIn_email_hint).toString(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Care360Theme.ink,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.email],
+                              autocorrect: false,
+                              decoration: const InputDecoration(
+                                hintText: 'name@example.com',
+                                prefixIcon: Icon(Icons.mail_outline_rounded),
+                              ),
+                              validator: (value) {
+                                final email = value?.trim() ?? '';
+                                if (email.isEmpty) {
+                                  return getTranslated(context, AppString.signIn_email_validator1).toString();
+                                }
+                                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+                                  return getTranslated(context, AppString.signIn_email_validator2).toString();
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 18),
+                            Text(
+                              getTranslated(context, AppString.signIn_password_hint).toString(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Care360Theme.ink,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: passwordController,
+                              obscureText: _isHidden,
+                              textInputAction: TextInputAction.done,
+                              autofillHints: const [AutofillHints.password],
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                                hintText: getTranslated(context, AppString.signIn_password_hint).toString(),
+                                suffixIcon: IconButton(
+                                  tooltip: _isHidden ? 'Show password' : 'Hide password',
+                                  icon: Icon(
+                                    _isHidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                  ),
+                                  onPressed: () => setState(() => _isHidden = !_isHidden),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return getTranslated(context, AppString.signIn_password_validator).toString();
+                                }
+                                return null;
+                              },
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () => Navigator.pushNamed(context, 'ForgotPasswordScreen'),
+                                child: Text(
+                                  getTranslated(context, AppString.signIn_forgotPassword_button).toString(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  if (formKey.currentState?.validate() ?? false) {
+                                    callForLogin();
+                                  }
+                                },
+                                child: Text(
+                                  getTranslated(context, AppString.signIn_signIn_button).toString(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
+                        children: [
+                          Text(
+                            getTranslated(context, AppString.signIn_notAccount).toString(),
+                            style: const TextStyle(color: Care360Theme.muted, fontSize: 14),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pushNamed(context, 'SignUp'),
+                            child: Text(
+                              getTranslated(context, AppString.signIn_signUp_button).toString(),
+                              style: const TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      const Center(child: Care360BrandSignature()),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),

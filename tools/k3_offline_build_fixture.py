@@ -72,5 +72,33 @@ print('Use only for offline installation/compile checks; NOT clinical testing')
 # CI checkout. The actual app source and production build remain untouched.
 # A fully isolated UI is required: dummy Firebase must never block runApp().
 preview_main = "import 'package:flutter/material.dart';\n\nvoid main() {\n  WidgetsFlutterBinding.ensureInitialized();\n  runApp(const OfflineCare360Preview());\n}\n\nclass OfflineCare360Preview extends StatelessWidget {\n  const OfflineCare360Preview({super.key});\n\n  @override\n  Widget build(BuildContext context) {\n    return MaterialApp(\n      debugShowCheckedModeBanner: false,\n      title: 'Care360 Offline Preview',\n      theme: ThemeData(\n        useMaterial3: true,\n        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1765B3)),\n      ),\n      home: const PreviewHome(),\n    );\n  }\n}\n\nclass PreviewHome extends StatefulWidget {\n  const PreviewHome({super.key});\n\n  @override\n  State<PreviewHome> createState() => _PreviewHomeState();\n}\n\nclass _PreviewHomeState extends State<PreviewHome> {\n  int selected = 0;\n  static const sections = <String>['Overview', 'Appointments', 'Doctors', 'Profile'];\n  static const icons = <IconData>[\n    Icons.dashboard_outlined, Icons.calendar_month_outlined,\n    Icons.medical_services_outlined, Icons.person_outline,\n  ];\n\n  @override\n  Widget build(BuildContext context) {\n    return Scaffold(\n      appBar: AppBar(title: const Text('Care360 Patient'), centerTitle: false),\n      body: SafeArea(\n        child: ListView(\n          padding: const EdgeInsets.all(20),\n          children: [\n            Container(\n              padding: const EdgeInsets.all(14),\n              decoration: BoxDecoration(\n                color: const Color(0xFFFFF3CD),\n                borderRadius: BorderRadius.circular(12),\n              ),\n              child: const Text(\n                'OFFLINE UI PREVIEW ONLY — Synthetic test build. No real accounts, '\n                'appointments, medical advice, payments or patient records.',\n                style: TextStyle(fontWeight: FontWeight.w600),\n              ),\n            ),\n            const SizedBox(height: 24),\n            Text(sections[selected], style: Theme.of(context).textTheme.headlineMedium),\n            const SizedBox(height: 10),\n            const Text('This is a safe navigation and visual smoke test, not the live Care360 application.'),\n            const SizedBox(height: 24),\n            Card(\n              child: Padding(\n                padding: const EdgeInsets.all(20),\n                child: Column(\n                  crossAxisAlignment: CrossAxisAlignment.start,\n                  children: [\n                    Icon(icons[selected], size: 38),\n                    const SizedBox(height: 12),\n                    Text('${sections[selected]} preview', style: Theme.of(context).textTheme.titleLarge),\n                    const SizedBox(height: 8),\n                    const Text('Service data and interactive clinical workflows are intentionally unavailable in this build.'),\n                  ],\n                ),\n              ),\n            ),\n          ],\n        ),\n      ),\n      bottomNavigationBar: NavigationBar(\n        selectedIndex: selected,\n        onDestinationSelected: (index) => setState(() => selected = index),\n        destinations: [\n          for (var i = 0; i < sections.length; i++)\n            NavigationDestination(icon: Icon(icons[i]), label: sections[i]),\n        ],\n      ),\n    );\n  }\n}\n"
+# Use the original Care360 onboarding screen in the offline preview while
+# redirecting its completion action to the isolated preview dashboard.
+# Do not initialize Firebase, auth, or production services.
+onboarding_path = root / 'lib/Screen/Onboarding/Onboarding.dart'
+onboarding_source = onboarding_path.read_text()
+onboarding_source = onboarding_source.replace(
+    "import '../Authentication/SignIn.dart';",
+    "import '../../offline_preview_home.dart';",
+)
+onboarding_source = onboarding_source.replace(
+    'await SharedPreferenceHelper.setBoolean(Preferences.onboarding_seen, true);',
+    '// Offline preview: do not persist authentication or onboarding state.',
+)
+onboarding_source = onboarding_source.replace(
+    'MaterialPageRoute(builder: (_) => SignIn()),',
+    'MaterialPageRoute(builder: (_) => const PreviewHome()),',
+)
+onboarding_path.write_text(onboarding_source)
+# The preview's real onboarding is imported from a separate generated Dart file.
+preview_main = preview_main.replace(
+    "import 'package:flutter/material.dart';",
+    "import 'package:flutter/material.dart';\nimport 'Screen/Onboarding/Onboarding.dart';",
+).replace('home: const PreviewHome(),', 'home: const OnboardingScreen(),')
+(root / 'lib/offline_preview_home.dart').write_text(
+    preview_main.replace('void main() {', 'void previewOnlyUnusedMain() {')
+    .replace("import 'Screen/Onboarding/Onboarding.dart';", '')
+    .replace('home: const OnboardingScreen(),', 'home: const PreviewHome(),')
+)
 (root / 'lib/main.dart').write_text(preview_main)
 print('OFFLINE PREVIEW: replaced entrypoint in temporary CI checkout; no Firebase startup')

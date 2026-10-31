@@ -72,6 +72,7 @@ import 'api/base_model.dart';
 import 'api/network_api.dart';
 import 'api/server_error.dart';
 import 'const/Palette.dart';
+import 'const/care360_theme.dart';
 import 'const/prefConstatnt.dart';
 import 'localization/language_localization.dart';
 import 'localization/localization_constant.dart';
@@ -373,7 +374,7 @@ class _MyAppState extends State<MyApp> {
           create: (_) => OverlayHandlerProvider(),
           child: MaterialApp(
             navigatorKey: navigatorKey,
-            title: 'Patient',
+            title: 'Care360 Patient',
             locale: _locale ?? Locale(ENGLISH, 'US'),
             supportedLocales: [
               Locale(ENGLISH, 'US'),
@@ -396,17 +397,7 @@ class _MyAppState extends State<MyApp> {
             },
             debugShowCheckedModeBanner: false,
             initialRoute: "/",
-            theme: ThemeData(
-              splashColor: Palette.transparent,
-              highlightColor: Palette.transparent,
-              primaryColor: Palette.blue,
-              useMaterial3: false,
-              elevatedButtonTheme: ElevatedButtonThemeData(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Palette.blue
-                )
-              )
-            ),
+            theme: Care360Theme.light,
             routes: {
               '/': (context) {
                 // Always show onboarding once after splash, even if already logged in.
