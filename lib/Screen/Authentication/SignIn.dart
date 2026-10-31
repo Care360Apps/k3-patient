@@ -18,6 +18,7 @@ import 'package:doctro_patient/api/base_model.dart';
 import 'package:doctro_patient/api/server_error.dart';
 import 'package:doctro_patient/const/Palette.dart';
 import 'package:doctro_patient/const/care360_theme.dart';
+import 'package:doctro_patient/widgets/care360_brand_signature.dart';
 import 'package:doctro_patient/const/app_string.dart';
 import 'package:doctro_patient/localization/localization_constant.dart';
 import 'package:doctro_patient/model/detail_setting_model.dart';
@@ -272,6 +273,8 @@ class _SignInState extends State<SignIn> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 15),
+                      const Center(child: Care360BrandSignature()),
                     ],
                   ),
                 ),
