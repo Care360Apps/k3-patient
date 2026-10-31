@@ -188,7 +188,7 @@ class _SignInState extends State<SignIn> {
                                 if (email.isEmpty) {
                                   return getTranslated(context, AppString.signIn_email_validator1).toString();
                                 }
-                                if (!RegExp(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$').hasMatch(email)) {
+                                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
                                   return getTranslated(context, AppString.signIn_email_validator2).toString();
                                 }
                                 return null;
