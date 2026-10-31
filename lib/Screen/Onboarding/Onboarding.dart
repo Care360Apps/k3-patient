@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../const/Palette.dart';
 import '../../const/care360_theme.dart';
 import '../../widgets/care360_brand_signature.dart';
+import '../../widgets/care360_master_brand.dart';
 import '../../const/preference.dart';
 import '../../const/prefConstatnt.dart';
 import '../Authentication/SignIn.dart';
@@ -92,24 +93,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   padding: const EdgeInsets.fromLTRB(22, 12, 18, 0),
                   child: Row(
                     children: [
-                      Container(
-                        height: 38,
-                        width: 38,
-                        decoration: BoxDecoration(
-                          color: Palette.dark_blue,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.favorite_rounded, size: 20, color: Colors.white),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Care360',
-                        style: TextStyle(
-                          fontSize: 22,
-                          color: Care360Theme.ink,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.6,
-                        ),
+                      const Care360MasterBrand(
+                        productName: 'Care360 Patient',
+                        logoSize: 60,
                       ),
                       const Spacer(),
                       TextButton(
