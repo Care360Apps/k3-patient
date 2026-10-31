@@ -3,6 +3,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.platform || 'default' }}
+  cancel-in-progress: true
 jobs:
   ios-sandbox:
     runs-on: macos-latest
