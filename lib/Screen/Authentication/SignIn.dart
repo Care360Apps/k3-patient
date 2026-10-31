@@ -19,6 +19,7 @@ import 'package:doctro_patient/api/server_error.dart';
 import 'package:doctro_patient/const/Palette.dart';
 import 'package:doctro_patient/const/care360_theme.dart';
 import 'package:doctro_patient/widgets/care360_brand_signature.dart';
+import 'package:doctro_patient/widgets/care360_master_brand.dart';
 import 'package:doctro_patient/const/app_string.dart';
 import 'package:doctro_patient/localization/localization_constant.dart';
 import 'package:doctro_patient/model/detail_setting_model.dart';
@@ -101,19 +102,12 @@ class _SignInState extends State<SignIn> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.favorite_rounded, color: Colors.white, size: 26),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Care360 Patient',
-                                  style: TextStyle(
-                                    fontSize: 19,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
+                            const Center(
+                              child: Care360MasterBrand(
+                                productName: 'Care360 Patient',
+                                onDark: true,
+                                logoSize: 80,
+                              ),
                             ),
                             const SizedBox(height: 35),
                             Text(
