@@ -7,6 +7,8 @@ import '../../api/base_model.dart';
 import '../../api/network_api.dart';
 import '../../api/server_error.dart';
 import '../../const/Palette.dart';
+import '../../const/care360_theme.dart';
+import '../../widgets/care360_brand_signature.dart';
 import '../../const/app_string.dart';
 import '../../localization/localization_constant.dart';
 import '../../model/detail_setting_model.dart';
@@ -61,8 +63,29 @@ class _AboutUsState extends State<AboutUs> {
         child: SingleChildScrollView(
           physics: BouncingScrollPhysics(),
           child: Container(
-            margin: EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-            child: aboutUs != null
+            margin: EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Care360Theme.softBlue,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Care360 Patient', style: TextStyle(
+                        color: Care360Theme.ink, fontSize: 22, fontWeight: FontWeight.w800)),
+                      SizedBox(height: 8),
+                      Text('Rooted in Nigeria. Designed to connect people with care.',
+                        style: TextStyle(color: Care360Theme.muted, fontSize: 14, height: 1.5)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                aboutUs != null
                 ? Html(
                     data: '$aboutUs',
                   )
@@ -73,6 +96,10 @@ class _AboutUsState extends State<AboutUs> {
                       getTranslated(context, "noDetail").toString(),
                     ),
                   ),
+                const SizedBox(height: 24),
+                const Care360BrandSignature(),
+              ],
+            ),
           ),
         ),
       ),
