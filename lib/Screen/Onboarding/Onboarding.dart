@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../const/Palette.dart';
 import '../../const/care360_theme.dart';
+import '../../widgets/care360_brand_signature.dart';
 import '../../const/preference.dart';
 import '../../const/prefConstatnt.dart';
 import '../Authentication/SignIn.dart';
@@ -215,6 +216,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      const Center(child: Care360BrandSignature(compact: true)),
                     ],
                   ),
                 ),
