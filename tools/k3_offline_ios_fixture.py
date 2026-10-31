@@ -9,11 +9,16 @@ pbx = (root / 'ios/Runner.xcodeproj/project.pbxproj').read_text()
 ids = re.findall(r'PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(com\.cnu\.(?:patient|doctor));', pbx)
 if not ids or len(set(ids)) != 1:
     raise SystemExit('Unexpected or inconsistent K3 Runner bundle ID')
-plist = root / 'ios/Runner/GoogleService-Info.plist'
-if plist.exists():
-    raise SystemExit('Refusing to overwrite existing Firebase plist')
-plist.parent.mkdir(parents=True, exist_ok=True)
-plist.write_bytes(plistlib.dumps({
+# Xcode's PBXFileReference resolves GoogleService-Info.plist from the
+# ios/ project root, whereas the legacy staging-define reader looks in Runner/.
+# Both locations need identical *synthetic* data in this ephemeral CI checkout.
+xcode_plist = root / 'ios/GoogleService-Info.plist'
+runner_plist = root / 'ios/Runner/GoogleService-Info.plist'
+for destination in (xcode_plist, runner_plist):
+    if destination.exists() or destination.is_symlink():
+        raise SystemExit(f'Refusing to overwrite existing Firebase plist: {destination}')
+runner_plist.parent.mkdir(parents=True, exist_ok=True)
+synthetic_plist = plistlib.dumps({
     'PLIST_VERSION': '1',
     'API_KEY': 'k3-synthetic-not-a-valid-firebase-key',
     'GCM_SENDER_ID': '123456789012',
@@ -25,5 +30,9 @@ plist.write_bytes(plistlib.dumps({
     'IS_ANALYTICS_ENABLED': False,
     'IS_SIGNIN_ENABLED': False,
     'IS_GCM_ENABLED': False,
-}))
-print('Synthetic Firebase plist created for simulator-only compile')
+})
+xcode_plist.write_bytes(synthetic_plist)
+runner_plist.write_bytes(synthetic_plist)
+if xcode_plist.read_bytes() != runner_plist.read_bytes():
+    raise SystemExit('Synthetic Firebase plist copies are not identical')
+print('Synthetic Firebase plist created at Xcode and Runner paths for simulator-only compile')
