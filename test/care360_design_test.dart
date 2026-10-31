@@ -13,6 +13,8 @@ void main() {
     ));
     expect(find.text('Care that fits your life.'), findsOneWidget);
     expect(find.text('1 / 3'), findsOneWidget);
+    expect(find.text('NIGERIA TO THE WORLD'), findsOneWidget);
+    expect(find.text('A product of CNU Medical Institute'), findsOneWidget);
 
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
