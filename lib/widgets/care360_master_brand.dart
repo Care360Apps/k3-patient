@@ -26,7 +26,7 @@ class Care360MasterBrand extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Image.asset(
-            'assets/images/appicon.png',
+            'assets/images/care360_master_logo.webp',
             width: logoSize,
             height: logoSize,
             fit: BoxFit.contain,
