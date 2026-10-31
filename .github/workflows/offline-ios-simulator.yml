@@ -30,8 +30,13 @@ jobs:
           flutter-version: '3.38.3'
           channel: stable
           cache: true
-      - name: Enable native iOS Swift Package Manager
-        run: flutter config --enable-swift-package-manager
+      - name: Use the existing CocoaPods integration for Razorpay on iOS
+        run: |
+          # razorpay_flutter 1.4.7's SPM path currently fails to expose
+          # RazorpayEventCallback during Xcode compilation. The app already
+          # has a CocoaPods Podfile and use_frameworks! configuration.
+          # Keep this isolated simulator check on that supported integration.
+          flutter config --no-enable-swift-package-manager
       - name: Create synthetic-only iOS Firebase plist and compile-time API configuration
         run: |
           # Use the same isolated onboarding preview as Android.
