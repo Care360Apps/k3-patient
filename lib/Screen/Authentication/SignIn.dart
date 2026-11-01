@@ -1,4 +1,6 @@
 import '../../brand/care360_entry.dart';
+import '../../api/care360_connection_error.dart';
+import '../../api/apis.dart';
 import 'dart:io';
 import 'package:doctro_patient/FirebaseProviders/auth_provider.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
@@ -34,6 +36,7 @@ class _SignInState extends State<SignIn> {
   TextEditingController passwordController = TextEditingController();
 
   bool _isHidden = true;
+  bool _loginInProgress = false;
 
   String? msg = "";
   String? deviceToken = "";
@@ -50,7 +53,8 @@ class _SignInState extends State<SignIn> {
     // emailController.text = "example@example.com";
     // passwordController.text = "12345678";
     
-    getLocation();
+    // Location permission belongs to location-dependent features, not sign-in.
+    // Users must be able to authenticate without granting GPS access.
     callApiSetting();
   }
 
@@ -204,11 +208,9 @@ class _SignInState extends State<SignIn> {
                                           style: TextStyle(fontSize: 18),
                                           textAlign: TextAlign.center,
                                         ),
-                                        onPressed: () {
+                                        onPressed: _loginInProgress ? null : () {
                                           if (formKey.currentState!.validate()) {
                                             callForLogin();
-                                          } else {
-                                            print('Not Login');
                                           }
                                         },
                                       ),
@@ -258,6 +260,8 @@ class _SignInState extends State<SignIn> {
   }
 
   Future<BaseModel<Login>> callForLogin() async {
+    if (_loginInProgress) return BaseModel<Login>();
+    setState(() => _loginInProgress = true);
     Login response;
     Map<String, dynamic> body = {
       "email": emailController.text.toString(),
@@ -369,10 +373,16 @@ class _SignInState extends State<SignIn> {
           );
         });
       }
-    } catch (error, stacktrace) {
-      Preferences.hideDialog(context);
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
+      if (mounted) {
+        Preferences.hideDialog(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(Care360ConnectionError.describe(error, apiBaseUrl: Apis.baseUrl)),
+        ));
+      }
       return BaseModel()..setException(ServerError.withError(error: error));
+    } finally {
+      if (mounted) setState(() => _loginInProgress = false);
     }
     return BaseModel()..data = response;
   }
