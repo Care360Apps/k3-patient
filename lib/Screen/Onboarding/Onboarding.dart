@@ -6,7 +6,10 @@ import '../../const/prefConstatnt.dart';
 import '../Authentication/SignIn.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({super.key, this.onComplete});
+
+  // Offline previews can finish without preferences or live authentication.
+  final VoidCallback? onComplete;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -35,6 +38,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   Future<void> _finishOnboarding(BuildContext context) async {
+    if (widget.onComplete != null) {
+      widget.onComplete!();
+      return;
+    }
     await SharedPreferenceHelper.setBoolean(Preferences.onboarding_seen, true);
     if (!mounted) return;
     Navigator.pushReplacement(
