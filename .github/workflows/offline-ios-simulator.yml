@@ -1,6 +1,14 @@
 name: K3 offline iOS Simulator (synthetic services; not clinical)
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'tools/k3_offline_ios_fixture.py'
+      - 'tools/k3_staging_config.py'
+      - '.github/workflows/offline-ios-simulator.yml'
 permissions:
   contents: read
 concurrency:
