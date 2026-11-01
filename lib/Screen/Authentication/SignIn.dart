@@ -1,3 +1,4 @@
+import '../../brand/care360_entry.dart';
 import 'dart:io';
 import 'package:doctro_patient/FirebaseProviders/auth_provider.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
@@ -72,44 +73,12 @@ class _SignInState extends State<SignIn> {
     double width;
     width = MediaQuery.of(context).size.width;
     final size = MediaQuery.of(context).size;
-    return Scaffold(
-      body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).requestFocus(new FocusNode());
-        },
-        child: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              children: [
-                Container(
-                  height: size.height * 1,
-                  width: width * 1,
-                  child: Stack(
-                    children: [
-                      Image.asset(
-                        "assets/images/confident-doctor-half.jpg",
-                        height: size.height * 0.5,
-                        width: width * 1,
-                        fit: BoxFit.cover,
-                      ),
-                      Positioned(
-                        top: size.height * 0.35,
-                        child: Container(
-                          width: width * 1,
-                          height: size.height * 1,
-                          decoration: BoxDecoration(
-                            color: Palette.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(width * 0.1),
-                              topRight: Radius.circular(width * 0.1),
-                            ),
-                          ),
-                          child: ListView(
-                            physics: NeverScrollableScrollPhysics(),
-                            children: [
-                              Column(
-                                children: [
+    return Care360AuthShell(
+      professional: false,
+      child: Form(
+        key: formKey,
+        child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+
                                   Container(
                                     margin: EdgeInsets.only(top: width * 0.08),
                                     child: Column(
@@ -282,19 +251,8 @@ class _SignInState extends State<SignIn> {
                                       )
                                     ],
                                   ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+                                
+        ]),
       ),
     );
   }
@@ -477,3 +435,4 @@ class _SignInState extends State<SignIn> {
     }
   }
 }
+
