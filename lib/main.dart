@@ -1,3 +1,4 @@
+import 'startup_gate.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -84,23 +85,22 @@ void main() {
     debugPrint = (String? message, {int? wrapWidth}) {};
   }
   runZoned(
-    _main,
+    () {
+      WidgetsFlutterBinding.ensureInitialized();
+      runApp(StartupGate(
+        initialize: _initializeApp,
+        onReady: () => unawaited(_initFirebaseMessagingWithLogging()),
+      ));
+    },
     zoneSpecification: kReleaseMode ? ZoneSpecification(print: (_, __, ___, ____) {}) : null,
   );
 }
 
-Future<void> _main() async {
+Future<Widget> _initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform);
-  
-  // Initialize Firebase Messaging
-  FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
   
   await SharedPreferenceHelper.init();
   final token = await SharedPreferenceHelper.getSecureString(Preferences.auth_token);
@@ -120,18 +120,19 @@ Future<void> _main() async {
       } catch (_) {}
     });
   }
+  return MyApp(prefs: prefs);
+}
+
+Future<void> _initFirebaseMessagingWithLogging() async {
   try {
-    await FirebaseMessaging.instance.subscribeToTopic("all");
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+      alert: true, badge: true, sound: true,
+    ).timeout(const Duration(seconds: 5));
+    await FirebaseMessaging.instance.subscribeToTopic("all")
+        .timeout(const Duration(seconds: 5));
   } catch (_) {
-    // APNS tokens are unavailable on the iOS simulator;
-    // continue without push-notification setup.
+    debugPrint('Optional push setup unavailable; app remains usable.');
   }
-  runApp(MyApp(prefs: prefs));
 }
 
 final GlobalKey<NavigatorState> navigatorKey = new GlobalKey<NavigatorState>();
@@ -388,7 +389,7 @@ class _MyAppState extends State<MyApp> {
             ],
             localeResolutionCallback: (deviceLocal, supportedLocales) {
               for (var local in supportedLocales) {
-                if (local.languageCode == deviceLocal!.languageCode && local.countryCode == deviceLocal.countryCode) {
+                if (deviceLocal != null && local.languageCode == deviceLocal.languageCode && local.countryCode == deviceLocal.countryCode) {
                   return deviceLocal;
                 }
               }
