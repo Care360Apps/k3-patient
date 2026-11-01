@@ -17,6 +17,8 @@ class SharedPreferenceHelper {
 
   static Future init() async {
     _preferences = await SharedPreferences.getInstance();
+    // One-time removal of a legacy cleartext Firebase password from old installs.
+    await _preferences.remove(FirestoreConstants.password);
     for (final key in _secureKeys) {
       await _loadSecure(key);
     }
@@ -44,7 +46,12 @@ class SharedPreferenceHelper {
 
   static bool _isBlank(String? v) => v == null || v.trim().isEmpty || v == "N_A" || v == "null";
 
-  static Future setString(String key, String value) async => await _preferences.setString(key, value);
+  static Future setString(String key, String value) async {
+    if (key == FirestoreConstants.password) {
+      throw StateError('Storing a password in SharedPreferences is prohibited.');
+    }
+    return await _preferences.setString(key, value);
+  }
 
   static String? getString(String key) => _preferences.getString(key) ?? "N_A";
 
