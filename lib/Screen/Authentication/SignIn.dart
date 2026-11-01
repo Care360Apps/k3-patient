@@ -82,6 +82,26 @@ class _SignInState extends State<SignIn> {
       child: Form(
         key: formKey,
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          if (Care360ConnectionError.isOfflinePreview(Apis.baseUrl))
+            Container(
+              margin: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF4DE),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'OFFLINE DESIGN TEST — This APK cannot sign in or access '
+                'Care360 services. A connected test build is required.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF5D4300),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+
 
                                   Container(
                                     margin: EdgeInsets.only(top: width * 0.08),
@@ -208,7 +228,7 @@ class _SignInState extends State<SignIn> {
                                           style: TextStyle(fontSize: 18),
                                           textAlign: TextAlign.center,
                                         ),
-                                        onPressed: _loginInProgress ? null : () {
+                                        onPressed: (Care360ConnectionError.isOfflinePreview(Apis.baseUrl) || _loginInProgress) ? null : () {
                                           if (formKey.currentState!.validate()) {
                                             callForLogin();
                                           }
