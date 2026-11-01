@@ -1,3 +1,6 @@
+import '../../brand/care360_entry.dart';
+import '../../api/care360_connection_error.dart';
+import '../../api/apis.dart';
 import 'dart:io';
 import 'package:doctro_patient/FirebaseProviders/auth_provider.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
@@ -33,6 +36,7 @@ class _SignInState extends State<SignIn> {
   TextEditingController passwordController = TextEditingController();
 
   bool _isHidden = true;
+  bool _loginInProgress = false;
 
   String? msg = "";
   String? deviceToken = "";
@@ -49,7 +53,8 @@ class _SignInState extends State<SignIn> {
     // emailController.text = "example@example.com";
     // passwordController.text = "12345678";
     
-    getLocation();
+    // Location permission belongs to location-dependent features, not sign-in.
+    // Users must be able to authenticate without granting GPS access.
     callApiSetting();
   }
 
@@ -72,44 +77,12 @@ class _SignInState extends State<SignIn> {
     double width;
     width = MediaQuery.of(context).size.width;
     final size = MediaQuery.of(context).size;
-    return Scaffold(
-      body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).requestFocus(new FocusNode());
-        },
-        child: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              children: [
-                Container(
-                  height: size.height * 1,
-                  width: width * 1,
-                  child: Stack(
-                    children: [
-                      Image.asset(
-                        "assets/images/confident-doctor-half.jpg",
-                        height: size.height * 0.5,
-                        width: width * 1,
-                        fit: BoxFit.cover,
-                      ),
-                      Positioned(
-                        top: size.height * 0.35,
-                        child: Container(
-                          width: width * 1,
-                          height: size.height * 1,
-                          decoration: BoxDecoration(
-                            color: Palette.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(width * 0.1),
-                              topRight: Radius.circular(width * 0.1),
-                            ),
-                          ),
-                          child: ListView(
-                            physics: NeverScrollableScrollPhysics(),
-                            children: [
-                              Column(
-                                children: [
+    return Care360AuthShell(
+      professional: false,
+      child: Form(
+        key: formKey,
+        child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+
                                   Container(
                                     margin: EdgeInsets.only(top: width * 0.08),
                                     child: Column(
@@ -235,11 +208,9 @@ class _SignInState extends State<SignIn> {
                                           style: TextStyle(fontSize: 18),
                                           textAlign: TextAlign.center,
                                         ),
-                                        onPressed: () {
+                                        onPressed: _loginInProgress ? null : () {
                                           if (formKey.currentState!.validate()) {
                                             callForLogin();
-                                          } else {
-                                            print('Not Login');
                                           }
                                         },
                                       ),
@@ -282,24 +253,15 @@ class _SignInState extends State<SignIn> {
                                       )
                                     ],
                                   ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+                                
+        ]),
       ),
     );
   }
 
   Future<BaseModel<Login>> callForLogin() async {
+    if (_loginInProgress) return BaseModel<Login>();
+    setState(() => _loginInProgress = true);
     Login response;
     Map<String, dynamic> body = {
       "email": emailController.text.toString(),
@@ -315,7 +277,7 @@ class _SignInState extends State<SignIn> {
       if (response.success == true) {
         Preferences.hideDialog(context);
         await SharedPreferenceHelper.setString(FirestoreConstants.email, response.data!.email!);
-        await SharedPreferenceHelper.setString(FirestoreConstants.password, passwordController.text.toString());
+        // Never persist login credentials; Firebase Auth maintains its own session.
         await SharedPreferenceHelper.setString(FirestoreConstants.nickname, response.data!.name!);
         await SharedPreferenceHelper.setString(FirestoreConstants.photoUrl, response.data!.fullImage!);
         await SharedPreferenceHelper.setString(Preferences.name, response.data!.name!);
@@ -411,10 +373,16 @@ class _SignInState extends State<SignIn> {
           );
         });
       }
-    } catch (error, stacktrace) {
-      Preferences.hideDialog(context);
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
+      if (mounted) {
+        Preferences.hideDialog(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(Care360ConnectionError.describe(error, apiBaseUrl: Apis.baseUrl)),
+        ));
+      }
       return BaseModel()..setException(ServerError.withError(error: error));
+    } finally {
+      if (mounted) setState(() => _loginInProgress = false);
     }
     return BaseModel()..data = response;
   }
@@ -477,3 +445,4 @@ class _SignInState extends State<SignIn> {
     }
   }
 }
+
