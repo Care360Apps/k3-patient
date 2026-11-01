@@ -277,7 +277,7 @@ class _SignInState extends State<SignIn> {
       if (response.success == true) {
         Preferences.hideDialog(context);
         await SharedPreferenceHelper.setString(FirestoreConstants.email, response.data!.email!);
-        await SharedPreferenceHelper.setString(FirestoreConstants.password, passwordController.text.toString());
+        // Never persist login credentials; Firebase Auth maintains its own session.
         await SharedPreferenceHelper.setString(FirestoreConstants.nickname, response.data!.name!);
         await SharedPreferenceHelper.setString(FirestoreConstants.photoUrl, response.data!.fullImage!);
         await SharedPreferenceHelper.setString(Preferences.name, response.data!.name!);
