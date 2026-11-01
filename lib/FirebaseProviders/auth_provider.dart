@@ -226,24 +226,8 @@ class AuthProvider extends ChangeNotifier {
         print('ensureFirebaseUser: currentUser=${user?.uid}');
       }
 
-      if (user == null) {
-        final email = SharedPreferenceHelper.getString(FirestoreConstants.email);
-        final password = SharedPreferenceHelper.getString(FirestoreConstants.password);
-        if (email != null && email.isNotEmpty && email != 'N_A' &&
-            password != null && password.isNotEmpty && password != 'N_A') {
-          try {
-            final cred = await firebaseAuth.signInWithEmailAndPassword(
-              email: email,
-              password: password,
-            );
-            user = cred.user;
-          } on FirebaseAuthException catch (e) {
-            if (kDebugMode) {
-              print('ensureFirebaseUser email/password fallback: ${e.code}');
-            }
-          }
-        }
-      }
+      // Firebase persists its authenticated session securely. Do not restore it
+      // using previously saved plaintext passwords from app preferences.
 
       if (user == null) {
         if (kDebugMode) {
