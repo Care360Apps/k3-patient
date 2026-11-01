@@ -4,6 +4,10 @@ import 'package:doctro_patient/Screen/Onboarding/Onboarding.dart';
 
 void main() {
   testWidgets('offline intro starts on the real first page and skips without services', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     var completed = 0;
     await tester.pumpWidget(MaterialApp(
       home: OnboardingScreen(onComplete: () => completed++),
@@ -16,6 +20,10 @@ void main() {
   });
 
   testWidgets('offline intro advances through every page before completion', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     var completed = 0;
     await tester.pumpWidget(MaterialApp(
       home: OnboardingScreen(onComplete: () => completed++),
