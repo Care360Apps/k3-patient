@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/brand/care360_partner_showcase.dart';
@@ -27,6 +28,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('offline help guide'), findsOneWidget);
     expect(find.textContaining('not a generative AI chat'), findsOneWidget);
+  });
+
+  test('MindCheck is only displayed inside authenticated Patient home', () {
+    final home = File('lib/Screen/Screens/Home.dart').readAsStringSync();
+    expect(home.contains('Care360PartnerShowcase()'), isTrue);
+    expect(home.contains(
+      'SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true'),
+      isTrue);
+    expect(home.contains('SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null'), isTrue);
+    final auth = File('lib/brand/care360_entry.dart').readAsStringSync();
+    expect(auth.contains('MindCheck'), isFalse);
   });
 
   test('All four added languages fall back to the original English strings', () async {
