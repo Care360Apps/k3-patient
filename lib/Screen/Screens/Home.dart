@@ -1313,7 +1313,9 @@ class _HomeState extends State<Home> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                        const Care360PartnerShowcase(),
+                        if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
+                            SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null)
+                          const Care360PartnerShowcase(),
                         /// Upcoming Appointment ///
                         upcomingAppointment.length != 0
                             ? Column(
