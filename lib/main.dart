@@ -76,6 +76,8 @@ import 'const/Palette.dart';
 import 'const/prefConstatnt.dart';
 import 'localization/language_localization.dart';
 import 'localization/localization_constant.dart';
+import 'localization/localization_constant.dart' as care360_locale;
+import 'brand/care360_global_language.dart';
 import 'model/detail_setting_model.dart';
 import 'package:doctro_patient/firebase_options.dart';
 import 'Screen/Onboarding/Onboarding.dart';
@@ -374,6 +376,28 @@ class _MyAppState extends State<MyApp> {
           create: (_) => OverlayHandlerProvider(),
           child: MaterialApp(
             navigatorKey: navigatorKey,
+            builder: (context, navigatorChild) => Stack(
+              children: [
+                if (navigatorChild != null) navigatorChild,
+                PositionedDirectional(
+                  end: 10,
+                  bottom: 64,
+                  child: SafeArea(
+                    top: false,
+                    left: false,
+                    right: false,
+                    child: Care360GlobalLanguageSwitch(
+                      rootNavigatorKey: navigatorKey,
+                      onSelect: (code) async {
+                        final selectedLocale = await care360_locale.setLocale(code);
+                        if (!mounted) return;
+                        setLocale(selectedLocale);
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
             title: 'Patient',
             locale: _locale ?? Locale(ENGLISH, 'US'),
             supportedLocales: [
