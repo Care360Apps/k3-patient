@@ -36,7 +36,8 @@ class _ChangeLanguageState extends State<ChangeLanguage> {
   @override
   void initState() {
     super.initState();
-    callApiUserProfile();
+    // Language selection works locally, including in an offline test build.
+    // It must not require a valid profile token or edit medical profile data.
   }
 
   @override
@@ -115,14 +116,11 @@ class _ChangeLanguageState extends State<ChangeLanguage> {
                             groupValue: value,
                             activeColor: Palette.dark_blue,
                             onChanged: (int? val) async {
-                              Locale local = await setLocale(Language.languageList()[index].languageCode);
-                              setState(() {
-                                this.value = value;
-                                MyApp.setLocale(context, local);
-                                SharedPreferenceHelper.setString(Preferences.current_language_code, Language.languageList()[index].languageCode);
-                                callApiUpdateProfile();
-                                Navigator.pushNamed(context, 'Home');
-                              });
+                              final selected = Language.languageList()[index].languageCode;
+                              final local = await setLocale(selected);
+                              if (!mounted) return;
+                              MyApp.setLocale(context, local);
+                              Navigator.pop(context);
                             },
                             title: Text(Language.languageList()[index].name),
                           ),
@@ -213,6 +211,12 @@ class Language {
   Language(this.id, this.name, this.flag, this.languageCode);
 
   static List<Language> languageList() {
-    return <Language>[Language(1, 'English', '🇺🇸', 'en'), Language(2, 'Spanish', 'ES', 'es'), Language(3, 'Arabic', 'AE', 'ar')];
+    return <Language>[
+      Language(1, 'English', 'EN', 'en'),
+      Language(2, 'Hausa', 'HA', 'ha'),
+      Language(3, 'Igbo', 'IG', 'ig'),
+      Language(4, 'Yorùbá', 'YO', 'yo'),
+      Language(5, 'Français', 'FR', 'fr'),
+    ];
   }
 }
