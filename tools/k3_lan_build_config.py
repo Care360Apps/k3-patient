@@ -83,9 +83,17 @@ def prepare(root: Path, firebase_path: Path, output: Path, ipv4: str) -> str:
         main_xml[labels[0].end():],
         encoding="utf-8",
     )
+    # Android API 29+ defaults to Flutter Impeller, which can stall before
+    # the first frame on some emulator Vulkan implementations. LAN debug ONLY:
+    # use the legacy rendering path without modifying production manifests.
     debug_manifest.write_text(
-        debug_xml.replace("</manifest>",
-                          '    <application android:usesCleartextTraffic="true" />\n</manifest>'),
+        debug_xml.replace(
+            "</manifest>",
+            '    <application android:usesCleartextTraffic="true">\n'
+            '      <meta-data android:name="io.flutter.embedding.android.EnableImpeller"\n'
+            '          android:value="false" />\n'
+            '    </application>\n</manifest>',
+        ),
         encoding="utf-8",
     )
     output.write_text(json.dumps(settings), encoding="utf-8")
