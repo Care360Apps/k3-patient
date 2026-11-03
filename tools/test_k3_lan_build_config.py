@@ -64,6 +64,15 @@ class LanBuildConfigTests(unittest.TestCase):
                       (self.root / "android/app/src/debug/AndroidManifest.xml").read_text())
         self.assertNotIn("usesCleartextTraffic",
                          (self.root / "android/app/src/main/AndroidManifest.xml").read_text())
+        debug_manifest = (
+            self.root / "android/app/src/debug/AndroidManifest.xml"
+        ).read_text()
+        self.assertIn('android:name="io.flutter.embedding.android.EnableImpeller"',
+                      debug_manifest)
+        self.assertIn('android:value="false"', debug_manifest)
+        self.assertNotIn("EnableImpeller",
+                         (self.root / "android/app/src/main/AndroidManifest.xml").read_text())
+
         self.assertIn("Care360 Patient LAN TEST",
                       (self.root / "android/app/src/main/AndroidManifest.xml").read_text())
 
