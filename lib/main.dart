@@ -1,4 +1,5 @@
 import 'startup_gate.dart';
+import 'diagnostics/k3_startup_diagnostics.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -90,6 +91,7 @@ void main() {
   runZoned(
     () {
       WidgetsFlutterBinding.ensureInitialized();
+      installK3StartupDiagnostics();
       runApp(StartupGate(
         initialize: _initializeApp,
         onReady: () => unawaited(_initFirebaseMessagingWithLogging()),
@@ -444,9 +446,11 @@ class _MyAppState extends State<MyApp> {
                 final isLoggedIn = SharedPreferenceHelper.getBoolean(Preferences.is_logged_in);
 
                 if (!hasSeenOnboarding) {
+                  k3ReportInitialRoute('onboarding');
                   return const OnboardingScreen();
                 }
 
+                k3ReportInitialRoute(isLoggedIn ? 'home' : 'sign-in');
                 return isLoggedIn ? Home() : SignIn();
               },
               'SignIn': (context) => SignIn(),
