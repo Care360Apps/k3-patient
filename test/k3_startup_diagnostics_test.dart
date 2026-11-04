@@ -5,8 +5,8 @@ import 'package:doctro_patient/diagnostics/k3_startup_diagnostics.dart';
 void main() {
   test('debug source extraction keeps only local Dart path and line number', () {
     final trace = StackTrace.fromString(
-      '#0 PatientShell.build (package:doctro_patient/Screen/Patient.dart:74:7)\\n'
-      '#1 token=DO_NOT_PRINT 1234567890123\\n',
+      '#0 PatientShell.build (package:doctro_patient/Screen/Patient.dart:74:7)\n'
+      '#1 token=DO_NOT_PRINT 1234567890123\n',
     );
     expect(k3ApplicationFrame(trace), 'Screen/Patient.dart:74');
     expect(k3ApplicationFrame(null), 'unknown');
@@ -19,7 +19,7 @@ void main() {
     final details = FlutterErrorDetails(
       exception: StateError(probe),
       stack: StackTrace.fromString(
-        '#0 Foo.build (package:doctro_patient/lib/foo.dart:99:2)\\n'
+        '#0 Foo.build (package:doctro_patient/lib/foo.dart:99:2)\n'
         '#1 $probe',
       ),
     );
