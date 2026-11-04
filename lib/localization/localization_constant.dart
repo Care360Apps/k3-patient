@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'language_localization.dart';
 
 String? getTranslated(BuildContext context, String key) {
-  return LanguageLocalization.of(context)!.getTranslateValue(key);
+  // The localization delegate can be unavailable while a route first mounts.
+  // A readable fallback is preferable to a red Flutter error widget.
+  return LanguageLocalization.of(context)?.getTranslateValue(key) ?? key;
 }
 
 const String ENGLISH = "en";

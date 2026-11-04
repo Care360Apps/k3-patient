@@ -1,4 +1,5 @@
 import '../../brand/care360_entry.dart';
+import '../../api/patient_optional_settings.dart';
 import '../../api/care360_connection_error.dart';
 import '../../api/apis.dart';
 import 'dart:io';
@@ -412,18 +413,19 @@ class _SignInState extends State<SignIn> {
 
     try {
       response = await RestClient(RetroApi2().dioData2()).settingRequest();
-      setState(() {
-        if (response.success == true) {
-          SharedPreferenceHelper.setString(Preferences.patientAppId, response.data!.patientAppId!);
-          if (response.data!.mapKey != null && response.data!.mapKey.toString() != "null") {
-            SharedPreferenceHelper.setString(Preferences.map_key_value, response.data!.mapKey.toString());
-          }
-
-          if (response.data!.patientAppId != null) {
-            getOneSignalToken(SharedPreferenceHelper.getString(Preferences.patientAppId));
-          }
+      // Settings and push notifications are optional during sign-in.
+      // In particular, an empty patient_app_id must not crash the screen.
+      if (response.success == true) {
+        final mapKey = response.data?.mapKey?.trim();
+        if (mapKey != null && mapKey.isNotEmpty && mapKey.toLowerCase() != 'null') {
+          await SharedPreferenceHelper.setString(Preferences.map_key_value, mapKey);
         }
-      });
+        final appId = validPatientOneSignalAppId(response);
+        if (appId != null) {
+          await SharedPreferenceHelper.setString(Preferences.patientAppId, appId);
+          getOneSignalToken(appId);
+        }
+      }
     } catch (error, stacktrace) {
       print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
