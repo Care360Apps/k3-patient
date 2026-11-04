@@ -80,6 +80,7 @@ import 'localization/localization_constant.dart' as care360_locale;
 import 'brand/care360_global_language.dart';
 import 'model/detail_setting_model.dart';
 import 'package:doctro_patient/firebase_options.dart';
+import 'package:doctro_patient/api/patient_optional_settings.dart';
 import 'Screen/Onboarding/Onboarding.dart';
 
 void main() {
@@ -503,11 +504,12 @@ class _MyAppState extends State<MyApp> {
     DetailSetting response;
     try {
       response = await RestClient(RetroApi2().dioData2()).settingRequest();
-      if (response.success == true) {
-        SharedPreferenceHelper.setString(Preferences.patientAppId, response.data!.patientAppId!);
-        if (response.data!.patientAppId != null) {
-          getOneSignalToken(SharedPreferenceHelper.getString(Preferences.patientAppId));
-        }
+      // The local Laravel settings endpoint can return success without an
+      // optional OneSignal app ID. Never dereference that field with '!'.
+      final appId = validPatientOneSignalAppId(response);
+      if (appId != null) {
+        await SharedPreferenceHelper.setString(Preferences.patientAppId, appId);
+        getOneSignalToken(appId);
       }
     } catch (error, stacktrace) {
       print("Exception occur: $error stackTrace: $stacktrace");
