@@ -22,8 +22,8 @@ class ProviderDetailData {
   String? desc;
   String? appointmentFees;
   num? hourlyRate;
-  bool offersVideoCall = false;
-  bool offersHomeVisit = false;
+  late bool offersVideoCall;
+  late bool offersHomeVisit;
   String? address;
   String? experience;
   dynamic rate;
