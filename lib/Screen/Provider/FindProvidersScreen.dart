@@ -5,6 +5,7 @@ import 'package:doctro_patient/const/app_string.dart';
 import 'package:doctro_patient/const/preference.dart';
 import 'package:doctro_patient/model/providers_model.dart';
 import 'package:doctro_patient/Screen/Provider/ProviderDetail.dart';
+import 'package:doctro_patient/brand/provider_discovery_filter.dart';
 import 'package:doctro_patient/Screen/Location/Showlocation.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -36,7 +37,11 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
 
   List<ProviderModel> providerList = [];
   TextEditingController _search = TextEditingController();
-  List<ProviderModel> _searchResult = [];
+  String _serviceFilter = ProviderDiscoveryFilter.all;
+
+  List<ProviderModel> get _visibleProviders => ProviderDiscoveryFilter.apply(
+    providerList, query: _search.text, service: _serviceFilter,
+  );
 
   @override
   void initState() {
@@ -67,12 +72,13 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
   Widget build(BuildContext context) {
     double width = MediaQuery.of(context).size.width;
     double height = MediaQuery.of(context).size.height;
+    final visibleProviders = _visibleProviders;
     return WillPopScope(
       onWillPop: onWillPop,
       child: Scaffold(
         backgroundColor: Palette.dark_white,
         appBar: PreferredSize(
-          preferredSize: Size(width, 210),
+          preferredSize: Size(width, 260),
           child: SafeArea(
             top: true,
             child: Column(
@@ -190,6 +196,33 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
                     ),
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                  child: Row(
+                    children: [
+                      _buildLocationFilterChip(
+                        label: 'All providers',
+                        selected: _serviceFilter == ProviderDiscoveryFilter.all,
+                        onTap: () => setState(() =>
+                          _serviceFilter = ProviderDiscoveryFilter.all),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildLocationFilterChip(
+                        label: 'Video call',
+                        selected: _serviceFilter == ProviderDiscoveryFilter.video,
+                        onTap: () => setState(() =>
+                          _serviceFilter = ProviderDiscoveryFilter.video),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildLocationFilterChip(
+                        label: 'Home visit',
+                        selected: _serviceFilter == ProviderDiscoveryFilter.home,
+                        onTap: () => setState(() =>
+                          _serviceFilter = ProviderDiscoveryFilter.home),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -197,13 +230,9 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
         body: RefreshIndicator(
           onRefresh: callApiProviders,
           child: ModalProgressHUD(
-            child: _searchResult.isNotEmpty || _search.text.isNotEmpty
-                ? (_searchResult.isNotEmpty
-                    ? _buildProviderGrid(_searchResult, width, height)
-                    : _emptyState(width))
-                : (providerList.isNotEmpty
-                    ? _buildProviderGrid(providerList, width, height)
-                    : _emptyState(width)),
+            child: visibleProviders.isNotEmpty
+                ? _buildProviderGrid(visibleProviders, width, height)
+                : _emptyState(width),
             inAsyncCall: loading,
             opacity: 0.5,
             progressIndicator: ShimmerIndicator(size: 56),
@@ -495,14 +524,6 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
   }
 
   void onSearchTextChanged(String text) {
-    _searchResult.clear();
-    if (text.isEmpty) {
-      setState(() {});
-      return;
-    }
-    for (var p in providerList) {
-      if ((p.name ?? "").toLowerCase().contains(text.toLowerCase())) _searchResult.add(p);
-    }
     setState(() {});
   }
 

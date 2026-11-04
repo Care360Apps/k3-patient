@@ -22,6 +22,8 @@ class ProviderDetailData {
   String? desc;
   String? appointmentFees;
   num? hourlyRate;
+  late bool offersVideoCall;
+  late bool offersHomeVisit;
   String? address;
   String? experience;
   dynamic rate;
@@ -40,6 +42,8 @@ class ProviderDetailData {
     this.desc,
     this.appointmentFees,
     this.hourlyRate,
+    this.offersVideoCall = false,
+    this.offersHomeVisit = false,
     this.address,
     this.experience,
     this.rate,
@@ -59,6 +63,8 @@ class ProviderDetailData {
     desc = json['desc'];
     appointmentFees = json['appointment_fees']?.toString();
     hourlyRate = json['hourly_rate'] != null ? num.tryParse(json['hourly_rate'].toString()) : null;
+    offersVideoCall = json['offers_video_call'] == 1 || json['offers_video_call'] == true || json['offers_video_call']?.toString() == '1';
+    offersHomeVisit = json['offers_home_visit'] == 1 || json['offers_home_visit'] == true || json['offers_home_visit']?.toString() == '1';
     address = json['address'];
     experience = json['experience']?.toString();
     rate = json['rate'] != null ? int.tryParse(json['rate'].toString()) : null;

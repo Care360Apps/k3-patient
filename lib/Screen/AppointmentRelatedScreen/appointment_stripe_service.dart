@@ -36,6 +36,7 @@ class StripePayment extends ChangeNotifier {
     required bool isInsured,
     required String insurerName,
     required String policyNumber,
+    required String visitType,
     String? offerCode,
   }) async {
     try {
@@ -74,6 +75,7 @@ class StripePayment extends ChangeNotifier {
         insurerName: insurerName,
         isInsured: isInsured,
         offerCode: offerCode,
+        visitType: visitType,
       );
     } catch (err) {
       throw Exception(err);
@@ -100,6 +102,7 @@ class StripePayment extends ChangeNotifier {
     required bool isInsured,
     required String insurerName,
     required String policyNumber,
+    required String visitType,
     String? offerCode,
   }) async {
     try {
@@ -128,6 +131,7 @@ class StripePayment extends ChangeNotifier {
               insurerName: insurerName,
               policyNumber: policyNumber,
               offerCode: offerCode,
+              visitType: visitType,
             );
 
             paymentIntent = null;
@@ -206,6 +210,7 @@ class StripePayment extends ChangeNotifier {
     required bool isInsured,
     required String insurerName,
     required String policyNumber,
+    required String visitType,
     String? offerCode,
   }) async {
     BookAppointments response;
@@ -225,7 +230,8 @@ class StripePayment extends ChangeNotifier {
       "payment_token": stripeToken,
       "amount": appointmentFees,
       "doctor_id": doctorId,
-      "report_image": reportImages!.length != 0 ? reportImages : "",
+      "visit_type": visitType,
+      "report_image": reportImages ?? <String>[],
     };
     if (hospitalId != null && hospitalId != 0) {
       body["hospital_id"] = hospitalId;
@@ -240,7 +246,7 @@ class StripePayment extends ChangeNotifier {
     } else if (isInsured == false) {
       body['is_insured'] = isInsured == true ? 1 : 0;
     }
-    print(body);
+    // Do not print medical notes, addresses, contact details or payment tokens.
     Preferences.onLoading(context);
     notifyListeners();
     try {
