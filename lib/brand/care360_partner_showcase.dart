@@ -30,7 +30,8 @@ class Care360PartnerSlide {
     }
     final host = uri.host.toLowerCase();
     if (host == 'localhost' || host.endsWith('.local') ||
-        host.endsWith('.localhost') ||
+        host.endsWith('.localhost') || host.endsWith('.internal') ||
+        host.endsWith('.invalid') || host.endsWith('.test') ||
         !host.contains('.') ||
         RegExp(r'^\d{1,3}(\.\d{1,3}){3}$').hasMatch(host) ||
         host.contains(':')) {
