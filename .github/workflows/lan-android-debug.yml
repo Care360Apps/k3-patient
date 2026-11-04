@@ -114,7 +114,7 @@ jobs:
       - name: Build installable Android debug APK
         run: >-
           flutter build apk --debug
-          --target-platform=android-arm64,android-x64
+          --target-platform=android-arm64
           --dart-define=K3_BUILD_ENV=staging
           --dart-define-from-file="$RUNNER_TEMP/k3_lan_dart_defines.json"
       - name: Package time-limited LAN test artifact
