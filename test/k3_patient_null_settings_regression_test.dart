@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/api/patient_optional_settings.dart';
-import '../lib/localization/localization_constant.dart';
-import '../lib/model/detail_setting_model.dart';
+import 'package:doctro_patient/api/patient_optional_settings.dart';
+import 'package:doctro_patient/localization/localization_constant.dart';
+import 'package:doctro_patient/model/detail_setting_model.dart';
 
 void main() {
   test('optional patient_app_id missing from successful LAN settings', () {
