@@ -11,7 +11,7 @@ const bool k3StartupDiagnosticsEnabled =
 String k3ApplicationFrame(StackTrace? trace) {
   if (trace == null) return 'unknown';
   final matcher = RegExp(
-    r'(?:package:doctro_patient/|\\blib/)([A-Za-z0-9_./-]+\\.dart):(\\d+)',
+    r'(?:package:doctro_patient/|\blib/)([A-Za-z0-9_./-]+\.dart):(\d+)',
   );
   final match = matcher.firstMatch(trace.toString());
   if (match == null) return 'unknown';
@@ -41,9 +41,9 @@ void installK3StartupDiagnostics() {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            'Care360 test build: a screen could not be displayed.\\n\\n'
-            'Error type: $type\\n'
-            'Application location: $source\\n\\n'
+            'Care360 test build: a screen could not be displayed.\n\n'
+            'Error type: $type\n'
+            'Application location: $source\n\n'
             'Please send a screenshot of this message.',
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.center,
