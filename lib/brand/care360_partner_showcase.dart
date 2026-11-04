@@ -93,7 +93,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
   List<Care360PartnerSlide> get _slides => [
         Care360PartnerSlide(
           title: 'MindCheck',
-          subtitle: 'Everyday mental wellbeing by SpeakOut Mental Health',
+          subtitle: 'Everyday mental wellbeing by SpeakOut Mental Health Outreach',
           url: Care360PartnerShowcase.mindCheckUrl,
         ),
         ...widget.slides.where((slide) =>
