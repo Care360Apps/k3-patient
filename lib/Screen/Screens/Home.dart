@@ -14,6 +14,7 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import '../../brand/care360_partner_showcase.dart';
+import '../../brand/care360_horizontal_cards.dart';
 import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -1911,16 +1912,9 @@ class _HomeState extends State<Home> {
                               width: width * 1,
                               margin: EdgeInsets.symmetric(horizontal: width * 0.03),
                               child: _searchResult.length > 0 || _search.text.isNotEmpty
-                                  ? ListView(
-                                      scrollDirection: Axis.horizontal,
-                                      physics: BouncingScrollPhysics(),
-                                      children: [
-                                        ListView.builder(
-                                          physics: NeverScrollableScrollPhysics(),
-                                          shrinkWrap: true,
-                                          itemCount: _searchResult.length,
-                                          scrollDirection: Axis.horizontal,
-                                          itemBuilder: (context, index) {
+                                  ? Care360HorizontalCards(
+                                      itemCount: _searchResult.length,
+                                      itemBuilder: (context, index) {
                                             favoriteDoctor.clear();
                                             for (int i = 0; i < _searchResult.length; i++) {
                                               _searchResult[i].isFavorite == false ? favoriteDoctor.add(false) : favoriteDoctor.add(true);
@@ -1940,20 +1934,11 @@ class _HomeState extends State<Home> {
                                               child: _buildHomeDoctorCard(doctor, width, height, index),
                                             );
                                           },
-                                        )
-                                      ],
                                     )
                                   : doctorList.length > 0
-                                      ? ListView(
-                                          scrollDirection: Axis.horizontal,
-                                          physics: BouncingScrollPhysics(),
-                                          children: [
-                                            ListView.builder(
-                                              physics: NeverScrollableScrollPhysics(),
-                                              shrinkWrap: true,
-                                              itemCount: 3 <= doctorList.length ? 3 : doctorList.length,
-                                              scrollDirection: Axis.horizontal,
-                                              itemBuilder: (context, index) {
+                                      ? Care360HorizontalCards(
+                                          itemCount: 3 <= doctorList.length ? 3 : doctorList.length,
+                                          itemBuilder: (context, index) {
                                                 favoriteDoctor.clear();
                                                 for (int i = 0; i < doctorList.length; i++) {
                                                   doctorList[i].isFavorite == false ? favoriteDoctor.add(false) : favoriteDoctor.add(true);
@@ -1974,8 +1959,6 @@ class _HomeState extends State<Home> {
                                               child: _buildHomeDoctorCard(doctor, width, height, index),
                                             );
                                               },
-                                            )
-                                          ],
                                         )
                                       : Center(
                                           child: Container(
@@ -2033,16 +2016,9 @@ class _HomeState extends State<Home> {
                                 height: height * 0.24,
                                 width: width * 1,
                                 margin: EdgeInsets.symmetric(horizontal: width * 0.03),
-                                child: ListView(
-                                  scrollDirection: Axis.horizontal,
-                                  physics: BouncingScrollPhysics(),
-                                  children: [
-                                    ListView.builder(
-                                      physics: NeverScrollableScrollPhysics(),
-                                      shrinkWrap: true,
-                                      itemCount: providerList.length > 8 ? 8 : providerList.length,
-                                      scrollDirection: Axis.horizontal,
-                                      itemBuilder: (context, index) {
+                                child: Care360HorizontalCards(
+                                  itemCount: providerList.length > 8 ? 8 : providerList.length,
+                                  itemBuilder: (context, index) {
                                         final provider = providerList[index];
                                         return GestureDetector(
                                           onTap: () {
@@ -2056,8 +2032,6 @@ class _HomeState extends State<Home> {
                                           child: _buildHomeProviderCard(provider, width, height),
                                         );
                                       },
-                                    ),
-                                  ],
                                 ),
                               ),
                             ],
