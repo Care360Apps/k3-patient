@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:doctro_patient/Screen/AppointmentRelatedScreen/Bookappointment.dart';
+import 'package:doctro_patient/brand/consultation_visit_options.dart';
 import 'package:doctro_patient/api/network_api.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
 import 'package:doctro_patient/const/app_string.dart';
@@ -83,7 +84,7 @@ class _ProviderDetailState extends State<ProviderDetail> {
         centerTitle: true,
         backgroundColor: Palette.white,
         title: Text(
-          getTranslated(context, AppString.doctorDetail_title).toString(),
+          'Provider profile',
           style: TextStyle(fontSize: 18, color: Palette.dark_blue, fontWeight: FontWeight.bold),
         ),
       ),
@@ -419,47 +420,86 @@ class _ProviderDetailState extends State<ProviderDetail> {
     );
   }
 
+  void _bookVisit(String visitType) {
+    final profile = provider;
+    if (profile?.id == null) return;
+    if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (_) => BookAppointment(
+          id: profile!.id,
+          isProvider: true,
+          initialVisitType: visitType,
+        ),
+      ));
+      return;
+    }
+    FormHelper.showMessage(
+      context,
+      getTranslated(context, AppString.home_medicineOrder_alert_title).toString(),
+      'Sign in to book a consultation with this provider.',
+      getTranslated(context, AppString.cancel).toString(),
+      () => Navigator.of(context).pop(),
+      buttonText2: getTranslated(context, AppString.login).toString(),
+      isConfirmationDialog: true,
+      onPressed2: () => Navigator.pushNamed(context, 'SignIn'),
+    );
+  }
+
   Widget _buildBookButton(double width) {
+    final allowed = ConsultationVisitOptions.allowed(
+      isProvider: true,
+      offersVideoCall: provider!.offersVideoCall,
+      offersHomeVisit: provider!.offersHomeVisit,
+    );
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(color: Palette.white, boxShadow: [
-        BoxShadow(color: Palette.black.withOpacity(0.06), blurRadius: 8, offset: Offset(0, -2)),
+        BoxShadow(color: Palette.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, -2)),
       ]),
       child: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {
-              if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BookAppointment(id: provider!.id, isProvider: true),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (allowed.contains(ConsultationVisitOptions.video))
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.videocam_outlined),
+                  onPressed: () => _bookVisit(ConsultationVisitOptions.video),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Palette.blue,
+                    foregroundColor: Palette.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                );
-              } else {
-                FormHelper.showMessage(
-                  context,
-                  getTranslated(context, AppString.home_medicineOrder_alert_title).toString(),
-                  getTranslated(context, AppString.home_medicineOrder_alert_text).toString(),
-                  getTranslated(context, AppString.cancel).toString(),
-                  () => Navigator.of(context).pop(),
-                  buttonText2: getTranslated(context, AppString.login).toString(),
-                  isConfirmationDialog: true,
-                  onPressed2: () => Navigator.pushNamed(context, 'SignIn'),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Palette.blue,
-              padding: EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            child: Text(
-              getTranslated(context, AppString.provider_book_home_visit) ?? 'Book Home Visit',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Palette.white),
-            ),
-          ),
+                  label: const Text('Book a video consultation',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            if (allowed.contains(ConsultationVisitOptions.home)) ...[
+              if (allowed.contains(ConsultationVisitOptions.video)) const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.home_outlined),
+                  onPressed: () => _bookVisit(ConsultationVisitOptions.home),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Palette.dark_blue,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  label: const Text('Book a home visit',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+            if (allowed.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('This provider has not enabled any bookable services yet.',
+                  textAlign: TextAlign.center),
+              ),
+          ],
         ),
       ),
     );
