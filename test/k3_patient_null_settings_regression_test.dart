@@ -17,7 +17,7 @@ void main() {
 
   test('OneSignal only starts with a valid app ID from successful settings', () {
     expect(validPatientOneSignalAppId(DetailSetting(
-      success: true, data: Data(patientAppId: '  test-app-id  ')), 'test-app-id');
+      success: true, data: Data(patientAppId: '  test-app-id  '))), 'test-app-id');
     expect(validPatientOneSignalAppId(DetailSetting(
       success: false, data: Data(patientAppId: 'test-app-id'))), isNull);
   });
