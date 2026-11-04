@@ -2762,6 +2762,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                           insurerName: selectInsured,
                           policyNumber: policyNumberController.text,
                           offerCode: appliedOfferCode,
+                          visitType: selectedVisitType!,
                         );
                       } else if (_character!.index == 3) {
                         flutterWavePayment(context, appointmentFees);
@@ -2822,6 +2823,11 @@ class _BookAppointmentState extends State<BookAppointment> {
   );
 
   Future<BaseModel<BookAppointments>> callApiBook() async {
+    // Never submit or charge for a mode the professional did not offer.
+    if (!_hasValidVisit) {
+      Fluttertoast.showToast(msg: 'This consultation type is unavailable.');
+      return BaseModel();
+    }
     BookAppointments response;
     Map<String, dynamic> body = {
       "appointment_for": selectAppointmentFor,
@@ -2841,7 +2847,7 @@ class _BookAppointmentState extends State<BookAppointment> {
           ? newAppointmentFees.toString()
           : appointmentFees,
       "doctor_id": id,
-      "report_image": reportImages.length != 0 ? reportImages : "",
+      "report_image": reportImages,
       "visit_type": selectedVisitType,
     };
     if (selectedDurationMinutes != null && selectedDurationMinutes! > 0) {
