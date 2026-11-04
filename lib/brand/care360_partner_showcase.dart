@@ -346,20 +346,31 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
                 ? () => _goTo((_current - 1 + slides.length) % slides.length)
                 : null,
           ),
-          Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(slides.length, (index) => Semantics(
-              label: 'Show slide ${index + 1} of ${slides.length}',
-              button: true,
-              child: IconButton(
-                key: ValueKey('care360-slide-dot-$index'),
-                iconSize: 11,
-                tooltip: 'Show partner ${index + 1}',
-                onPressed: () => _goTo(index),
-                icon: Icon(_current == index
-                    ? Icons.circle : Icons.circle_outlined,
-                  color: const Color(0xFF096E67)),
-              ),
-            )))),
+          Expanded(child: slides.length <= 6
+              ? Row(mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(slides.length, (index) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: Semantics(
+                      label: 'Show slide ${index + 1} of ${slides.length}',
+                      button: true,
+                      child: InkWell(
+                        key: ValueKey('care360-slide-dot-$index'),
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () => _goTo(index),
+                        child: SizedBox(
+                          height: 32, width: 22,
+                          child: Center(child: Icon(_current == index
+                            ? Icons.circle : Icons.circle_outlined,
+                            size: 12, color: const Color(0xFF096E67))),
+                        ),
+                      ),
+                    ),
+                  )),
+                )
+              : Text('Slide ${_current + 1} of ${slides.length}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12,
+                    color: Color(0xFF47606B)))),
           IconButton(
             tooltip: 'Next partner',
             icon: const Icon(Icons.chevron_right),
@@ -367,12 +378,15 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
                 ? () => _goTo((_current + 1) % slides.length)
                 : null,
           ),
-          TextButton.icon(
+        ]),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
             onPressed: _openLocalGuide,
             icon: const Icon(Icons.help_outline, size: 16),
             label: const Text('Care360 Help'),
           ),
-        ]),
+        ),
       ]),
     );
   }
