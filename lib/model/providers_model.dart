@@ -38,6 +38,8 @@ class ProviderModel {
   int? providerTypeId;
   String? appointmentFees;
   num? hourlyRate;
+  late bool offersVideoCall;
+  late bool offersHomeVisit;
   bool? isFavorite;
   ProviderTypeLite? providerType;
   String? distanceKm;
@@ -57,6 +59,8 @@ class ProviderModel {
     this.providerTypeId,
     this.appointmentFees,
     this.hourlyRate,
+    this.offersVideoCall = false,
+    this.offersHomeVisit = false,
     this.isFavorite,
     this.providerType,
     this.distanceKm,
@@ -75,6 +79,8 @@ class ProviderModel {
     providerTypeId = json['provider_type_id'] != null ? int.tryParse(json['provider_type_id'].toString()) : null;
     appointmentFees = json['appointment_fees']?.toString();
     hourlyRate = json['hourly_rate'] != null ? num.tryParse(json['hourly_rate'].toString()) : null;
+    offersVideoCall = json['offers_video_call'] == true || json['offers_video_call']?.toString() == '1';
+    offersHomeVisit = json['offers_home_visit'] == true || json['offers_home_visit']?.toString() == '1';
     isFavorite = json['is_faviroute'];
     distanceKm = json['distance_km']?.toString();
     providerType = json['provider_type'] != null ? ProviderTypeLite.fromJson(json['provider_type']) : null;
@@ -94,6 +100,8 @@ class ProviderModel {
     data['provider_type_id'] = providerTypeId;
     data['appointment_fees'] = appointmentFees;
     data['hourly_rate'] = hourlyRate;
+    data['offers_video_call'] = offersVideoCall ? 1 : 0;
+    data['offers_home_visit'] = offersHomeVisit ? 1 : 0;
     data['is_faviroute'] = isFavorite;
     data['distance_km'] = distanceKm;
     data['rate'] = rate;
