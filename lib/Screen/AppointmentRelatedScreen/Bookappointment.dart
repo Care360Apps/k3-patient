@@ -2690,7 +2690,9 @@ class _BookAppointmentState extends State<BookAppointment> {
                 ),
                 onPressed: () {
                   setState(() {
-                    if (_currentStep == 0 && _step1.currentState!.validate()) {
+                    if (_currentStep == 0 && !_hasValidVisit) {
+                      Fluttertoast.showToast(msg: 'Select an available consultation type.');
+                    } else if (_currentStep == 0 && _step1.currentState!.validate()) {
                       continued();
                     } else if (_currentStep == 1) {
                       if (selectTime != null &&
@@ -2840,7 +2842,7 @@ class _BookAppointmentState extends State<BookAppointment> {
           : appointmentFees,
       "doctor_id": id,
       "report_image": reportImages.length != 0 ? reportImages : "",
-      "visit_type": _isProviderBooking ? visitTypeHomeVisit : (selectedVisitType ?? visitTypeVideoCall),
+      "visit_type": selectedVisitType,
     };
     if (selectedDurationMinutes != null && selectedDurationMinutes! > 0) {
       body["duration_minutes"] = selectedDurationMinutes;
@@ -2861,7 +2863,7 @@ class _BookAppointmentState extends State<BookAppointment> {
     } else if (isInsured == false) {
       body['is_insured'] = isInsured == true ? 1 : 0;
     }
-    print(body);
+    // Avoid logging patient identifiers, medical notes and payment details.
     setState(() {
       Preferences.onLoading(context);
     });
@@ -2979,6 +2981,44 @@ class _BookAppointmentState extends State<BookAppointment> {
     setState(() {
       loading = true;
     });
+    if (_isProviderBooking) {
+      // Provider records use the same legacy doctor ID, but have a dedicated
+      // detail endpoint and no hospital affiliation requirement.
+      try {
+        final providerResponse = await RestClient(
+          RetroApi2().dioData2(),
+        ).providerDetailRequest(id, body);
+        if (!mounted) return BaseModel();
+        setState(() {
+          loading = false;
+          final data = providerResponse.data;
+          if (providerResponse.success == true && data != null) {
+            name = data.name ?? '';
+            rate = data.rate ?? 0;
+            experience = data.experience ?? '';
+            appointmentFees = data.appointmentFees ?? '0';
+            hourlyRate = data.hourlyRate;
+            selectedDurationMinutes ??= 60;
+            desc = data.desc ?? '';
+            expertise = data.providerType?.name ?? '';
+            fullImage = data.fullImage ?? data.image ?? '';
+            hospital.clear();
+            hospitalId = null;
+            offersVideoCall = data.offersVideoCall;
+            offersHomeVisit = data.offersHomeVisit;
+            selectedVisitType = ConsultationVisitOptions.selected(
+              allowed: _allowedVisits,
+              preferred: selectedVisitType,
+            );
+          }
+        });
+      } catch (error, stacktrace) {
+        if (mounted) setState(() => loading = false);
+        debugPrint('Care360 provider details unavailable (booking disabled).');
+        return BaseModel()..setException(ServerError.withError(error: error));
+      }
+      return BaseModel();
+    }
     try {
       response = await RestClient(
         RetroApi2().dioData2(),
@@ -3002,30 +3042,19 @@ class _BookAppointmentState extends State<BookAppointment> {
           }
           fullImage = response.data!.fullImage;
           treatmentName = response.data!.treatment?.name ?? '';
-          if (_isProviderBooking) {
-            offersVideoCall = false;
-            offersHomeVisit = true;
-            selectedVisitType = visitTypeHomeVisit;
-          } else {
-            offersVideoCall = (response.data!.offersVideoCall ?? 1) != 0;
-            offersHomeVisit = (response.data!.offersHomeVisit ?? 1) != 0;
-            final allowed = <String>[];
-            if (offersVideoCall) allowed.add(visitTypeVideoCall);
-            if (offersHomeVisit) allowed.add(visitTypeHomeVisit);
-            if (allowed.isNotEmpty && !allowed.contains(selectedVisitType)) {
-              selectedVisitType = allowed.first;
-            } else if (allowed.isEmpty) {
-              selectedVisitType = visitTypeVideoCall;
-              offersVideoCall = true;
-              offersHomeVisit = true;
-            }
-          }
+          // Doctor role is virtual-only, regardless of legacy home visit flag.
+          offersVideoCall = (response.data!.offersVideoCall ?? 1) != 0;
+          offersHomeVisit = false;
+          selectedVisitType = ConsultationVisitOptions.selected(
+            allowed: _allowedVisits,
+            preferred: selectedVisitType,
+          );
 
-          hospital.addAll(response.data!.hospitalId!);
+          hospital.clear();
+          hospital.addAll(response.data!.hospitalId ?? []);
           for (int i = 0; i < hospital.length; i++) {
-            hospitalName = response.data!.hospitalId![i].hospitalDetails!.name!;
-            hospitalAddress =
-                response.data!.hospitalId![i].hospitalDetails!.address;
+            hospitalName = hospital[i].hospitalDetails?.name ?? '';
+            hospitalAddress = hospital[i].hospitalDetails?.address;
           }
           // hospitalGallery.addAll(response.data!.hospitalId![0].hospitalGallery!);
         });
