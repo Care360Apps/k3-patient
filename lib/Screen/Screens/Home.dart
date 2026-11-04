@@ -91,7 +91,6 @@ class _HomeState extends State<Home> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   int current = 0;
-  List<String?> imgList = [];
 
   // Search //
   TextEditingController _search = TextEditingController();
@@ -1316,7 +1315,21 @@ class _HomeState extends State<Home> {
                     children: [
                         if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
                             SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null)
-                          const Care360PartnerShowcase(),
+                          Care360PartnerShowcase(
+                            slides: banner.map((data) {
+                              final destination = Care360PartnerSlide.safeDestination(data.link);
+                              if (destination == null) return null;
+                              return Care360PartnerSlide(
+                                title: (data.name?.trim().isNotEmpty ?? false)
+                                    ? data.name!.trim() : 'Featured service',
+                                subtitle: (data.desc?.trim().isNotEmpty ?? false)
+                                    ? data.desc!.trim() : 'Explore this featured service',
+                                url: destination,
+                                imageUrl: data.fullImage,
+                                sponsored: data.isSponsored,
+                              );
+                            }).whereType<Care360PartnerSlide>().toList(),
+                          ),
                         /// Upcoming Appointment ///
                         upcomingAppointment.length != 0
                             ? Column(
@@ -1640,93 +1653,6 @@ class _HomeState extends State<Home> {
 
                         SizedBox(
                           height: 4,
-                        ),
-
-                        /// looking For ///
-                        Column(
-                          children: [
-                            Container(
-                              alignment: AlignmentDirectional.topStart,
-                              margin: EdgeInsets.only(
-                                left: 20,
-                                right: 20,
-                              ),
-                              // child: Column(
-                              //   children: [
-                              //     Text(
-                              //       getTranslated(context, AppString.home_lookingFor).toString(),
-                              //       style: TextStyle(
-                              //         fontSize: 16,
-                              //         color: Palette.dark_blue,
-                              //         fontWeight: FontWeight.bold,
-                              //       ),
-                              //     ),
-                              //   ],
-                              // ),
-                            ),
-                            //banners
-                            Container(
-                              height: 210,
-                              margin: EdgeInsets.only(top: 10, bottom: 10, left: 0, right: 0),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(15),
-                                ),
-                                child: Stack(
-                                  children: <Widget>[
-                                    CarouselSlider(
-                                      options: CarouselOptions(
-                                        height: 200,
-                                        viewportFraction: 1.0,
-                                        autoPlay: true,
-                                        onPageChanged: (index, index1) {
-                                          setState(
-                                            () {
-                                              current = index;
-                                            },
-                                          );
-                                        },
-                                      ),
-                                      items: banner.map((bannerData) {
-                                        return Builder(
-                                          builder: (BuildContext context) {
-                                            return InkWell(
-                                              onTap: () async {
-                                                // await launch(bannerData.link!);
-                                                Uri _url = Uri.parse(bannerData.link!);
-                                                launchUrl(_url);
-                                              },
-                                              child: Container(
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.all(
-                                                    Radius.circular(15),
-                                                  ),
-                                                  child: CachedNetworkImage(
-                                                    imageUrl: bannerData.fullImage!,
-                                                    fit: BoxFit.fitHeight,
-                                                    placeholder: (context, url) => SpinKitFadingCircle(color: Palette.blue),
-                                                    errorWidget: (context, url, error) => Image.asset(
-                                                      "assets/images/no_image.jpg",
-                                                      width: width,
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(
-                          height: 10,
                         ),
 
                         /// Treatments (Categories) ///
@@ -2901,15 +2827,11 @@ class _HomeState extends State<Home> {
     });
     try {
       response = await RestClient(RetroApi2().dioData2()).bannerRequest();
+      if (!mounted) return BaseModel()..data = response;
       setState(() {
         loading = false;
-        if (response.data!.length != 0) {
-          imgList.clear();
-          for (int i = 0; i < response.data!.length; i++) {
-            imgList.add(response.data![i].fullImage);
-          }
-        }
-        banner.addAll(response.data!);
+        // Clear disabled/expired campaign cards on every refresh.
+        banner = response.data ?? <Add>[];
       });
     } catch (error, stacktrace) {
       setState(() {
