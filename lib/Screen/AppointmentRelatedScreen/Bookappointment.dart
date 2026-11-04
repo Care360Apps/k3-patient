@@ -38,6 +38,7 @@ import '../../model/detail_setting_model.dart';
 import '../../model/apply_offer_model.dart';
 import '../../model/book_appointments_model.dart';
 import '../../model/doctor_detail_model.dart';
+import '../../brand/consultation_visit_options.dart';
 import 'appointment_stripe_service.dart';
 
 enum SingingCharacter { Paypal, Razorpay, Stripe, FlutterWave, PayStack, COD }
@@ -45,8 +46,9 @@ enum SingingCharacter { Paypal, Razorpay, Stripe, FlutterWave, PayStack, COD }
 class BookAppointment extends StatefulWidget {
   final int? id;
   final bool isProvider;
+  final String? initialVisitType;
 
-  BookAppointment({this.id, this.isProvider = false});
+  BookAppointment({this.id, this.isProvider = false, this.initialVisitType});
 
   @override
   _BookAppointmentState createState() => _BookAppointmentState();
@@ -162,7 +164,7 @@ class _BookAppointmentState extends State<BookAppointment> {
   static const String visitTypeHomeVisit = 'home_visit';
   /// Doctor's offered types (from doctor detail). Default true so both show until API loads.
   bool offersVideoCall = true;
-  bool offersHomeVisit = true;
+  bool offersHomeVisit = false;
 
   List<String> drugEffects = [];
   String? selectDrugEffects;
@@ -183,6 +185,13 @@ class _BookAppointmentState extends State<BookAppointment> {
   String? bookingId = "";
 
   bool get _isProviderBooking => widget.isProvider == true;
+
+  List<String> get _allowedVisits => ConsultationVisitOptions.allowed(
+    isProvider: _isProviderBooking,
+    offersVideoCall: offersVideoCall,
+    offersHomeVisit: offersHomeVisit,
+  );
+  bool get _hasValidVisit => _allowedVisits.contains(selectedVisitType);
 
   //Discount //
   String discountType = "";
@@ -222,9 +231,10 @@ class _BookAppointmentState extends State<BookAppointment> {
 
   @override
   void initState() {
-    Stripe.publishableKey = SharedPreferenceHelper.getString(
-      Preferences.stripe_public_key,
-    )!;
+    final stripeKey = SharedPreferenceHelper.getString(Preferences.stripe_public_key);
+    if (stripeKey != null && stripeKey.isNotEmpty) {
+      Stripe.publishableKey = stripeKey;
+    }
     super.initState();
     id = widget.id;
     // callApiDoctorDetail();
@@ -236,9 +246,14 @@ class _BookAppointmentState extends State<BookAppointment> {
     _getAddress();
 
     if (_isProviderBooking) {
-      selectedVisitType = visitTypeHomeVisit;
+      selectedVisitType = widget.initialVisitType ?? visitTypeHomeVisit;
+      // Do not advertise virtual booking until provider capabilities load.
       offersVideoCall = false;
-      offersHomeVisit = true;
+      offersHomeVisit = false;
+    } else {
+      selectedVisitType = visitTypeVideoCall;
+      offersVideoCall = true;
+      offersHomeVisit = false;
     }
 
     Future.delayed(Duration.zero, () {
@@ -702,93 +717,37 @@ class _BookAppointmentState extends State<BookAppointment> {
                                                 ),
                                               ),
                                               SizedBox(height: width * 0.02),
-                                              _isProviderBooking
-                                                  ? Container(
-                                                      width: double.infinity,
-                                                      padding: EdgeInsets.symmetric(
-                                                        horizontal: width * 0.04,
-                                                        vertical: width * 0.025,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: Palette.tabBar,
-                                                        borderRadius: BorderRadius.circular(14),
-                                                      ),
-                                                      child: Row(
-                                                        children: [
-                                                          Icon(
-                                                            Icons.home_filled,
-                                                            color: Palette.blue,
-                                                            size: width * 0.05,
-                                                          ),
-                                                          SizedBox(width: 8),
-                                                          Expanded(
-                                                            child: Text(
-                                                              getTranslated(
-                                                                context,
-                                                                AppString.bookAppointment_visitType_homeVisit,
-                                                              ).toString(),
-                                                              style: TextStyle(
-                                                                fontSize: width * 0.04,
-                                                                color: Palette.dark_blue,
-                                                                fontWeight: FontWeight.w600,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    )
-                                                  : DropdownButtonFormField<String>(
-                                                      decoration: _dropdownDecoration(
-                                                        width,
-                                                      ),
-                                                      value: (selectedVisitType == visitTypeVideoCall && offersVideoCall) ||
-                                                              (selectedVisitType == visitTypeHomeVisit && offersHomeVisit)
-                                                          ? selectedVisitType
-                                                          : (offersVideoCall
-                                                              ? visitTypeVideoCall
-                                                              : (offersHomeVisit ? visitTypeHomeVisit : visitTypeVideoCall)),
-                                                      isExpanded: true,
-                                                      icon: Icon(
-                                                        Icons.keyboard_arrow_down_rounded,
-                                                        color: Palette.grey,
-                                                      ),
-                                                      iconSize: 24,
-                                                      onChanged: (String? newValue) {
-                                                        setState(() {
-                                                          selectedVisitType = newValue ?? visitTypeVideoCall;
-                                                        });
-                                                      },
-                                                      items: [
-                                                        if (offersVideoCall)
-                                                          DropdownMenuItem<String>(
-                                                            value: visitTypeVideoCall,
-                                                            child: Text(
-                                                              getTranslated(
-                                                                context,
-                                                                AppString.bookAppointment_visitType_videoCall,
-                                                              ).toString(),
-                                                              style: TextStyle(
-                                                                fontSize: width * 0.04,
-                                                                color: Palette.dark_blue,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        if (offersHomeVisit)
-                                                          DropdownMenuItem<String>(
-                                                            value: visitTypeHomeVisit,
-                                                            child: Text(
-                                                              getTranslated(
-                                                                context,
-                                                                AppString.bookAppointment_visitType_homeVisit,
-                                                              ).toString(),
-                                                              style: TextStyle(
-                                                                fontSize: width * 0.04,
-                                                                color: Palette.dark_blue,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                      ],
+                                              if (_allowedVisits.isEmpty)
+                                                const Padding(
+                                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                                  child: Text(
+                                                    'No consultation types are currently available. Go back and choose another professional.',
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                )
+                                              else
+                                                DropdownButtonFormField<String>(
+                                                  decoration: _dropdownDecoration(width),
+                                                  value: _hasValidVisit ? selectedVisitType : _allowedVisits.first,
+                                                  isExpanded: true,
+                                                  onChanged: (String? value) =>
+                                                      setState(() => selectedVisitType = value),
+                                                  items: _allowedVisits.map((mode) =>
+                                                    DropdownMenuItem<String>(
+                                                      value: mode,
+                                                      child: Row(children: [
+                                                        Icon(mode == visitTypeVideoCall
+                                                          ? Icons.videocam_outlined : Icons.home_outlined,
+                                                          size: 20, color: Palette.blue),
+                                                        const SizedBox(width: 8),
+                                                        Flexible(child: Text(mode == visitTypeVideoCall
+                                                          ? 'Virtual video consultation' : 'Home visit',
+                                                          style: TextStyle(color: Palette.dark_blue))),
+                                                      ]),
                                                     ),
+                                                  ).toList(),
+                                                ),
+                                              SizedBox(height: width * 0.04),
                                               SizedBox(height: width * 0.04),
                                               Text(
                                                 getTranslated(
