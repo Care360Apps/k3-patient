@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -36,6 +37,25 @@ class Care360PartnerSlide {
       return null;
     }
     return uri;
+  }
+
+  /// Remote assets use HTTPS. The locally configured staging Laravel host is
+  /// also permitted to serve uploaded images in debug builds only.
+  static Uri? safeImageUri(String? raw) {
+    final https = safeDestination(raw);
+    if (https != null) return https;
+    if (!kDebugMode || raw == null) return null;
+    final image = Uri.tryParse(raw);
+    const apiBase = String.fromEnvironment('K3_API_BASE_URL');
+    final api = Uri.tryParse(apiBase);
+    if (image != null && api != null && api.host.isNotEmpty &&
+        image.scheme == 'http' && api.scheme == 'http' &&
+        image.host == api.host && image.port == api.port &&
+        image.userInfo.isEmpty &&
+        image.path.startsWith('/images/upload/')) {
+      return image;
+    }
+    return null;
   }
 }
 
@@ -201,7 +221,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
   }
 
   Widget _slideCard(Care360PartnerSlide slide) {
-    final img = Care360PartnerSlide.safeDestination(slide.imageUrl);
+    final img = Care360PartnerSlide.safeImageUri(slide.imageUrl);
     final accent = slide.sponsored
         ? const Color(0xFF173A5F)
         : const Color(0xFF096E67);
