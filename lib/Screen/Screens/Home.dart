@@ -1655,37 +1655,6 @@ class _HomeState extends State<Home> {
                           height: 4,
                         ),
 
-                        /// looking For ///
-                        Column(
-                          children: [
-                            Container(
-                              alignment: AlignmentDirectional.topStart,
-                              margin: EdgeInsets.only(
-                                left: 20,
-                                right: 20,
-                              ),
-                              // child: Column(
-                              //   children: [
-                              //     Text(
-                              //       getTranslated(context, AppString.home_lookingFor).toString(),
-                              //       style: TextStyle(
-                              //         fontSize: 16,
-                              //         color: Palette.dark_blue,
-                              //         fontWeight: FontWeight.bold,
-                              //       ),
-                              //     ),
-                              //   ],
-                              // ),
-                            ),
-                            // Backend banners are integrated with the Partner showcase above.
-
-                          ],
-                        ),
-
-                        SizedBox(
-                          height: 10,
-                        ),
-
                         /// Treatments (Categories) ///
                         Column(
                           children: [
