@@ -749,6 +749,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                                                 ),
                                               SizedBox(height: width * 0.04),
                                               SizedBox(height: width * 0.04),
+                                              if (!_isProviderBooking) ...[
                                               Text(
                                                 getTranslated(
                                                   context,
@@ -789,9 +790,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                                                 onSaved: (dynamic value) {
                                                   setState(() {
                                                     hospitalDetailData = value;
-                                                    print(
-                                                      "$hospitalDetailData",
-                                                    );
+
                                                   });
                                                 },
                                                 onChanged: (HospitalId? newValue) {
@@ -801,9 +800,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                                                     hospitalId = newValue
                                                         ?.hospitalDetails
                                                         ?.id;
-                                                    print(
-                                                      "HospitalId $hospitalId",
-                                                    );
+
                                                   });
                                                 },
                                                 items: hospital.map((location) {
@@ -827,6 +824,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                                                   );
                                                 }).toList(),
                                               ),
+                                              ],
                                               SizedBox(height: width * 0.04),
                                               Text(
                                                 getTranslated(
