@@ -116,7 +116,7 @@ class _SignInState extends State<SignIn> {
                 child: OutlinedButton.icon(
                   key: const Key('care360-offline-preview-open'),
                   icon: const Icon(Icons.dashboard_outlined),
-                  label: const Text('Explore patient dashboard (offline)'),
+                  label: const Text('Preview patient dashboard'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF08785E),
                     minimumSize: const Size.fromHeight(50),
