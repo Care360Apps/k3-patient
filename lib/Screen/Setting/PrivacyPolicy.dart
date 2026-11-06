@@ -2,6 +2,7 @@ import 'package:doctro_patient/api/base_model.dart';
 import 'package:doctro_patient/const/Palette.dart';
 import 'package:doctro_patient/model/detail_setting_model.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
@@ -25,6 +26,23 @@ class _PrivacyPolicyState extends State<PrivacyPolicy> {
   void initState() {
     super.initState();
     appAllDetail();
+  }
+
+  Future<void> _openPublicPolicy() async {
+    // This is the currently published Patient store listing's policy URL.
+    // No account token, sensitive information or user identifier is sent.
+    final url = Uri.https('medic.care360hms.com', '/privacy-policy');
+    bool opened = false;
+    try {
+      opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // A visible link is still offered below if the platform launcher fails.
+    }
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Open medic.care360hms.com/privacy-policy in your browser.'),
+      ));
+    }
   }
 
   @override
@@ -77,6 +95,11 @@ class _PrivacyPolicyState extends State<PrivacyPolicy> {
                           onPressed: loading ? null : appAllDetail,
                           icon: const Icon(Icons.refresh),
                           label: const Text('Retry'),
+                        ),
+                        TextButton.icon(
+                          onPressed: _openPublicPolicy,
+                          icon: const Icon(Icons.open_in_new),
+                          label: const Text('Read public privacy policy'),
                         ),
                       ],
                     ),
