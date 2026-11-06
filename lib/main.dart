@@ -390,7 +390,12 @@ class _MyAppState extends State<MyApp> {
             builder: (context, navigatorChild) => Stack(
               children: [
                 if (navigatorChild != null) navigatorChild,
-                PositionedDirectional(
+                // The floating live language widget is deliberately excluded
+                // from disconnected synthetic builds. Language options remain
+                // visible inside the offline-only review hub; no service-backed
+                // screens, overlays or state are mounted by that hub.
+                if (!k3OfflineSynthetic)
+                  PositionedDirectional(
                   end: 10,
                   bottom: 64,
                   child: SafeArea(
