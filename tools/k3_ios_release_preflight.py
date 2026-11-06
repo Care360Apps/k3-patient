@@ -38,7 +38,7 @@ def validate_api_url(value: str) -> None:
 
 
 def validate_xcode(version_output: str) -> None:
-    match = re.search(r"(?m)^Xcode\\s+(\\d+)(?:\\.\\d+)?\\s*$", version_output)
+    match = re.search(r"(?m)^Xcode\s+(\d+)(?:\.\d+)?\s*$", version_output)
     if not match or int(match.group(1)) < 26:
         raise ValueError("App Store submissions require Xcode 26+ with iOS 26 SDK+")
 
