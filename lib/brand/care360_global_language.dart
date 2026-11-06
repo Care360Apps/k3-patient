@@ -28,10 +28,17 @@ class Care360GlobalLanguageSwitch extends StatelessWidget {
       color: const Color(0xFFF8FAF6),
       borderRadius: BorderRadius.circular(28),
       elevation: 2,
-      child: IconButton(
-        key: const Key('care360-language-every-screen'),
-        tooltip: 'Change language',
-        icon: const Icon(Icons.language, color: Color(0xFF137D66), size: 23),
+      // This switch sits in MaterialApp.builder, above the Navigator.
+      // IconButton.tooltip would insert a Tooltip which requires an Overlay
+      // ancestor. That produces a FlutterError on the sign-in screen because
+      // the Navigator's Overlay is a sibling, not an ancestor, of this switch.
+      // Preserve an accessible label without creating a Tooltip.
+      child: Semantics(
+        label: 'Change language',
+        button: true,
+        child: IconButton(
+          key: const Key('care360-language-every-screen'),
+          icon: const Icon(Icons.language, color: Color(0xFF137D66), size: 23),
         constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         onPressed: () async {
           // MaterialApp.builder sits above the Navigator. Use the navigator's
@@ -70,6 +77,7 @@ class Care360GlobalLanguageSwitch extends StatelessWidget {
             ),
           );
         },
+        ),
       ),
     );
   }
