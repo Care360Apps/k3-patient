@@ -26,6 +26,18 @@ if text.count(needle) != 1:
 text = text.replace(needle, needle + '        debug {\n            applicationIdSuffix ".k3sandbox"\n        }\n', 1)
 gradle.write_text(text)
 
+# This fixture is applied only to a disposable synthetic APK checkout.
+# Jetifying Agora's large native AAR can exhaust the small Windows build heap.
+# Skip the transform for this specific Agora version only, without globally
+# disabling AndroidX migration for unrelated plugins. Runtime validation remains
+# mandatory before relying on Agora video calling in staging/production.
+gradle_props = root / 'android/gradle.properties'
+props = gradle_props.read_text()
+ignore_prop = r'android.jetifier.ignorelist=full-sdk-4\\.2\\.6\\.aar'
+if 'android.jetifier.ignorelist=' in props:
+    sys.exit('Existing Jetifier ignorelist requires manual review')
+gradle_props.write_text(props.rstrip() + '\n' + ignore_prop + '\n')
+
 manifest = root / 'android/app/src/main/AndroidManifest.xml'
 xml = manifest.read_text()
 label_match = re.search(r'android:label="[^"]+"', xml)
