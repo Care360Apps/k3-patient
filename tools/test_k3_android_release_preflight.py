@@ -42,9 +42,9 @@ class AndroidReleaseGateTests(unittest.TestCase):
     def test_play_sdk_36_required(self):
         with tempfile.TemporaryDirectory() as folder:
             gradle = Path(folder) / "build.gradle"
-            gradle.write_text('compileSdk 36\\ntargetSdk 36\\nmanifestPlaceholders["k3GoogleMapsApiKey"] = mapsApiKey\\n')
+            gradle.write_text('compileSdk 36\ntargetSdk 36\nmanifestPlaceholders["k3GoogleMapsApiKey"] = mapsApiKey\n')
             release_gate.validate_android_sdk(gradle)
-            gradle.write_text('compileSdk 35\\ntargetSdk 35\\n')
+            gradle.write_text('compileSdk 35\ntargetSdk 35\n')
             with self.assertRaises(ValueError):
                 release_gate.validate_android_sdk(gradle)
 
