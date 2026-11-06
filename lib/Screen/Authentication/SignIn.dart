@@ -56,7 +56,10 @@ class _SignInState extends State<SignIn> {
     
     // Location permission belongs to location-dependent features, not sign-in.
     // Users must be able to authenticate without granting GPS access.
-    callApiSetting();
+    // Synthetic previews must not attempt any API or OneSignal initialization.
+    if (!Care360ConnectionError.isOfflinePreview(Apis.baseUrl)) {
+      callApiSetting();
+    }
   }
 
   AuthProvider? authProvider;
