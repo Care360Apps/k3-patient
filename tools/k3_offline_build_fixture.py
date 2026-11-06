@@ -55,6 +55,7 @@ if path.exists():
 path.write_text(json.dumps(firebase, indent=2))
 config = {
     'K3_API_BASE_URL': 'https://k3-offline.invalid/api/',
+    'K3_OFFLINE_TEST': 'true',
     'K3_FIREBASE_API_KEY': 'k3-synthetic-not-a-valid-firebase-key',
     'K3_FIREBASE_APP_ID': '1:123456789012:android:0123456789abcdef01234567',
     'K3_FIREBASE_SENDER_ID': '123456789012',
