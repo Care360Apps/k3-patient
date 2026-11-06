@@ -6,6 +6,7 @@ import 'package:doctro_patient/api/network_api.dart';
 import 'package:doctro_patient/api/server_error.dart';
 import 'package:doctro_patient/model/account_delete_model.dart';
 import 'package:flutter/material.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
@@ -23,6 +24,27 @@ class Setting extends StatefulWidget {
 
 class _SettingState extends State<Setting> {
   bool loading = false;
+
+  Future<void> _requestNotifications() async {
+    // The OS prompt is shown only after a patient deliberately taps Settings.
+    // Notification delivery must never be a condition of logging in or booking.
+    try {
+      if (!OneSignal.Notifications.permission) {
+        await OneSignal.Notifications.requestPermission(true);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(OneSignal.Notifications.permission
+            ? 'Appointment notifications are enabled.'
+            : 'Notifications are not enabled. You can change this in your phone settings.'),
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Notification settings are unavailable right now.'),
+      ));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +104,17 @@ class _SettingState extends State<Setting> {
                   ),
                   child: Column(
                     children: [
+                      ListTile(
+                        key: const Key('patient-enable-notifications'),
+                        onTap: _requestNotifications,
+                        leading: Icon(Icons.notifications_active_outlined, color: Palette.blue),
+                        title: Text('Enable appointment notifications',
+                          style: TextStyle(fontSize: 15, color: Palette.dark_blue,
+                            fontWeight: FontWeight.w600)),
+                        subtitle: const Text('Optional reminders and updates about your care.'),
+                        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Palette.dark_grey),
+                      ),
+                      Divider(height: 1, thickness: 1, color: Palette.dark_white),
                       ListTile(
                         onTap: () {
                           Navigator.pushNamed(context, 'ChangeLanguage');
