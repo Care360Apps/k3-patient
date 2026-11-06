@@ -42,6 +42,16 @@ class IOSReleaseGateTests(unittest.TestCase):
             root / "ios/Runner/AppDelegate.swift",
         )
 
+    def test_native_maps_xcconfig_must_match_approved_key(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "Care360PrivateRelease.xcconfig"
+            path.write_text("K3_GOOGLE_MAPS_API_KEY = approvedSampleKey_123\\n")
+            gate.validate_native_maps_config(path, "approvedSampleKey_123")
+            with self.assertRaises(ValueError):
+                gate.validate_native_maps_config(path, "differentKey")
+            with self.assertRaises(ValueError):
+                gate.validate_native_maps_config(Path(folder) / "missing.xcconfig", "approvedSampleKey_123")
+
     def test_firebase_ios_bundle_and_project_must_match(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "GoogleService-Info.plist"
