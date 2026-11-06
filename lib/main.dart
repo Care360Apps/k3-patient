@@ -107,8 +107,10 @@ Future<Widget> _initializeApp() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform);
   
-  await SharedPreferenceHelper.init();
-  final token = await SharedPreferenceHelper.getSecureString(Preferences.auth_token);
+  await SharedPreferenceHelper.init(offlineSandbox: k3OfflineSynthetic);
+  final token = k3OfflineSynthetic
+      ? null
+      : await SharedPreferenceHelper.getSecureString(Preferences.auth_token);
   final hasToken = token != null && token.isNotEmpty && token != "N_A" && token != "null";
   await SharedPreferenceHelper.setBoolean(Preferences.has_auth_token, hasToken);
   await SharedPreferenceHelper.setBoolean(Preferences.is_logged_in, hasToken);
@@ -129,6 +131,7 @@ Future<Widget> _initializeApp() async {
 }
 
 Future<void> _initFirebaseMessagingWithLogging() async {
+  if (k3OfflineSynthetic) return;
   try {
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
       alert: true, badge: true, sound: true,
@@ -187,6 +190,10 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    if (k3OfflineSynthetic) {
+      debugPrint('K3_OFFLINE_TEST: optional network and push setup skipped');
+      return;
+    }
     callApiSetting();
     Future.delayed(const Duration(seconds: 2), () {
       FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
@@ -322,11 +329,12 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void didChangeDependencies() {
-    getLocale().then((local) => {
-          setState(() {
-            this._locale = local;
-          })
-        });
+    getLocale().then((local) {
+      if (!mounted) return;
+      setState(() => _locale = local);
+    }).catchError((Object _) {
+      if (kDebugMode) debugPrint('Care360: language preference unavailable; using English.');
+    });
     super.didChangeDependencies();
   }
 
@@ -516,7 +524,7 @@ class _MyAppState extends State<MyApp> {
         getOneSignalToken(appId);
       }
     } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+      if (kDebugMode) debugPrint('Care360: optional settings unavailable; continuing.');
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
