@@ -6,6 +6,10 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+// Maps Android key belongs to this app's package + signing certificate restrictions.
+// Supply privately at build time; never commit the value.
+def mapsApiKey = (project.findProperty('K3_ANDROID_MAPS_API_KEY') ?: System.getenv('K3_ANDROID_MAPS_API_KEY') ?: '').toString().trim()
+
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
 if (keystorePropertiesFile.exists()) {
@@ -16,7 +20,8 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace "com.cnu.patient"
-    compileSdk flutter.compileSdkVersion
+    // Google Play requires Android 16 (API 36) for updates since Aug 31, 2026.
+    compileSdk 36
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -37,7 +42,8 @@ android {
     defaultConfig {
         applicationId "com.cnu.patient"
         minSdk 24
-        targetSdk flutter.targetSdkVersion
+        targetSdk 36
+        manifestPlaceholders["k3GoogleMapsApiKey"] = mapsApiKey
         versionCode flutter.versionCode
         versionName flutter.versionName
     }
@@ -59,8 +65,12 @@ android {
 }
 
 gradle.taskGraph.whenReady { graph ->
-    if (!keystorePropertiesFile.exists() && graph.allTasks.any { it.name.toLowerCase().contains("release") }) {
-        throw new GradleException("android/key.properties is missing. Release builds must be signed with the upload keystore, never the debug key.")
+    def releaseRequested = graph.allTasks.any { it.name.toLowerCase().contains("release") }
+    if (releaseRequested && !keystorePropertiesFile.exists()) {
+        throw new GradleException("android/key.properties is missing. Release builds must be signed with the existing Play upload keystore, never the debug key.")
+    }
+    if (releaseRequested && (!mapsApiKey || mapsApiKey == "Enter_Your_google_map_key")) {
+        throw new GradleException("K3_ANDROID_MAPS_API_KEY must be supplied for release and restricted to the Care360 Patient package/signing certificate.")
     }
 }
 
