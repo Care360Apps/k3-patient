@@ -7,6 +7,10 @@ void main() {
     expect(k3StartupDiagnosticsEnabled, isTrue);
   });
 
+  test('normal builds never enter the synthetic-only offline mode', () {
+    expect(k3OfflineSynthetic, isFalse);
+  });
+
   test('debug source extraction keeps only local Dart path and line number', () {
     final trace = StackTrace.fromString(
       '#0 PatientShell.build (package:doctro_patient/Screen/Patient.dart:74:7)\n'
