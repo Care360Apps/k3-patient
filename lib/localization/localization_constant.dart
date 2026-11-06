@@ -55,5 +55,5 @@ Locale _locale(String languageCode) {
 
 Future<Locale> getLocale() async {
   String? languageCode = SharedPreferenceHelper.getString(Preferences.current_language_code);
-  return _locale(languageCode!);
+  return _locale(languageCode ?? ENGLISH);
 }
