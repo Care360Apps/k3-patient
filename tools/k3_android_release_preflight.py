@@ -71,9 +71,9 @@ def validate_signing(properties_file: Path) -> None:
 def validate_android_sdk(gradle_file: Path) -> None:
     """Play requires API 36 for both new mobile apps and updates in Nov 2026."""
     gradle = gradle_file.read_text(encoding="utf-8")
-    if not re.search(r"(?m)^\\s*compileSdk\\s+36\\s*$", gradle):
+    if not re.search(r"(?m)^\s*compileSdk\s+36\s*$", gradle):
         raise ValueError("Android compileSdk must be pinned to API 36 or higher")
-    if not re.search(r"(?m)^\\s*targetSdk\\s+36\\s*$", gradle):
+    if not re.search(r"(?m)^\s*targetSdk\s+36\s*$", gradle):
         raise ValueError("Android targetSdk must be pinned to API 36 or higher")
     if "manifestPlaceholders[\"k3GoogleMapsApiKey\"]" not in gradle:
         raise ValueError("Android Maps API key must be injected during build")
