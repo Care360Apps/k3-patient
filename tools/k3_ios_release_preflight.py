@@ -84,6 +84,17 @@ def validate_firebase_ios(plist_path: Path, approved_project: str) -> None:
             raise ValueError("Production Firebase iOS configuration is incomplete")
 
 
+def validate_native_maps_config(private_xcconfig: Path, expected: str) -> None:
+    if not expected or not re.fullmatch(r"[A-Za-z0-9_-]+", expected):
+        raise ValueError("Set an approved native iOS Maps key")
+    if not private_xcconfig.is_file():
+        raise ValueError("Create untracked ios/Flutter/Care360PrivateRelease.xcconfig for native Maps")
+    content = private_xcconfig.read_text(encoding="utf-8")
+    found = re.search(r"(?m)^K3_GOOGLE_MAPS_API_KEY\\s*=\\s*([A-Za-z0-9_-]+)\\s*$", content)
+    if not found or found.group(1) != expected:
+        raise ValueError("Private Release.xcconfig Maps key does not match approved key")
+
+
 def main() -> int:
     try:
         if os.getenv("K3_BUILD_ENV") != "production":
@@ -91,8 +102,10 @@ def main() -> int:
         validate_version(os.getenv("K3_IOS_LATEST_BUILD_NUMBER", ""),
                          os.getenv("K3_IOS_NEXT_BUILD_NUMBER", ""))
         validate_api_url(os.getenv("K3_API_BASE_URL", ""))
-        if not os.getenv("K3_IOS_GOOGLE_MAPS_API_KEY", "").strip():
-            raise ValueError("iOS Maps key must be supplied for release")
+        validate_native_maps_config(
+            ROOT / "ios/Flutter/Care360PrivateRelease.xcconfig",
+            os.getenv("K3_IOS_GOOGLE_MAPS_API_KEY", ""),
+        )
         validate_source(
             ROOT / "ios/Runner.xcodeproj/project.pbxproj",
             ROOT / "ios/Runner/Info.plist",
