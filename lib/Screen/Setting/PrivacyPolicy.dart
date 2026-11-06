@@ -60,15 +60,25 @@ class _PrivacyPolicyState extends State<PrivacyPolicy> {
           physics: BouncingScrollPhysics(),
           child: Container(
             margin: EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-            child: privacyPolicy != null
+            child: privacyPolicy != null && privacyPolicy!.trim().isNotEmpty
                 ? Html(
-                    data: '$privacyPolicy',
+                    data: privacyPolicy!,
                   )
-                : Container(
-                    height: MediaQuery.of(context).size.height * 0.8,
-                    alignment: AlignmentDirectional.center,
-                    child: Text(
-                      getTranslated(context, "noDetail").toString(),
+                : Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'The privacy policy could not be loaded. Please try again.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton.icon(
+                          onPressed: loading ? null : appAllDetail,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
                     ),
                   ),
           ),
@@ -85,14 +95,22 @@ class _PrivacyPolicyState extends State<PrivacyPolicy> {
     });
     try {
       response = await RestClient(RetroApi2().dioData2()).settingRequest();
-      if (response.success == true) {
+      if (mounted) {
         setState(() {
           loading = false;
-          privacyPolicy = response.data!.privacyPolicy;
+          privacyPolicy = response.success == true
+              ? response.data?.privacyPolicy
+              : null;
         });
       }
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          privacyPolicy = null;
+        });
+      }
+      // Never print a healthcare API exception or response body to logs.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
