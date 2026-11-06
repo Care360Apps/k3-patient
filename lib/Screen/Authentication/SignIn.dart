@@ -1,3 +1,5 @@
+import '../../preview/care360_offline_dashboard.dart';
+import '../../diagnostics/k3_startup_diagnostics.dart';
 import '../../brand/care360_entry.dart';
 import '../../api/patient_optional_settings.dart';
 import '../../api/care360_connection_error.dart';
@@ -95,13 +97,35 @@ class _SignInState extends State<SignIn> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
-                'OFFLINE DESIGN TEST — This APK cannot sign in or access '
-                'Care360 services. A connected test build is required.',
+                'OFFLINE DESIGN TEST — Real sign-in and services are disabled. '
+                'Use the design preview below, or install a connected staging APK.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xFF5D4300),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          if (k3OfflineSynthetic &&
+              Care360ConnectionError.isOfflinePreview(Apis.baseUrl))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const Key('care360-offline-preview-open'),
+                  icon: const Icon(Icons.dashboard_outlined),
+                  label: const Text('Explore patient dashboard (offline)'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF08785E),
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const Care360OfflineDashboard(),
+                    ),
+                  ),
                 ),
               ),
             ),
