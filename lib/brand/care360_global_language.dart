@@ -23,7 +23,7 @@ class Care360GlobalLanguageSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentCode = Localizations.localeOf(context).languageCode;
+    final currentCode = Localizations.maybeLocaleOf(context)?.languageCode ?? 'en';
     return Material(
       color: const Color(0xFFF8FAF6),
       borderRadius: BorderRadius.circular(28),
