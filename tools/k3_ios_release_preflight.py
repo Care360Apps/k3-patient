@@ -90,7 +90,7 @@ def validate_native_maps_config(private_xcconfig: Path, expected: str) -> None:
     if not private_xcconfig.is_file():
         raise ValueError("Create untracked ios/Flutter/Care360PrivateRelease.xcconfig for native Maps")
     content = private_xcconfig.read_text(encoding="utf-8")
-    found = re.search(r"(?m)^K3_GOOGLE_MAPS_API_KEY\\s*=\\s*([A-Za-z0-9_-]+)\\s*$", content)
+    found = re.search(r"(?m)^K3_GOOGLE_MAPS_API_KEY\s*=\s*([A-Za-z0-9_-]+)\s*$", content)
     if not found or found.group(1) != expected:
         raise ValueError("Private Release.xcconfig Maps key does not match approved key")
 
