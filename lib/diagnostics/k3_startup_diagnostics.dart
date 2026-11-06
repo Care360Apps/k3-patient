@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 const bool k3StartupDiagnosticsEnabled = kDebugMode;
 
 /// Set only by the isolated sandbox APK fixture. Never routes to real services.
-const bool k3OfflineSynthetic = bool.fromEnvironment('K3_OFFLINE_TEST');
+const bool k3OfflineSynthetic =
+    kDebugMode && bool.fromEnvironment('K3_OFFLINE_TEST');
 
 /// Return only a local source path and line number from application stack frames.
 /// The full exception and stack can contain sensitive runtime values.
