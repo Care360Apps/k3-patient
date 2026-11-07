@@ -30,7 +30,7 @@ void main() {
     expect(find.textContaining('not a generative AI chat'), findsOneWidget);
   });
 
-  testWidgets('Carousel rotates every five seconds and manual navigation works',
+  testWidgets('Carousel holds ten seconds before rotating and manual navigation works',
       (tester) async {
     final first = Uri.parse('https://partner.example.org/');
     final second = Uri.parse('https://another.example.org/');
@@ -47,7 +47,9 @@ void main() {
       )),
     )));
     expect(find.text('1/3'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 9));
+    expect(find.text('1/3'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(milliseconds: 450));
     expect(find.text('2/3'), findsOneWidget);
     expect(find.text('Sponsored'), findsWidgets);
