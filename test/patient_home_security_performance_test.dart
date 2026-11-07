@@ -19,6 +19,11 @@ void main() {
     expect(home, contains('_appointmentRefreshTimer?.cancel();'));
     expect(home, contains('if (!mounted || !_hasAuthToken())'));
     expect(home, contains('_search.dispose();'));
+    expect(home, contains('bool _appointmentsInFlight = false'));
+    expect(home, contains('if (!mounted || !_hasAuthToken() || _appointmentsInFlight)'));
+    expect(home, contains('upcomingAppointment'));
+    expect(home, contains('..clear()'));
+    expect(home, isNot(contains('upcomingAppointment.addAll(response.data!.upcomingAppointment!)')));
   });
 
   test('Home never logs personal coordinates, Firebase UID or API error bodies', () {
