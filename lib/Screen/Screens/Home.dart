@@ -15,6 +15,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import '../../brand/care360_partner_showcase.dart';
 import '../../brand/care360_nearby_care_hero.dart';
+import '../../workforce/workforce_landing.dart';
 import '../../brand/care360_guide_shortcut.dart';
 import '../../brand/care360_horizontal_cards.dart';
 import 'package:doctro_patient/Chat/loading_view.dart';
@@ -813,6 +814,30 @@ class _HomeState extends State<Home> {
                             _buildChatDrawerTile(context),
                             SizedBox(height: 8),
                             ListTile(
+                              key: const Key('drawer-workforce'),
+                              leading: Icon(Icons.work_outline_rounded, color: Palette.blue),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              tileColor: Palette.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                              title: const Text(
+                                'Workforce — jobs and hiring',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Palette.dark_blue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(context, MaterialPageRoute<void>(
+                                  builder: (_) => const Care360WorkforceLanding(),
+                                ));
+                              },
+                            ),
+                            SizedBox(height: 8),
+                            ListTile(
                               leading: Icon(Icons.local_pharmacy_outlined, color: Palette.blue),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               tileColor: Palette.white,
@@ -1358,6 +1383,14 @@ class _HomeState extends State<Home> {
                     children: [
                         Care360NearbyCareHero(
                           onExplore: () => Navigator.pushNamed(context, 'MapView'),
+                        ),
+                        Care360WorkforceHomeTile(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const Care360WorkforceLanding(),
+                            ),
+                          ),
                         ),
                         if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
                             SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null) ...[
