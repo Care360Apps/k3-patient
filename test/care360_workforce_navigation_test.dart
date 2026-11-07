@@ -78,7 +78,7 @@ void main() {
         .readAsStringSync();
     expect(home, contains("import '../../workforce/workforce_landing.dart';"));
     expect(home, contains("Key('drawer-workforce')"));
-    expect(home, contains('Care360WorkforceHomeTile('));
+    expect(home, contains('Care360PatientServiceGrid('));
     expect(api, contains("static const tokenKey = 'care360_workforce_session'"));
     expect(api, isNot(contains('Preferences.auth_token')));
     expect(api, isNot(contains('RetroApi().dioData()')));
