@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:doctro_patient/Screen/Location/Showlocation.dart';
+import 'package:doctro_patient/Screen/Location/care360_place_search.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
 import 'package:doctro_patient/api/network_api.dart';
 import 'package:doctro_patient/const/prefConstatnt.dart';
@@ -9,10 +10,7 @@ import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_api_headers/google_api_headers.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:google_maps_webservice/places.dart';
-import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import '../../api/base_model.dart';
 import '../../api/server_error.dart';
@@ -199,34 +197,23 @@ class _AddLocationState extends State<AddLocation> {
                               children: [
                                 GestureDetector(
                                   onTap: () async {
-                                    final mapKey = await _resolveMapKey();
-                                    if (!_hasValidMapKey(mapKey)) {
-                                      Fluttertoast.showToast(
-                                        msg: "Search unavailable. Tap the map to select a location, then enter its address.",
-                                        toastLength: Toast.LENGTH_SHORT,
-                                        gravity: ToastGravity.BOTTOM,
-                                      );
-                                      return;
-                                    }
-                                    Prediction? p = await PlacesAutocomplete.show(
-                                      context: context,
-                                      mode: Mode.overlay,
-                                      apiKey: mapKey,
-                                      offset: 0,
-                                      radius: 1000,
-                                      types: [],
-                                      strictbounds: false,
-                                      components: [],
-                                    );
-                                    if (p == null) {
-                                      return;
-                                    }
-                                    await displayPrediction(p);
-                                    setState(
-                                      () {
-                                        address = '${p!.description}';
-                                        _textFullAddress.text = address;
-                                      },
+                                    final place = await showCare360PlaceSearch(context);
+                                    if (!mounted || place == null) return;
+                                    setState(() {
+                                      address = place.address;
+                                      _textFullAddress.text = place.address;
+                                      selectLat = place.latitude;
+                                      selectLang = place.longitude;
+                                      _initialCameraPosition =
+                                          LatLng(place.latitude, place.longitude);
+                                    });
+                                    await _controller?.animateCamera(
+                                      CameraUpdate.newCameraPosition(
+                                        CameraPosition(
+                                          target: LatLng(place.latitude, place.longitude),
+                                          zoom: 17,
+                                        ),
+                                      ),
                                     );
                                   },
                                   child: Container(
@@ -394,42 +381,6 @@ class _AddLocationState extends State<AddLocation> {
     );
   }
 
-  Future<Null> displayPrediction(Prediction? p) async {
-    if (p != null) {
-      final mapKey = await _resolveMapKey();
-      if (!_hasValidMapKey(mapKey)) {
-        Fluttertoast.showToast(
-          msg: "Google Maps API key is missing",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-        );
-        return;
-      }
-      GoogleMapsPlaces _places = GoogleMapsPlaces(
-        apiKey: mapKey,
-        apiHeaders: await GoogleApiHeaders().getHeaders(),
-      );
-
-      PlacesDetailsResponse detail = await _places.getDetailsByPlaceId(p.placeId!);
-
-      double lat = detail.result.geometry!.location.lat;
-      double lng = detail.result.geometry!.location.lng;
-
-      selectLang = double.parse('$lng');
-      selectLat = double.parse('$lat');
-
-      setState(() {
-        _controller!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: LatLng(selectLat, selectLang), zoom: 18),
-          ),
-        );
-        _initialCameraPosition = LatLng(selectLat, selectLang);
-        _createMarker();
-      });
-    }
-  }
-
   Future<BaseModel<CommonResponse>> callApiAddAddress() async {
     CommonResponse response;
     if (!_hasAuthToken()) {
@@ -468,28 +419,6 @@ class _AddLocationState extends State<AddLocation> {
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
-  }
-
-  Future<String> _resolveMapKey() async {
-    final savedKey = SharedPreferenceHelper.getString(Preferences.map_key_value);
-    if (_hasValidMapKey(savedKey)) {
-      return savedKey!;
-    }
-    try {
-      final response = await RestClient(RetroApi2().dioData2()).settingRequest();
-      final apiKey = response.data?.mapKey?.toString();
-      if (_hasValidMapKey(apiKey)) {
-        await SharedPreferenceHelper.setString(Preferences.map_key_value, apiKey!);
-        return apiKey;
-      }
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
-    }
-    return Preferences.map_key;
-  }
-
-  bool _hasValidMapKey(String? mapKey) {
-    return mapKey != null && mapKey.isNotEmpty && mapKey != "Enter_Your_google_map_key" && mapKey != "N_A" && mapKey != "null";
   }
 
   bool _hasAuthToken() {
