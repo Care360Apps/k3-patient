@@ -21,6 +21,7 @@ void main() {
       ],
       home: Scaffold(body: Care360GuideShortcut()),
     ));
+    await tester.pumpAndSettle();
 
     expect(find.text('Guide Care360'), findsOneWidget);
     await tester.tap(find.byKey(const Key('home-care360-guide')));
