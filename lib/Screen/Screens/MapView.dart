@@ -228,6 +228,8 @@ class _MapViewState extends State<MapView> {
   BitmapDescriptor _icon(BitmapDescriptor? custom) =>
       custom ?? BitmapDescriptor.defaultMarker;
 
+  bool _showType(String type) => _selectedType == 'All' || _selectedType == type;
+
   Set<Marker> _buildMarkers() {
     final Set<Marker> markers = {};
     final userLat = double.tryParse(_lat ?? '');
@@ -242,7 +244,7 @@ class _MapViewState extends State<MapView> {
         ),
       );
     }
-    for (final doctor in doctorList) {
+    if (_showType('Doctors')) for (final doctor in doctorList) {
       if (doctor.lat != null && doctor.lng != null) {
         markers.add(
           Marker(
@@ -265,7 +267,7 @@ class _MapViewState extends State<MapView> {
         );
       }
     }
-    for (final provider in providerList) {
+    if (_showType('Providers')) for (final provider in providerList) {
       final lat = _parseCoord(provider.lat);
       final lng = _parseCoord(provider.lng);
       if (lat != null && lng != null) {
@@ -290,7 +292,7 @@ class _MapViewState extends State<MapView> {
         );
       }
     }
-    for (final hospital in hospitalList) {
+    if (_showType('Hospitals')) for (final hospital in hospitalList) {
       final lat = _parseCoord(hospital.lat);
       final lng = _parseCoord(hospital.lng);
       if (lat != null && lng != null) {
@@ -312,7 +314,7 @@ class _MapViewState extends State<MapView> {
         );
       }
     }
-    for (final lab in labList) {
+    if (_showType('Labs')) for (final lab in labList) {
       final lat = _parseCoord(lab.lat);
       final lng = _parseCoord(lab.lng);
       if (lat != null && lng != null) {
@@ -377,8 +379,8 @@ class _MapViewState extends State<MapView> {
                       zoom: 12,
                     ),
                     markers: _buildMarkers(),
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
+                    myLocationEnabled: _canShowUserLocation,
+                    myLocationButtonEnabled: _canShowUserLocation,
                     zoomControlsEnabled: false,
                     mapToolbarEnabled: false,
                     onMapCreated: (c) => _mapController = c,
@@ -389,7 +391,13 @@ class _MapViewState extends State<MapView> {
                   top: 12,
                   left: 16,
                   right: 16,
-                  child: _buildLegendCard(),
+                  child: Column(
+                    children: [
+                      _buildCategoryFilters(),
+                      const SizedBox(height: 8),
+                      _buildLegendCard(),
+                    ],
+                  ),
                 ),
                 Positioned(
                   bottom: 0,
@@ -424,12 +432,37 @@ class _MapViewState extends State<MapView> {
             ),
             SizedBox(height: 12),
             Text(
-              'Enable location and open Home first so we can show doctors, hospitals and labs near you on the map.',
+              'Choose a location in Care360 Home to find nearby doctors, care providers, hospitals and labs. You can browse without granting precise GPS access.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Palette.grey, fontSize: 15, height: 1.4),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilters() {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      elevation: 2,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(children: [
+          for (final type in const ['All', 'Doctors', 'Providers', 'Hospitals', 'Labs'])
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ChoiceChip(
+                key: Key('nearby-filter-${type.toLowerCase()}'),
+                label: Text(type),
+                selected: _selectedType == type,
+                showCheckmark: false,
+                onSelected: (_) => setState(() => _selectedType = type),
+              ),
+            ),
+        ]),
       ),
     );
   }
@@ -452,14 +485,17 @@ class _MapViewState extends State<MapView> {
               ),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _legendItem(Icons.person_pin_circle_rounded, Palette.blue, 'Doctor'),
-              _legendItem(Icons.local_hospital_rounded, Color(0xFFE91E63), 'Hospital'),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _legendItem(Icons.person_pin_circle_rounded, Palette.blue, 'Doctor'),
+              _legendItem(Icons.health_and_safety_outlined, const Color(0xFFFF8C00), 'Provider'),
+              _legendItem(Icons.local_hospital_rounded, const Color(0xFFE91E63), 'Hospital'),
               _legendItem(Icons.science_rounded, Palette.green, 'Lab'),
-              _legendItem(Icons.my_location_rounded, Color(0xFF9C27B0), 'You'),
-            ],
+              ],
+            ),
           ),
         ),
       ),
