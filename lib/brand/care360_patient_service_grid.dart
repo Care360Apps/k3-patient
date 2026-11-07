@@ -29,7 +29,7 @@ class Care360PatientServiceGrid extends StatelessWidget {
     final services = <_PatientService>[
       _PatientService('Hospitals', Icons.local_hospital_outlined, onHospitals),
       _PatientService('Pharmacies', Icons.medication_outlined, onPharmacies),
-      _PatientService('Doctors', Icons.stethoscope_outlined, onDoctors),
+      _PatientService('Doctors', Icons.medical_services_outlined, onDoctors),
       _PatientService('Providers', Icons.medical_services_outlined, onProviders),
       _PatientService('Labs', Icons.science_outlined, onLabs),
       _PatientService('Workforce', Icons.groups_2_outlined, onWorkforce),
