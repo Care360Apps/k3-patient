@@ -23,7 +23,6 @@ import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:doctro_patient/Screen/MedicineAndPharmacy/PharamacyDetail.dart';
 import '../../VideoCall/PhoneScreen.dart';
