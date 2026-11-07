@@ -105,14 +105,25 @@ class _HomeState extends State<Home> {
   Location location = new Location();
 
   late HomeProvider homeProvider;
+  Timer? _appointmentRefreshTimer;
+
+  @override
+  void dispose() {
+    // A screen that is no longer visible must not continue polling the
+    // patient's appointment API or retain its search controller.
+    _appointmentRefreshTimer?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     dbService = DBService();
     _loadCachedUserDetails();
+    // Only one location initialization. The location-dependent screens can
+    // request permission later; Home should paint without waiting for GPS.
     getLocation();
-    getLiveLocation();
     homeProvider = context.read<HomeProvider>();
     final isLoggedIn = SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true;
     final hasToken = _hasAuthToken();
@@ -134,7 +145,6 @@ class _HomeState extends State<Home> {
           if (currentUser == null || pushToken == null || pushToken == "N_A") {
             return;
           }
-          print("UID ${currentUser.uid}");
           homeProvider.updateDataFirestore(
             FirestoreConstants.pathUserCollection,
             currentUser.uid,
@@ -143,7 +153,13 @@ class _HomeState extends State<Home> {
           // Never log notification tokens.
         },
       );
-      Timer.periodic(Duration(minutes: 10), (Timer t) => callApiAppointment());
+      _appointmentRefreshTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
+        if (!mounted || !_hasAuthToken()) {
+          timer.cancel();
+          return;
+        }
+        callApiAppointment();
+      });
     } else {
       callApiSetting();
     }
