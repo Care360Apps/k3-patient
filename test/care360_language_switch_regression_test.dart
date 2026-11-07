@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:doctro_patient/brand/care360_global_language.dart';
 import 'package:doctro_patient/localization/language_localization.dart';
+import 'package:doctro_patient/localization/care360_framework_locale_fallback.dart';
 
 void main() {
   testWidgets('Live language switch updates Navigator screens without Flutter error',
@@ -24,9 +25,9 @@ void main() {
         ],
         localizationsDelegates: const [
           LanguageLocalization.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
+          Care360MaterialFallbackDelegate(),
+          Care360WidgetsFallbackDelegate(),
+          Care360CupertinoFallbackDelegate(),
         ],
         navigatorKey: nav,
         builder: (context, navigatorChild) => Stack(
