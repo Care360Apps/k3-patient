@@ -16,6 +16,9 @@ void main() {
 
     expect(signIn, contains('Care360LanguagePicker('));
     expect(signUp, contains('Care360LanguagePicker('));
+    expect(signUp, contains("items: const ['Male', 'Female'].map("));
+    expect(signUp, contains('"gender": _selectGender'));
+    expect(signUp, isNot(contains('items: gender.map(')));
     expect(locale, contains('await SharedPreferenceHelper.setString('));
     expect(showcase, contains('Care360GuideScreen(allowRemote: true)'));
     expect(guide, contains("bool.fromEnvironment('K3_AI_GUIDE_PILOT', defaultValue: false)"));
