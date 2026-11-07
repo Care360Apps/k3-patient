@@ -69,11 +69,13 @@ class Care360PartnerShowcase extends StatefulWidget {
     this.slides = const [],
     this.openExternal,
     this.interval = const Duration(seconds: 10),
+    this.showGuideButton = true,
   });
 
   final List<Care360PartnerSlide> slides;
   final Future<bool> Function(Uri)? openExternal;
   final Duration interval;
+  final bool showGuideButton;
 
   static final Uri mindCheckUrl =
       Uri.https('mindcheck.speakoutmentalhealth.org', '/');
@@ -370,14 +372,15 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
                 : null,
           ),
         ]),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: _openLocalGuide,
-            icon: const Icon(Icons.help_outline, size: 16),
-            label: const Text('Care360 Help'),
+        if (widget.showGuideButton)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _openLocalGuide,
+              icon: const Icon(Icons.help_outline, size: 16),
+              label: const Text('Care360 Help'),
+            ),
           ),
-        ),
       ]),
     );
   }
