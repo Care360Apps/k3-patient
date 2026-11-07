@@ -64,7 +64,7 @@ void main() {
     final home = File('lib/Screen/Screens/Home.dart').readAsStringSync();
     final grid = File('lib/brand/care360_patient_service_grid.dart').readAsStringSync();
     for (final route in [
-      'Hospitals', 'AllPharamacy', 'Treatment', 'Providers', 'Laboratory',
+      'Hospitals', 'AllPharamacy', 'Specialist', 'Providers', 'Laboratory',
     ]) {
       expect(home, contains("Navigator.pushNamed(context, '$route')"));
     }
