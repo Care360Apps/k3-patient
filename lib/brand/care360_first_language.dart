@@ -30,10 +30,17 @@ class _Care360FirstLanguageScreenState
     'fr': 'Français',
   };
 
-  late String _selected =
-      _labels.containsKey(widget.initialLanguage) ? widget.initialLanguage : 'en';
+  late String _selected;
   bool _submitting = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = _labels.containsKey(widget.initialLanguage)
+        ? widget.initialLanguage
+        : 'en';
+  }
 
   Future<void> _continue() async {
     if (_submitting) return;
