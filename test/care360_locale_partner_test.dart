@@ -121,6 +121,29 @@ void main() {
     expect(auth.contains('MindCheck'), isFalse);
   });
 
+  // Nonclinical sponsor controls respond to real Flutter locale changes.
+  for (final entry in <String, List<String>>{
+    'en': ['Partner', 'Care360 Guide · app help'],
+    'ha': ['Abokin hulɗa', 'Jagorar Care360 · taimakon manhaja'],
+    'ig': ['Onye mmekọ', 'Ntuziaka Care360 · enyemaka'],
+    'yo': ['Alábàáṣiṣẹ́pọ̀', 'Ìtọ́sọ́nà Care360 · ìrànlọ́wọ́'],
+    'fr': ['Partenaire', 'Guide Care360 · aide'],
+  }.entries) {
+    testWidgets('Partner controls use ${entry.key} language',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale(entry.key),
+        supportedLocales: const [
+          Locale('en'), Locale('ha'), Locale('ig'),
+          Locale('yo'), Locale('fr'),
+        ],
+        home: const Scaffold(body: Care360PartnerShowcase()),
+      ));
+      expect(find.text(entry.value[0]), findsOneWidget);
+      expect(find.text(entry.value[1]), findsOneWidget);
+    });
+  }
+
   test('Paid placement flag is explicit in banner data', () {
     final model = File('lib/model/banner_model.dart').readAsStringSync();
     expect(model.contains("json['is_sponsored']"), isTrue);
