@@ -105,14 +105,26 @@ class _HomeState extends State<Home> {
   Location location = new Location();
 
   late HomeProvider homeProvider;
+  Timer? _appointmentRefreshTimer;
+  bool _appointmentsInFlight = false;
+
+  @override
+  void dispose() {
+    // A screen that is no longer visible must not continue polling the
+    // patient's appointment API or retain its search controller.
+    _appointmentRefreshTimer?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     dbService = DBService();
     _loadCachedUserDetails();
+    // Only one location initialization. The location-dependent screens can
+    // request permission later; Home should paint without waiting for GPS.
     getLocation();
-    getLiveLocation();
     homeProvider = context.read<HomeProvider>();
     final isLoggedIn = SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true;
     final hasToken = _hasAuthToken();
@@ -129,12 +141,12 @@ class _HomeState extends State<Home> {
       Future.delayed(
         const Duration(seconds: 5),
         () {
+          if (!mounted || !_hasAuthToken()) return;
           final currentUser = FirebaseAuth.instance.currentUser;
           final pushToken = SharedPreferenceHelper.getString(Preferences.device_token);
           if (currentUser == null || pushToken == null || pushToken == "N_A") {
             return;
           }
-          print("UID ${currentUser.uid}");
           homeProvider.updateDataFirestore(
             FirestoreConstants.pathUserCollection,
             currentUser.uid,
@@ -143,7 +155,13 @@ class _HomeState extends State<Home> {
           // Never log notification tokens.
         },
       );
-      Timer.periodic(Duration(minutes: 10), (Timer t) => callApiAppointment());
+      _appointmentRefreshTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
+        if (!mounted || !_hasAuthToken()) {
+          timer.cancel();
+          return;
+        }
+        callApiAppointment();
+      });
     } else {
       callApiSetting();
     }
@@ -197,47 +215,58 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> getLocation() async {
-    await Permission.location.request();
-    await Permission.storage.request();
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    // If user has set a default address, activate it when app starts
-    final defaultId = prefs.getInt(Preferences.default_address_id);
-    if (defaultId != null && defaultId != 0) {
-      final defaultLat = prefs.getString(Preferences.default_lat);
-      final defaultLang = prefs.getString(Preferences.default_lang);
-      final defaultAddress = prefs.getString(Preferences.default_Address);
-      if (defaultLat != null && defaultLat.isNotEmpty &&
-          defaultLang != null && defaultLang.isNotEmpty &&
-          defaultAddress != null && defaultAddress.isNotEmpty) {
-        await prefs.setString('lat', defaultLat);
-        await prefs.setString('lang', defaultLang);
-        await prefs.setString('Address', defaultAddress);
-        await prefs.setInt('addressId', defaultId);
-        _getAddress();
-        return;
+    // Home must never demand storage/GPS permission before its first frame.
+    // Use a selected/default location first, and query GPS only when permission
+    // has already been granted for a location-dependent feature.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final defaultId = prefs.getInt(Preferences.default_address_id);
+      if (defaultId != null && defaultId != 0) {
+        final lat = prefs.getString(Preferences.default_lat);
+        final lng = prefs.getString(Preferences.default_lang);
+        final address = prefs.getString(Preferences.default_Address);
+        if (lat != null && lat.isNotEmpty && lng != null &&
+            lng.isNotEmpty && address != null && address.isNotEmpty) {
+          await prefs.setString('lat', lat);
+          await prefs.setString('lang', lng);
+          await prefs.setString('Address', address);
+          await prefs.setInt('addressId', defaultId);
+          if (mounted) await _getAddress();
+          return;
+        }
       }
-    }
-    String? checkLat = prefs.getString('lat');
-    if (checkLat != "" && checkLat != null) {
-      _getAddress();
-    } else {
-      _locationData = await location.getLocation();
-      setState(
-        () {
-          prefs.setString('lat', _locationData.latitude.toString());
-          prefs.setString('lang', _locationData.longitude.toString());
-          print("${_locationData.latitude.toString()}  ${_locationData.longitude.toString()}");
-        },
-      );
-      _getAddress();
-    }
-    // First time or no default address: show prompt once for logged-in users
-    if (mounted &&
-        SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) &&
-        !SharedPreferenceHelper.getBoolean(Preferences.default_address_modal_seen)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showDefaultAddressModal(context);
-      });
+
+      final cachedLat = prefs.getString('lat');
+      final cachedLng = prefs.getString('lang');
+      if ((cachedLat == null || cachedLat.isEmpty ||
+           cachedLng == null || cachedLng.isEmpty) &&
+          (await Permission.location.status).isGranted) {
+        try {
+          final current = await location.getLocation().timeout(
+              const Duration(seconds: 7));
+          if (current.latitude != null && current.longitude != null) {
+            await prefs.setString('lat', current.latitude.toString());
+            await prefs.setString('lang', current.longitude.toString());
+            await prefs.setString('latLive', current.latitude.toString());
+            await prefs.setString('langLive', current.longitude.toString());
+          }
+        } catch (_) {
+          // No coordinates is a valid state when GPS is slow or unavailable.
+          // Continue to the address selector, not a spinner or red screen.
+        }
+      }
+      if (mounted) await _getAddress();
+
+      if (mounted &&
+          SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) &&
+          !SharedPreferenceHelper.getBoolean(
+              Preferences.default_address_modal_seen)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showDefaultAddressModal(context);
+        });
+      }
+    } catch (_) {
+      if (mounted) await _getAddress();
     }
   }
 
@@ -306,27 +335,40 @@ class _HomeState extends State<Home> {
     );
   }
 
-  getLiveLocation() async {
-    _locationData = await location.getLocation();
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('latLive', _locationData.latitude.toString());
-    prefs.setString('langLive', _locationData.longitude.toString());
-    print("Live Location Lat & Long ==   ${_locationData.latitude.toString()}  ${_locationData.longitude.toString()}");
+  Future<void> getLiveLocation() async {
+    // Optional live location refresh, only when location access is already
+    // granted. No latitude/longitude, user IDs or tokens are logged.
+    if (!(await Permission.location.status).isGranted) return;
+    try {
+      final current = await location.getLocation().timeout(
+          const Duration(seconds: 7));
+      if (current.latitude == null || current.longitude == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('latLive', current.latitude.toString());
+      await prefs.setString('langLive', current.longitude.toString());
+    } catch (_) {
+      // A denied/timed-out live refresh must not block Patient Home.
+    }
   }
 
-  _getAddress() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(
-      () {
-        _address = prefs.getString('Address');
-        _lat = prefs.getString('lat');
-        _lang = prefs.getString('lang');
-        callApiDoctorList();
-        callApiProviders();
-        callApiTreatment();
-        callApIDisplayOffer();
-      },
-    );
+  Future<void> _getAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final latitude = prefs.getString('lat');
+    final longitude = prefs.getString('lang');
+    setState(() {
+      _address = prefs.getString('Address');
+      _lat = latitude;
+      _lang = longitude;
+    });
+    // Avoid requesting a nearby-provider lookup with empty coordinates.
+    if (latitude != null && latitude.isNotEmpty &&
+        longitude != null && longitude.isNotEmpty) {
+      callApiDoctorList();
+      callApiProviders();
+    }
+    callApiTreatment();
+    callApIDisplayOffer();
   }
 
   _passDetail() async {
@@ -2358,11 +2400,11 @@ class _HomeState extends State<Home> {
           });
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2388,11 +2430,11 @@ class _HomeState extends State<Home> {
           pharmacyList.addAll(list);
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2439,11 +2481,11 @@ class _HomeState extends State<Home> {
         });
         doctorList.addAll(list);
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2827,8 +2869,8 @@ class _HomeState extends State<Home> {
         });
         providerList.addAll(list);
       });
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2884,11 +2926,11 @@ class _HomeState extends State<Home> {
         image = response.fullImage;
         _passDetail();
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2911,11 +2953,11 @@ class _HomeState extends State<Home> {
         }
         banner.addAll(response.data!);
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2940,11 +2982,11 @@ class _HomeState extends State<Home> {
         doctorList.clear();
         callApiDoctorList();
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2961,38 +3003,45 @@ class _HomeState extends State<Home> {
         loading = false;
         offerList.addAll(response.data!);
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
   }
 
   Future<BaseModel<Appointments>> callApiAppointment() async {
-    Appointments response;
-    if (!_hasAuthToken()) {
-      return BaseModel();
+    if (!mounted || !_hasAuthToken() || _appointmentsInFlight) {
+      return BaseModel<Appointments>();
     }
-    setState(() {
-      loading = true;
-    });
+    _appointmentsInFlight = true;
     try {
-      response = await RestClient(RetroApi().dioData()).appointmentsRequest();
-      setState(() {
-        loading = false;
-        upcomingAppointment.addAll(response.data!.upcomingAppointment!);
-      });
-    } catch (error, stacktrace) {
-      setState(() {
-        loading = false;
-      });
-      print("Exception occur: $error stackTrace: $stacktrace");
-      return BaseModel()..setException(ServerError.withError(error: error));
+      final response = await RestClient(RetroApi().dioData())
+          .appointmentsRequest();
+      if (!mounted || !_hasAuthToken()) {
+        return BaseModel<Appointments>()..data = response;
+      }
+      if (response.success == true) {
+        setState(() {
+          // Periodic refresh replaces existing items. Appending here used
+          // to duplicate the same appointment every 10 minutes.
+          upcomingAppointment
+            ..clear()
+            ..addAll(response.data?.upcomingAppointment ??
+                <UpcomingAppointment>[]);
+        });
+      }
+      return BaseModel<Appointments>()..data = response;
+    } catch (error) {
+      // A failed refresh retains already loaded appointments.
+      return BaseModel<Appointments>()
+        ..setException(ServerError.withError(error: error));
+    } finally {
+      _appointmentsInFlight = false;
     }
-    return BaseModel()..data = response;
   }
 
   onSearchTextChanged(String text) async {
@@ -3082,11 +3131,11 @@ class _HomeState extends State<Home> {
           }
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
