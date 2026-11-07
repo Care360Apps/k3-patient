@@ -19,7 +19,7 @@ const String SPANISH = "es";
 const String ARABIC = "ar";
 
 Future<Locale> setLocale(String languageCode) async {
-  SharedPreferenceHelper.setString(Preferences.current_language_code, languageCode);
+  await SharedPreferenceHelper.setString(Preferences.current_language_code, languageCode);
   return _locale(languageCode);
 }
 
