@@ -15,6 +15,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import '../../brand/care360_partner_showcase.dart';
 import '../../brand/care360_nearby_care_hero.dart';
+import '../../brand/care360_patient_service_grid.dart';
 import '../../workforce/workforce_landing.dart';
 import '../../brand/care360_guide_shortcut.dart';
 import '../../brand/care360_horizontal_cards.dart';
@@ -1381,16 +1382,21 @@ class _HomeState extends State<Home> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                        Care360NearbyCareHero(
-                          onExplore: () => Navigator.pushNamed(context, 'MapView'),
-                        ),
-                        Care360WorkforceHomeTile(
-                          onTap: () => Navigator.push(
+                        Care360PatientServiceGrid(
+                          onHospitals: () => Navigator.pushNamed(context, 'Hospitals'),
+                          onPharmacies: () => Navigator.pushNamed(context, 'AllPharamacy'),
+                          onDoctors: () => Navigator.pushNamed(context, 'Treatment'),
+                          onProviders: () => Navigator.pushNamed(context, 'Providers'),
+                          onLabs: () => Navigator.pushNamed(context, 'Laboratory'),
+                          onWorkforce: () => Navigator.push(
                             context,
                             MaterialPageRoute<void>(
                               builder: (_) => const Care360WorkforceLanding(),
                             ),
                           ),
+                        ),
+                        Care360NearbyCareHero(
+                          onExplore: () => Navigator.pushNamed(context, 'MapView'),
                         ),
                         if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
                             SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null) ...[
