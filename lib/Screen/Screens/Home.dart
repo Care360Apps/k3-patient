@@ -106,6 +106,7 @@ class _HomeState extends State<Home> {
 
   late HomeProvider homeProvider;
   Timer? _appointmentRefreshTimer;
+  bool _appointmentsInFlight = false;
 
   @override
   void dispose() {
@@ -3013,27 +3014,34 @@ class _HomeState extends State<Home> {
   }
 
   Future<BaseModel<Appointments>> callApiAppointment() async {
-    Appointments response;
-    if (!_hasAuthToken()) {
-      return BaseModel();
+    if (!mounted || !_hasAuthToken() || _appointmentsInFlight) {
+      return BaseModel<Appointments>();
     }
-    setState(() {
-      loading = true;
-    });
+    _appointmentsInFlight = true;
     try {
-      response = await RestClient(RetroApi().dioData()).appointmentsRequest();
-      setState(() {
-        loading = false;
-        upcomingAppointment.addAll(response.data!.upcomingAppointment!);
-      });
+      final response = await RestClient(RetroApi().dioData())
+          .appointmentsRequest();
+      if (!mounted || !_hasAuthToken()) {
+        return BaseModel<Appointments>()..data = response;
+      }
+      if (response.success == true) {
+        setState(() {
+          // Periodic refresh replaces existing items. Appending here used
+          // to duplicate the same appointment every 10 minutes.
+          upcomingAppointment
+            ..clear()
+            ..addAll(response.data?.upcomingAppointment ??
+                <UpcomingAppointment>[]);
+        });
+      }
+      return BaseModel<Appointments>()..data = response;
     } catch (error) {
-      setState(() {
-        loading = false;
-      });
-      // Never log exception bodies containing patient data, query URLs or tokens.
-      return BaseModel()..setException(ServerError.withError(error: error));
+      // A failed refresh retains already loaded appointments.
+      return BaseModel<Appointments>()
+        ..setException(ServerError.withError(error: error));
+    } finally {
+      _appointmentsInFlight = false;
     }
-    return BaseModel()..data = response;
   }
 
   onSearchTextChanged(String text) async {
