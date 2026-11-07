@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../ai/care360_guide_screen.dart';
+import '../localization/care360_language_picker.dart';
 import '../diagnostics/k3_startup_diagnostics.dart';
 
 /// A design-only walkthrough, compiled into the isolated synthetic debug APK.
@@ -16,6 +18,18 @@ class Care360OfflineDashboard extends StatefulWidget {
 class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
   int _tab = 0;
   String? _category;
+  String _reviewLanguage = 'en';
+
+  String _previewText(String key) {
+    final copy = <String, Map<String, String>>{
+      'Dashboard': {'ha': 'Shafin farko', 'ig': 'Ụlọ', 'yo': 'Ilé', 'fr': 'Accueil'},
+      'Explore care': {'ha': 'Bincika kulawa', 'ig': 'Chọpụta nlekọta', 'yo': 'Ṣàwárí ìtọ́jú', 'fr': 'Explorer les soins'},
+      'Appointments': {'ha': 'Alƙawura', 'ig': 'Oge nhọpụta', 'yo': 'Àwọn ìpàdé', 'fr': 'Rendez-vous'},
+      'My profile': {'ha': 'Bayanan mutum', 'ig': 'Profaịlụ m', 'yo': 'Àkọọ́lẹ̀ mi', 'fr': 'Mon profil'},
+      'Better care, closer to you.': {'ha': 'Ingantacciyar kulawa kusa da kai.', 'ig': 'Nlekọta ka mma dị gị nso.', 'yo': 'Ìtọ́jú tó dára, sún mọ́ ọ.', 'fr': 'De meilleurs soins, plus près de vous.'},
+    };
+    return copy[key]?[_reviewLanguage] ?? key;
+  }
 
   static const _ink = Color(0xFF132D47);
   static const _green = Color(0xFF08785E);
@@ -33,6 +47,8 @@ class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
         'Home visits, video, audio and chat'),
     _Service('MindCheck', Icons.favorite_border,
         'Everyday mental wellbeing tools'),
+    _Service('Care360 Guide', Icons.auto_awesome_outlined,
+        'Safe help with navigating the app'),
     _Service('Languages', Icons.translate_outlined,
         'English, Hausa, Igbo, Yoruba, French'),
   ];
@@ -71,9 +87,22 @@ class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
       'Yoruba',
       'French',
     ],
+    'Care360 Guide': [
+      'Getting started',
+      'Appointment booking',
+      'Profile and settings',
+      'Partner services',
+    ],
   };
 
   void _open(String category) {
+    if (category == 'Care360 Guide') {
+      Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => Care360GuideScreen(
+          allowRemote: false, languageCode: _reviewLanguage),
+      ));
+      return;
+    }
     setState(() {
       _category = category;
       _tab = 1;
@@ -98,7 +127,8 @@ class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
         ),
       );
     }
-    final title = _category ?? const ['Dashboard', 'Explore care', 'Appointments', 'My profile'][_tab];
+    final title = _category ?? _previewText(
+        const ['Dashboard', 'Explore care', 'Appointments', 'My profile'][_tab]);
     return Scaffold(
       backgroundColor: _background,
       appBar: AppBar(
@@ -108,6 +138,18 @@ class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
         elevation: 0,
         titleSpacing: 12,
         title: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Center(child: Care360LanguagePicker(
+              languageCode: _reviewLanguage,
+              previewOnly: true,
+              onSelected: (language) async {
+                if (mounted) setState(() => _reviewLanguage = language);
+              },
+            )),
+          ),
+        ],
         leading: _category != null
             ? IconButton(
                 tooltip: 'Back to explore',
@@ -175,17 +217,18 @@ class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
               ),
               borderRadius: BorderRadius.circular(22),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Care360 Patient', style: TextStyle(
+                const Text('Care360 Patient', style: TextStyle(
                   color: Colors.white70, fontSize: 14)),
-                SizedBox(height: 10),
-                Text('Better care, closer to you.',
-                    style: TextStyle(color: Colors.white,
+                const SizedBox(height: 10),
+                Text(_previewText('Better care, closer to you.'),
+                    key: const Key('care360-preview-headline'),
+                    style: const TextStyle(color: Colors.white,
                       fontWeight: FontWeight.w800, fontSize: 25, height: 1.16)),
-                SizedBox(height: 12),
-                Text('Discover how patients can connect with care across Nigeria.',
+                const SizedBox(height: 12),
+                const Text('Discover how patients can connect with care across Nigeria.',
                     style: TextStyle(color: Colors.white, height: 1.45)),
               ],
             ),
@@ -292,6 +335,20 @@ class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
             ],
           ),
         ),
+        if (category == 'Languages') ...[
+          const SizedBox(height: 14),
+          Care360LanguagePicker(
+            languageCode: _reviewLanguage,
+            previewOnly: true,
+            onSelected: (language) async {
+              if (mounted) setState(() => _reviewLanguage = language);
+            },
+          ),
+          const SizedBox(height: 8),
+          const Text('Preview language selection. Clinical wording remains in English '
+            'until professionally reviewed.',
+            style: TextStyle(fontSize: 12, color: _muted)),
+        ],
         const SizedBox(height: 20),
         const Text('Patient experience to review',
             style: TextStyle(color: _ink, fontSize: 18, fontWeight: FontWeight.w700)),
