@@ -1,4 +1,6 @@
 import '../../preview/care360_offline_dashboard.dart';
+import '../../localization/care360_language_picker.dart';
+import '../../main.dart';
 import '../../diagnostics/k3_startup_diagnostics.dart';
 import '../../brand/care360_entry.dart';
 import '../../api/patient_optional_settings.dart';
@@ -88,6 +90,20 @@ class _SignInState extends State<SignIn> {
       child: Form(
         key: formKey,
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Care360LanguagePicker(
+                languageCode: Localizations.localeOf(context).languageCode,
+                onSelected: (language) async {
+                  final selected = await setLocale(language);
+                  if (!mounted) return;
+                  MyApp.setLocale(context, selected);
+                },
+              ),
+            ),
+          ),
           if (Care360ConnectionError.isOfflinePreview(Apis.baseUrl))
             Container(
               margin: const EdgeInsets.fromLTRB(20, 6, 20, 12),
