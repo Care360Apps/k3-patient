@@ -13,6 +13,7 @@ class _Care360NearbyPreviewState extends State<Care360NearbyPreview> {
   static const _navy = Color(0xFF112E45);
   static const _teal = Color(0xFF08785E);
   String _category = 'All';
+  String _service = 'All services';
   bool _acceptingOnly = false;
   int _selected = 0;
 
@@ -31,8 +32,12 @@ class _Care360NearbyPreviewState extends State<Care360NearbyPreview> {
     final indices = <int>[];
     for (var i = 0; i < _examples.length; i++) {
       final p = _examples[i];
+      final serviceMatches = _service == 'All services' ||
+          (_service == 'Home visits' && p.type == 'Care Provider') ||
+          (_service == 'Virtual care' &&
+              (p.type == 'Doctor' || p.type == 'Care Provider'));
       if ((_category == 'All' || _category == p.type) &&
-          (!_acceptingOnly || p.accepting)) {
+          (!_acceptingOnly || p.accepting) && serviceMatches) {
         indices.add(i);
       }
     }
@@ -123,6 +128,25 @@ class _Care360NearbyPreviewState extends State<Care360NearbyPreview> {
                   ),
               ]),
             ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                for (final service in const [
+                  'All services', 'Home visits', 'Virtual care'
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      key: Key('sample-service-${service.toLowerCase().replaceAll(' ', '-')}'),
+                      selected: _service == service,
+                      label: Text(service),
+                      onSelected: (_) => setState(() => _service = service),
+                    ),
+                  ),
+              ]),
+            ),
+            const SizedBox(height: 6),
             SwitchListTile.adaptive(
               key: const Key('sample-accepting-requests'),
               value: _acceptingOnly,
