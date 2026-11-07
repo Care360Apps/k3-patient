@@ -63,6 +63,35 @@ void main() {
     expect(opened, second);
   });
 
+  testWidgets('Equivalent Parent Home rebuild does not restart slide timer',
+      (tester) async {
+    final refresh = ValueNotifier<int>(0);
+    addTearDown(refresh.dispose);
+    List<Care360PartnerSlide> campaigns() => [
+      Care360PartnerSlide(title: 'Sponsor One',
+        subtitle: 'Campaign one', url: Uri.https('one.example.org', '/'),
+        sponsored: true),
+      Care360PartnerSlide(title: 'Sponsor Two',
+        subtitle: 'Campaign two', url: Uri.https('two.example.org', '/'),
+        sponsored: true),
+    ];
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: ValueListenableBuilder<int>(
+        valueListenable: refresh,
+        builder: (_, __, ___) => Care360PartnerShowcase(
+          slides: campaigns(), // A new list on each rebuild.
+        ),
+      )),
+    ));
+    expect(find.text('1/3'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    refresh.value++;
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.text('2/3'), findsOneWidget);
+  });
+
   test('Reject unsafe partner redirects and external image destinations', () {
     for (final url in [
       'http://partner.example.org', 'javascript:alert(1)',
@@ -81,6 +110,7 @@ void main() {
     expect('Care360PartnerShowcase('.allMatches(home).length, 1);
     expect(home.contains('Care360PartnerSlide.safeDestination(data.link)'), isTrue);
     expect(home.contains('sponsored: data.isSponsored'), isTrue);
+    expect(home.contains('if (data.status != 1) return null;'), isTrue);
     expect(home.contains('banner.addAll(response.data!)'), isFalse);
     expect(home.contains('/// looking For ///'), isFalse);
     expect(home.contains(
