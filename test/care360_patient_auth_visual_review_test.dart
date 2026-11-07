@@ -69,7 +69,7 @@ void main() {
     expect(code, contains("PhoneVerification(id: idValue)"));
     expect(code, contains("Preferences.auth_token"));
     expect(code, isNot(contains('badCertificateCallback')));
-    expect(code, isNot(contains('print("Exception occur: $error')));
+    expect(code, isNot(contains('print("Exception occur: \$error')));
   });
 
   test('Patient registration is still present with real branding and original services',
@@ -83,7 +83,7 @@ void main() {
     expect(code, contains('PhoneVerification(id: id)'));
     expect(code, contains("Navigator.pushReplacementNamed(context, 'SignIn')"));
     expect(code, contains('const CnuAttribution()'));
-    expect(code, isNot(contains('Exception occur: $error')));
+    expect(code, isNot(contains('Exception occur: \$error')));
   });
 
   testWidgets('Patient onboarding retains three unique African care photos',
