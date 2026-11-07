@@ -140,6 +140,7 @@ class _HomeState extends State<Home> {
       Future.delayed(
         const Duration(seconds: 5),
         () {
+          if (!mounted || !_hasAuthToken()) return;
           final currentUser = FirebaseAuth.instance.currentUser;
           final pushToken = SharedPreferenceHelper.getString(Preferences.device_token);
           if (currentUser == null || pushToken == null || pushToken == "N_A") {
