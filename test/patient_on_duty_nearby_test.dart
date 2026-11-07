@@ -12,6 +12,8 @@ void main() {
     'lng': 7.87,
     'distance_km': 1.6,
     'accepting_requests': true,
+    'on_duty_until': DateTime.now().toUtc()
+        .add(const Duration(hours: 1)).toIso8601String(),
   };
 
   test('accepts a bounded published-area response without medical information', () {
@@ -20,6 +22,7 @@ void main() {
     expect(p!.id, 12);
     expect(p.role, 'provider');
     expect(p.distanceKm, 1.6);
+    expect(p.isStillAccepting, isTrue);
   });
 
   test('rejects unconfirmed, malformed or inappropriate professional records', () {
@@ -32,6 +35,9 @@ void main() {
       {'lng': 194},
       {'distance_km': -1},
       {'distance_km': double.nan},
+      {'on_duty_until': 'not-a-date'},
+      {'on_duty_until': DateTime.now().toUtc()
+          .subtract(const Duration(minutes: 1)).toIso8601String()},
     ]) {
       expect(NearbyOnDutyProfessional.fromJson({...valid, ...change}), isNull);
     }
