@@ -1356,6 +1356,48 @@ class _HomeState extends State<Home> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                          child: Material(
+                            color: const Color(0xFF123E4D),
+                            borderRadius: BorderRadius.circular(16),
+                            child: InkWell(
+                              key: const Key('home-find-nearby-care'),
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () => Navigator.pushNamed(context, 'MapView'),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.map_outlined,
+                                        color: Colors.white, size: 27),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Find nearby care',
+                                            style: TextStyle(color: Colors.white,
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w800)),
+                                          SizedBox(height: 3),
+                                          Text('Doctors, providers and facilities close to your chosen area',
+                                            style: TextStyle(
+                                              color: Color(0xFFE1F1EE),
+                                              fontSize: 12, height: 1.35)),
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                      color: Colors.white, size: 17),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                         if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
                             SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null)
                           const Care360PartnerShowcase(),
