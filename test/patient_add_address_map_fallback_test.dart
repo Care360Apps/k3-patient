@@ -14,7 +14,8 @@ void main() {
     expect(add, contains('selectLang = point.longitude'));
     expect(add, contains('_initialCameraPosition = point'));
     expect(add, contains('Location selected. Enter the address'));
-    expect(add, contains('Search unavailable. Tap the map'));
+    expect(add, contains('showCare360PlaceSearch(context)'));
+    expect(add, isNot(contains('PlacesAutocomplete.show')));
     expect(add, contains('if (selectLat != 0.0 && selectLang != 0.0)'));
     expect(add, contains('callApiAddAddress()'));
   });
@@ -31,9 +32,16 @@ void main() {
   test('No backend or Google credential is embedded as a fallback', () {
     final add = File('lib/Screen/Location/AddLocation.dart').readAsStringSync();
 
-    expect(add, contains('Preferences.map_key'));
-    expect(add, isNot(contains("AIza")));
-    expect(add, isNot(contains('K3_STAGING_MAPS_ANDROID_API_KEY')));
-    expect(add, isNot(contains('http://maps.googleapis.com')));
+    final search = File('lib/Screen/Location/care360_place_search.dart')
+        .readAsStringSync();
+    expect(add, isNot(contains('Preferences.map_key')));
+    expect(add, isNot(contains('GoogleMapsPlaces(')));
+    expect(add, isNot(contains('PlacesAutocomplete.show')));
+    expect(search, contains('RetroApi().dioData()'));
+    expect(search, contains('places/autocomplete'));
+    expect(search, contains('places/details'));
+    expect(search, isNot(contains("AIza")));
+    expect(search, isNot(contains('K3_STAGING_MAPS_ANDROID_API_KEY')));
+    expect(search, isNot(contains('http://maps.googleapis.com')));
   });
 }
