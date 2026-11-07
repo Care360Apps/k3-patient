@@ -91,6 +91,56 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
   bool _foreground = true;
   bool _reducedMotion = false;
 
+  // Nonclinical interface labels; medical, privacy and sponsor terms require
+  // native-speaker acceptance before the product is marketed as fully localized.
+  static const Map<String, Map<String, String>> _labels = {
+    'en': {
+      'sponsored': 'Sponsored',
+      'partner': 'Partner',
+      'explore': 'Explore service',
+      'previous': 'Previous partner',
+      'next': 'Next partner',
+      'guide': 'Care360 Guide · app help',
+    },
+    'ha': {
+      'sponsored': 'Talla',
+      'partner': 'Abokin hulɗa',
+      'explore': 'Duba sabis',
+      'previous': 'Na baya',
+      'next': 'Na gaba',
+      'guide': 'Jagorar Care360 · taimakon manhaja',
+    },
+    'ig': {
+      'sponsored': 'Mgbasa ozi',
+      'partner': 'Onye mmekọ',
+      'explore': 'Lelee ọrụ',
+      'previous': 'Nke gara aga',
+      'next': 'Nke na-esote',
+      'guide': 'Ntuziaka Care360 · enyemaka',
+    },
+    'yo': {
+      'sponsored': 'Ìpolówó',
+      'partner': 'Alábàáṣiṣẹ́pọ̀',
+      'explore': 'Wo iṣẹ́ náà',
+      'previous': 'Tẹ́lẹ̀',
+      'next': 'Tó kàn',
+      'guide': 'Ìtọ́sọ́nà Care360 · ìrànlọ́wọ́',
+    },
+    'fr': {
+      'sponsored': 'Sponsorisé',
+      'partner': 'Partenaire',
+      'explore': 'Découvrir le service',
+      'previous': 'Partenaire précédent',
+      'next': 'Partenaire suivant',
+      'guide': 'Guide Care360 · aide',
+    },
+  };
+
+  String _label(String key) {
+    final language = Localizations.localeOf(context).languageCode;
+    return _labels[language]?[key] ?? _labels['en']![key]!;
+  }
+
   List<Care360PartnerSlide> get _slides => [
         Care360PartnerSlide(
           title: 'MindCheck',
@@ -226,7 +276,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
           onTap: () => _openPartner(slide),
           child: Semantics(
             button: true,
-            label: '${slide.sponsored ? 'Sponsored' : 'Partner'}: '
+            label: '${_label(slide.sponsored ? 'sponsored' : 'partner')}: '
                 '${slide.title}. Opens external website.',
             child: Container(
               decoration: BoxDecoration(
@@ -251,7 +301,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 9, vertical: 5),
-                        child: Text(slide.sponsored ? 'Sponsored' : 'Partner',
+                        child: Text(_label(slide.sponsored ? 'sponsored' : 'partner'),
                           style: TextStyle(fontSize: 11,
                             fontWeight: FontWeight.w800, color: accent)),
                       ),
@@ -269,7 +319,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
                         color: Color(0xFF3A5565))),
                     const SizedBox(height: 10),
                     Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('Explore service',
+                      Text(_label('explore'),
                         style: TextStyle(fontWeight: FontWeight.w700,
                           fontSize: 12, color: accent)),
                       const SizedBox(width: 5),
@@ -349,7 +399,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
         const SizedBox(height: 7),
         Row(children: [
           IconButton(
-            tooltip: 'Previous partner',
+            tooltip: _label('previous'),
             icon: const Icon(Icons.chevron_left),
             onPressed: slides.length > 1
                 ? () => _goTo((_current - 1 + slides.length) % slides.length)
@@ -381,7 +431,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
                   style: const TextStyle(fontSize: 12,
                     color: Color(0xFF47606B)))),
           IconButton(
-            tooltip: 'Next partner',
+            tooltip: _label('next'),
             icon: const Icon(Icons.chevron_right),
             onPressed: slides.length > 1
                 ? () => _goTo((_current + 1) % slides.length)
@@ -393,7 +443,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
           child: TextButton.icon(
             onPressed: _openLocalGuide,
             icon: const Icon(Icons.help_outline, size: 16),
-            label: const Text('Care360 Guide · app help'),
+            label: Text(_label('guide')),
           ),
         ),
       ]),
