@@ -80,6 +80,7 @@ import 'localization/care360_framework_locale_fallback.dart';
 import 'localization/localization_constant.dart';
 import 'localization/localization_constant.dart' as care360_locale;
 import 'brand/care360_global_language.dart';
+import 'brand/care360_first_language.dart';
 import 'model/detail_setting_model.dart';
 import 'package:doctro_patient/firebase_options.dart';
 import 'package:doctro_patient/api/patient_optional_settings.dart';
@@ -494,8 +495,25 @@ class _MyAppState extends State<MyApp> {
                 final isLoggedIn = SharedPreferenceHelper.getBoolean(Preferences.is_logged_in);
 
                 if (!hasSeenOnboarding) {
-                  k3ReportInitialRoute('onboarding');
-                  return const OnboardingScreen();
+                  // First-time users see the real Care360-branded selector
+                  // before onboarding. Returning users keep their routes.
+                  k3ReportInitialRoute('first-language');
+                  return Care360FirstLanguageScreen(
+                    initialLanguage:
+                        (_locale ?? const Locale(ENGLISH, 'US')).languageCode,
+                    onContinue: (code) async {
+                      final selectedLocale = await care360_locale.setLocale(code);
+                      if (!context.mounted) return;
+                      final navigator = Navigator.of(context);
+                      setLocale(selectedLocale);
+                      if (!context.mounted) return;
+                      navigator.pushReplacement<void, void>(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const OnboardingScreen(),
+                        ),
+                      );
+                    },
+                  );
                 }
 
                 k3ReportInitialRoute(isLoggedIn ? 'home' : 'sign-in');

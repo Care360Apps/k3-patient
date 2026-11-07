@@ -121,9 +121,9 @@ dependency_overrides:
 
 flutter_native_splash:
   color: "#FFFFFF"
-  image: assets/images/appicon.png
-  color_dark: "#1a1a1a"
-  image_dark: assets/images/appicon.png
+  image: assets/images/care360_splash_brand.png
+  color_dark: "#123E4D"
+  image_dark: assets/images/care360_splash_brand.png
   android: true
   ios: true
   web: true
@@ -131,10 +131,10 @@ flutter_native_splash:
   ios_content_mode: center
 
   android_12:
-    image: assets/images/appicon.png
+    image: assets/images/care360_splash_brand.png
     color: "#FFFFFF"
     icon_background_color: "#FFFFFF"
-    color_android: "#42a5f5"
+    color_android: "#087D76"
 
 flutter_icons:
   image_path: "assets/images/appicon.png"
