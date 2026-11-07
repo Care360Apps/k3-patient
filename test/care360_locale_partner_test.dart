@@ -63,6 +63,27 @@ void main() {
     expect(opened, second);
   });
 
+  testWidgets('Reduced-motion preference disables sponsor autoplay',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(home: MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: Scaffold(body: Care360PartnerShowcase(
+        slides: [Care360PartnerSlide(
+          title: 'Synthetic Sponsor',
+          subtitle: 'Test placement only',
+          url: Uri.parse('https://example.org/'),
+          sponsored: true,
+        )],
+      )),
+    )));
+    expect(find.text('1/2'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 11));
+    expect(find.text('1/2'), findsOneWidget);
+    await tester.tap(find.byTooltip('Next partner'));
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.text('2/2'), findsOneWidget);
+  });
+
   test('Partner links reject unsafe destinations and authenticated data', () {
     for (final url in [
       'http://partner.example.org', 'javascript:alert(1)',
