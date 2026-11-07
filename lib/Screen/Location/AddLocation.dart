@@ -91,6 +91,27 @@ class _AddLocationState extends State<AddLocation> {
     _controller = _cnTlr;
   }
 
+  /// Selecting a map point must work even when legacy Places search has
+  /// no separate web-service key. Do not invent a formatted street address:
+  /// the patient enters the address and label before confirming.
+  void _selectPointOnMap(LatLng point) {
+    if (!mounted) return;
+    setState(() {
+      selectLat = point.latitude;
+      selectLang = point.longitude;
+      _initialCameraPosition = point;
+      address = '';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Location selected. Enter the address and label below to save.',
+        ),
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
   Set<Marker> _createMarker() {
     return <Marker>{
       Marker(
@@ -137,6 +158,7 @@ class _AddLocationState extends State<AddLocation> {
                         mapType: MapType.normal,
                         initialCameraPosition: CameraPosition(target: _initialCameraPosition!, zoom: 13),
                         onMapCreated: _onMapCreated,
+                        onTap: _selectPointOnMap,
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
@@ -180,7 +202,7 @@ class _AddLocationState extends State<AddLocation> {
                                     final mapKey = await _resolveMapKey();
                                     if (!_hasValidMapKey(mapKey)) {
                                       Fluttertoast.showToast(
-                                        msg: "Google Maps API key is missing",
+                                        msg: "Search unavailable. Tap the map to select a location, then enter its address.",
                                         toastLength: Toast.LENGTH_SHORT,
                                         gravity: ToastGravity.BOTTOM,
                                       );
@@ -199,7 +221,7 @@ class _AddLocationState extends State<AddLocation> {
                                     if (p == null) {
                                       return;
                                     }
-                                    displayPrediction(p);
+                                    await displayPrediction(p);
                                     setState(
                                       () {
                                         address = '${p!.description}';
@@ -259,7 +281,8 @@ class _AddLocationState extends State<AddLocation> {
                                         child: TextFormField(
                                           controller: _textAddressLabel,
                                           textCapitalization: TextCapitalization.words,
-                                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9]'))],
+                                          // Preserve Nigerian place names and spaces, including
+                                          // Yoruba/Igbo diacritics. Validate on submit instead.
                                           decoration: InputDecoration(
                                             contentPadding: EdgeInsets.only(left: 10),
                                             hintText: getTranslated(context, AppString.addLocation_attachLabel_hint).toString(),
@@ -274,7 +297,7 @@ class _AddLocationState extends State<AddLocation> {
                                             fillColor: Palette.white,
                                           ),
                                           validator: (String? value) {
-                                            if (value!.isEmpty) {
+                                            if (value == null || value.trim().isEmpty) {
                                               return getTranslated(context, AppString.addLocation_attachLabel_validator).toString();
                                             }
                                             return null;
@@ -306,12 +329,12 @@ class _AddLocationState extends State<AddLocation> {
                                         child: TextFormField(
                                           controller: _textFullAddress,
                                           keyboardType: TextInputType.text,
-                                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9,]'))],
+                                          // Allow multiword, Unicode and numbered street addresses.
                                           decoration: InputDecoration(contentPadding: EdgeInsets.only(left: 10), hintText: getTranslated(context, AppString.addLocation_address_hint).toString(), border: InputBorder.none),
                                           maxLines: 3,
                                           style: TextStyle(fontSize: 16, color: Palette.dark_grey),
                                           validator: (String? value) {
-                                            if (value!.isEmpty) {
+                                            if (value == null || value.trim().isEmpty) {
                                               return getTranslated(context, AppString.addLocation_address_validator).toString();
                                             }
                                             return null;
