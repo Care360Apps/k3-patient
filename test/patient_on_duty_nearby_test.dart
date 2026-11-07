@@ -51,6 +51,11 @@ void main() {
     expect(home, contains("Key('home-find-nearby-care')"));
     expect(home, contains("Navigator.pushNamed(context, 'MapView')"));
     expect(map, contains("Key('nearby-on-duty-filter')"));
+    expect(map, contains("Key('nearby-service-\$key')"));
+    expect(map, contains("Home visits"));
+    expect(map, contains("Virtual care"));
+    expect(map, contains("visitType: _selectedVisitType"));
+    expect(service, contains("'visit_type': visitType"));
     expect(map, contains('Future<void> _toggleOnDuty(bool enabled) async'));
     expect(map, contains("if (enabled) await _fetchOnDuty()"));
     expect(map, contains('Accepting requests'));
