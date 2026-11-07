@@ -83,7 +83,7 @@ class _Care360WorkforceLandingState extends State<Care360WorkforceLanding> {
 
   Future<void> _loadPilotAvailability() async {
     if (!widget.pilotEnabled) {
-      if (mounted) setState(() => _checked = true);
+      _checked = true;
       return;
     }
     final available = await (widget.api ?? WorkforceApi()).applicationsOpen();
