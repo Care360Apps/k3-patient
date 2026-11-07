@@ -1385,7 +1385,7 @@ class _HomeState extends State<Home> {
                         Care360PatientServiceGrid(
                           onHospitals: () => Navigator.pushNamed(context, 'Hospitals'),
                           onPharmacies: () => Navigator.pushNamed(context, 'AllPharamacy'),
-                          onDoctors: () => Navigator.pushNamed(context, 'Treatment'),
+                          onDoctors: () => Navigator.pushNamed(context, 'Specialist'),
                           onProviders: () => Navigator.pushNamed(context, 'Providers'),
                           onLabs: () => Navigator.pushNamed(context, 'Laboratory'),
                           onWorkforce: () => Navigator.push(
