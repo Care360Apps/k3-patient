@@ -117,10 +117,28 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
     _resetTimer();
   }
 
+  bool _sameSlides(
+      List<Care360PartnerSlide> previous, List<Care360PartnerSlide> current) {
+    if (identical(previous, current)) return true;
+    if (previous.length != current.length) return false;
+    for (var i = 0; i < previous.length; i++) {
+      final a = previous[i];
+      final b = current[i];
+      if (a.title != b.title || a.subtitle != b.subtitle ||
+          a.url != b.url || a.imageUrl != b.imageUrl ||
+          a.sponsored != b.sponsored) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @override
   void didUpdateWidget(covariant Care360PartnerShowcase oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.slides != widget.slides ||
+    // Parent/dashboard rebuilds often allocate an equivalent new List.
+    // Do not restart the 10-second timer unless content actually changed.
+    if (!_sameSlides(oldWidget.slides, widget.slides) ||
         oldWidget.interval != widget.interval) {
       final count = _slides.length;
       if (_current >= count) {
