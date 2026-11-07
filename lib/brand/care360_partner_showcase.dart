@@ -67,7 +67,7 @@ class Care360PartnerShowcase extends StatefulWidget {
     super.key,
     this.slides = const [],
     this.openExternal,
-    this.interval = const Duration(seconds: 5),
+    this.interval = const Duration(seconds: 10),
   });
 
   final List<Care360PartnerSlide> slides;
