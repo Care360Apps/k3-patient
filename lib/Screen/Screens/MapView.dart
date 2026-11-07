@@ -384,7 +384,7 @@ class _MapViewState extends State<MapView> {
                     zoomControlsEnabled: false,
                     mapToolbarEnabled: false,
                     onMapCreated: (c) => _mapController = c,
-                    padding: EdgeInsets.only(bottom: 140),
+                    padding: const EdgeInsets.only(bottom: 255),
                   ),
                 ),
                 Positioned(
@@ -513,60 +513,136 @@ class _MapViewState extends State<MapView> {
     );
   }
 
+  List<_NearbyCareOption> _nearestCare() {
+    final result = <_NearbyCareOption>[];
+    if (_showType('All') || _showType('Doctors')) {
+      for (final doctor in doctorList) {
+        if (doctor.id == null) continue;
+        final distance = _distanceKmForDoctor(doctor);
+        if (distance == null || !distance.isFinite || distance < 0) continue;
+        result.add(_NearbyCareOption(
+          title: doctor.name ?? 'Doctor',
+          type: 'Doctor',
+          distanceKm: distance,
+          onOpen: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => DoctorDetail(id: doctor.id))),
+        ));
+      }
+    }
+    if (_showType('All') || _showType('Providers')) {
+      for (final provider in providerList) {
+        if (provider.id == null) continue;
+        final distance = _distanceKmForProvider(provider);
+        if (distance == null || !distance.isFinite || distance < 0) continue;
+        result.add(_NearbyCareOption(
+          title: provider.name ?? 'Care provider',
+          type: provider.providerType?.name ?? 'Care provider',
+          distanceKm: distance,
+          onOpen: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => ProviderDetail(id: provider.id))),
+        ));
+      }
+    }
+    result.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    return result.take(8).toList();
+  }
+
   Widget _buildSummaryCard() {
-    final doctorsCount = doctorList.where((d) => d.lat != null && d.lng != null).length;
-    final hospitalsCount = hospitalList.where((h) => _parseCoord(h.lat) != null && _parseCoord(h.lng) != null).length;
-    final labsCount = labList.where((l) => _parseCoord(l.lat) != null && _parseCoord(l.lng) != null).length;
+    final doctorsCount = doctorList.where((d) =>
+        _distanceKmForDoctor(d) != null).length;
+    final providersCount = providerList.where((p) =>
+        _distanceKmForProvider(p) != null).length;
+    final hospitalsCount = hospitalList.where((h) =>
+        _parseCoord(h.lat) != null && _parseCoord(h.lng) != null).length;
+    final labsCount = labList.where((l) =>
+        _parseCoord(l.lat) != null && _parseCoord(l.lng) != null).length;
+    final nearest = _nearestCare();
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: Palette.white,
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 16,
-            offset: Offset(0, -4),
-          ),
-        ],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06),
+            blurRadius: 16, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Palette.dash_line,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Tap a marker to see details',
-              style: TextStyle(
-                color: Palette.grey,
-                fontSize: 13,
-              ),
-            ),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Center(child: Container(height: 4, width: 40,
+              decoration: BoxDecoration(color: Palette.dash_line,
+                  borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6, runSpacing: 6,
               children: [
-                _summaryChip(doctorsCount, 'Doctor', Palette.blue),
-                SizedBox(width: 10),
-                _summaryChip(hospitalsCount, 'Hospital', Color(0xFFE91E63)),
-                SizedBox(width: 10),
-                _summaryChip(labsCount, 'Lab', Palette.green),
+                _summaryChip(doctorsCount, 'Doctors', Palette.blue),
+                _summaryChip(providersCount, 'Providers', const Color(0xFFFF8C00)),
+                _summaryChip(hospitalsCount, 'Hospitals', const Color(0xFFE91E63)),
+                _summaryChip(labsCount, 'Labs', Palette.green),
               ],
+            ),
+            const SizedBox(height: 10),
+            const Text('Closest care professionals',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            const Text('Approximate straight-line distance · booking times require confirmation',
+              style: TextStyle(fontSize: 11, color: Colors.black54)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 92,
+              child: nearest.isEmpty
+                  ? const Center(child: Text(
+                      'No nearby professional locations are listed for this filter.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.black54)))
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: nearest.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 9),
+                      itemBuilder: (context, index) {
+                        final item = nearest[index];
+                        return SizedBox(
+                          width: 215,
+                          child: OutlinedButton(
+                            key: Key('nearby-professional-$index'),
+                            onPressed: item.onOpen,
+                            style: OutlinedButton.styleFrom(
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(item.title, maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w700)),
+                                Text(item.type, maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11)),
+                                Text('~${item.distanceKm.toStringAsFixed(1)} km · View profile',
+                                  style: const TextStyle(fontSize: 11,
+                                      fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
       ),
     );
   }
+
 
   Widget _summaryChip(int count, String label, Color color) {
     return Container(
@@ -589,3 +665,17 @@ class _MapViewState extends State<MapView> {
     );
   }
 }
+class _NearbyCareOption {
+  const _NearbyCareOption({
+    required this.title,
+    required this.type,
+    required this.distanceKm,
+    required this.onOpen,
+  });
+
+  final String title;
+  final String type;
+  final double distanceKm;
+  final VoidCallback onOpen;
+}
+
