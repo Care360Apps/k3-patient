@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../ai/care360_guide_screen.dart';
 
 /// Curated discovery only. This deliberately does not import, send, or link
 /// Care360 identifiers, patient data, tokens, or navigation state.
@@ -26,42 +27,12 @@ class Care360PartnerShowcase extends StatelessWidget {
   }
 
   void _openLocalGuide(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: SingleChildScrollView(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Text('Care360 Help', style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.w700)),
-            SizedBox(height: 10),
-            Text('How do I book an appointment?',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-            Text('Once you have an approved Care360 account, '
-              'choose a professional, review availability, and confirm your booking.'),
-            SizedBox(height: 12),
-            Text('What is MindCheck?',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-            Text('MindCheck is a separate mental-wellbeing service from '
-              'SpeakOut Mental Health Outreach. It opens in your browser.'),
-            SizedBox(height: 12),
-            Text('Does Care360 share my details?',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-            Text('Opening a partner link does not send your Care360 account, '
-              'appointment, or health records to that partner. '
-              'Review the partner’s own privacy notice before using it.'),
-            SizedBox(height: 16),
-            Text('This is an offline help guide, not a generative AI chat or '
-              'a medical assessment. Future AI assistance requires a separate '
-              'privacy-reviewed, server-side integration.',
-              style: TextStyle(fontSize: 12)),
-          ],
-        )),
-      )),
-    );
+    // The guide never accesses clinical views or sends unstructured content.
+    // Optional server-assisted answers remain OFF without the explicit pilot
+    // build flag and a per-session consent action.
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => const Care360GuideScreen(allowRemote: true),
+    ));
   }
 
   @override
@@ -109,7 +80,7 @@ class Care360PartnerShowcase extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: () => _openLocalGuide(context),
                 icon: const Icon(Icons.help_outline),
-                label: const Text('Care360 Help'),
+                label: const Text('Care360 Guide · optional AI pilot'),
               ),
             ),
           ]),
