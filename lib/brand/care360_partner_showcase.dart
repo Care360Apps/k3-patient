@@ -158,13 +158,21 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
   void _goTo(int page) {
     if (!_pages.hasClients || page < 0 || page >= _slides.length) return;
     _rotation?.cancel();
-    _pages.animateToPage(
-      page,
-      duration: _reducedMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
+    // A zero-duration animateToPage throws in Flutter's ScrollActivity.
+    // Use jumpToPage for accessibility and acknowledge manual controls
+    // synchronously so arrows/dots never appear unresponsive.
+    if (mounted && _current != page) {
+      setState(() => _current = page);
+    }
+    if (_reducedMotion) {
+      _pages.jumpToPage(page);
+    } else {
+      _pages.animateToPage(
+        page,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    }
     _resetTimer();
   }
 
