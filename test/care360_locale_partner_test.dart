@@ -98,12 +98,14 @@ void main() {
     expect(home, isNot(contains('banner.addAll(response.data!)')));
     expect(home, isNot(contains('Uri.parse(bannerData.link!)')));
     expect(home, contains('banner = response.data ?? <Add>[]'));
-    expect(home, contains('Care360PartnerShowcase(slides: _partnerSlides())'));
+    expect(home, contains('Care360PartnerShowcase('));
+    expect(home, contains('showGuideButton: false'));
+    expect(home, contains('const Care360GuideShortcut()'));
   });
 
   test('MindCheck is only displayed inside authenticated Patient home', () {
     final home = File('lib/Screen/Screens/Home.dart').readAsStringSync();
-    expect(home.contains('Care360PartnerShowcase(slides: _partnerSlides())'), isTrue);
+    expect(home.contains('Care360PartnerShowcase('), isTrue);
     expect(home.contains(
       'SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true'),
       isTrue);
