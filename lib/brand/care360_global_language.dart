@@ -47,11 +47,14 @@ class _Care360GlobalLanguageSwitchState
       // Return the selection from the route, and wait until the route has
       // completely closed BEFORE rebuilding MaterialApp/localizations.
       // This avoids locale changes racing an exiting modal's widget tree.
+      ModalRoute<dynamic>? sheetRoute;
       final selected = await showModalBottomSheet<String>(
         context: overlayContext,
         useRootNavigator: true,
         isScrollControlled: false,
-        builder: (sheetContext) => SafeArea(
+        builder: (sheetContext) {
+          sheetRoute = ModalRoute.of(sheetContext);
+          return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -76,9 +79,15 @@ class _Care360GlobalLanguageSwitchState
                 ),
             ],
           ),
-        ),
+        );
+        },
       );
 
+      // showModalBottomSheet's result can resolve before its reverse
+      // animation finishes. Avoid rebuilding a still-exiting route.
+      if (selected != null) {
+        await sheetRoute?.completed;
+      }
       if (!mounted || selected == null || selected == currentCode) return;
       if (!Care360GlobalLanguageSwitch.supportedLanguages
           .containsKey(selected)) return;
