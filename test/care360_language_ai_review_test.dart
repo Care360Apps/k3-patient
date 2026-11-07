@@ -89,7 +89,10 @@ void main() {
       expect(find.text('De meilleurs soins, plus près de vous.'), findsOneWidget);
       expect(tester.takeException(), isNull);
       final guide = find.byKey(const Key('preview-care360-guide'));
-      await tester.ensureVisible(guide);
+      await tester.dragUntilVisible(
+          guide, find.byKey(const Key('offline-dashboard-scroll')),
+          const Offset(0, -180));
+      await tester.pumpAndSettle();
       await tester.tap(guide);
       await tester.pumpAndSettle();
       expect(find.text('Guide Care360'), findsOneWidget);
