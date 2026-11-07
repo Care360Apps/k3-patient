@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 import 'package:doctro_patient/api/network_api.dart';
@@ -18,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../const/Palette.dart';
+import '../../nearby/nearby_on_duty_service.dart';
 
 class MapView extends StatefulWidget {
   @override
@@ -31,11 +33,19 @@ class _MapViewState extends State<MapView> {
   List<ProviderModel> providerList = [];
   bool loading = true;
   bool _canShowUserLocation = false;
+  bool _onDutyOnly = false;
+  bool _onDutyLoading = false;
+  bool _onDutyError = false;
+  String? _selectedVisitType;
+  List<NearbyOnDutyProfessional> _onDuty = [];
+  int _onDutyFetchId = 0;
+  Timer? _presenceExpiryTimer;
   String _selectedType = 'All';
   String? _lat;
   String? _lang;
   GoogleMapController? _mapController;
-  static const LatLng _defaultCenter = LatLng(20.5937, 78.9629);
+  // Nigeria fallback only; never presented as the patient's actual location.
+  static const LatLng _defaultCenter = LatLng(9.0820, 8.6753);
 
   // Custom marker hues: doctor = blue, provider = orange, hospital = red/rose, lab = green
   static const double _hueDoctor = BitmapDescriptor.hueAzure;
@@ -55,6 +65,33 @@ class _MapViewState extends State<MapView> {
     super.initState();
     _createMarkerIcons();
     _loadLocationAndData();
+  }
+
+  @override
+  void dispose() {
+    _onDutyFetchId++;
+    _presenceExpiryTimer?.cancel();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  void _scheduleExpiry() {
+    _presenceExpiryTimer?.cancel();
+    if (!mounted || !_onDutyOnly || _onDuty.isEmpty) return;
+    final now = DateTime.now().toUtc();
+    final future = _onDuty
+        .where((p) => p.expiresAt.isAfter(now))
+        .map((p) => p.expiresAt)
+        .toList()..sort();
+    if (future.isEmpty) {
+      setState(() => _onDuty.clear());
+      return;
+    }
+    _presenceExpiryTimer = Timer(future.first.difference(now), () {
+      if (!mounted || !_onDutyOnly) return;
+      setState(() => _onDuty.removeWhere((p) => !p.isStillAccepting));
+      _scheduleExpiry();
+    });
   }
 
   void _createMarkerIcons() {
@@ -168,6 +205,62 @@ class _MapViewState extends State<MapView> {
     }
   }
 
+  Future<void> _toggleOnDuty(bool enabled) async {
+    if (!mounted) return;
+    _onDutyFetchId++;
+    _presenceExpiryTimer?.cancel();
+    setState(() {
+      _onDutyOnly = enabled;
+      _selectedType = 'All';
+      _selectedVisitType = null;
+      _onDutyError = false;
+      if (!enabled) {
+        _onDuty = [];
+        _onDutyLoading = false;
+      }
+    });
+    if (enabled) await _fetchOnDuty();
+  }
+
+  Future<void> _fetchOnDuty() async {
+    final requestId = ++_onDutyFetchId;
+    final lat = double.tryParse(_lat ?? '');
+    final lng = double.tryParse(_lang ?? '');
+    if (lat == null || lng == null || lat < -90 || lat > 90 ||
+        lng < -180 || lng > 180) {
+      if (mounted && _onDutyOnly && requestId == _onDutyFetchId) setState(() {
+        _onDuty = [];
+        _onDutyError = true;
+      });
+      return;
+    }
+    if (mounted) setState(() {
+      _onDutyLoading = true;
+      _onDutyError = false;
+    });
+    try {
+      final matches = await const NearbyOnDutyService().find(
+        lat: lat, lng: lng, visitType: _selectedVisitType);
+      if (mounted && _onDutyOnly && requestId == _onDutyFetchId) {
+        setState(() => _onDuty = matches.where((p) => p.isStillAccepting).toList());
+        _scheduleExpiry();
+      }
+    } catch (_) {
+      // Missing endpoint or network failure must never create fake
+      // availability or reveal precise patient coordinates in debug logs.
+      if (mounted && _onDutyOnly && requestId == _onDutyFetchId) {
+        setState(() {
+          _onDutyError = true;
+          _onDuty = [];
+        });
+      }
+    } finally {
+      if (mounted && _onDutyOnly && requestId == _onDutyFetchId) {
+        setState(() => _onDutyLoading = false);
+      }
+    }
+  }
+
   double? _distanceKmFromUser(double? lat, double? lng) {
     if (lat == null || lng == null || lat == 0 && lng == 0 ||
         lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
@@ -204,6 +297,14 @@ class _MapViewState extends State<MapView> {
 
   double? _distanceKmForLab(LabData l) {
     return _distanceKmFromUser(_parseCoord(l.lat), _parseCoord(l.lng));
+  }
+
+  bool get _hasValidChosenLocation {
+    final lat = double.tryParse(_lat ?? '');
+    final lng = double.tryParse(_lang ?? '');
+    return lat != null && lng != null &&
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 &&
+        !(lat == 0 && lng == 0);
   }
 
   LatLng _getInitialPosition() {
@@ -243,6 +344,31 @@ class _MapViewState extends State<MapView> {
           infoWindow: InfoWindow(title: 'Your location'),
         ),
       );
+    }
+    if (_onDutyOnly) {
+      for (final professional in _onDuty.where((p) => p.isStillAccepting)) {
+        if (!_showType(professional.role == 'doctor'
+            ? 'Doctors' : 'Providers')) continue;
+        markers.add(Marker(
+          markerId: MarkerId('on-duty-${professional.role}-${professional.id}'),
+          position: LatLng(professional.lat, professional.lng),
+          icon: _icon(professional.role == 'doctor'
+              ? _markerDoctor : _markerProvider),
+          infoWindow: InfoWindow(
+            title: professional.name,
+            snippet: 'Accepting requests · about '
+                '${professional.distanceKm.toStringAsFixed(1)} km',
+          ),
+          onTap: () {
+            Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => professional.role == 'doctor'
+                  ? DoctorDetail(id: professional.id)
+                  : ProviderDetail(id: professional.id),
+            ));
+          },
+        ));
+      }
+      return markers;
     }
     if (_showType('Doctors')) for (final doctor in doctorList) {
       if (doctor.lat != null && doctor.lng != null) {
@@ -361,12 +487,12 @@ class _MapViewState extends State<MapView> {
         elevation: 0,
       ),
       body: ModalProgressHUD(
-        inAsyncCall: loading,
+        inAsyncCall: loading || _onDutyLoading,
         opacity: 0.6,
         progressIndicator: SpinKitFadingCircle(color: Palette.blue, size: 50),
         child: Builder(
           builder: (context) {
-            if (_lat == null || _lat!.isEmpty || _lang == null || _lang!.isEmpty) {
+            if (!_hasValidChosenLocation) {
               return _buildNoLocationView();
             }
             return Stack(
@@ -394,6 +520,10 @@ class _MapViewState extends State<MapView> {
                   child: Column(
                     children: [
                       _buildCategoryFilters(),
+                      if (_onDutyOnly) ...[
+                        const SizedBox(height: 8),
+                        _buildServiceFilters(),
+                      ],
                       const SizedBox(height: 8),
                       _buildLegendCard(),
                     ],
@@ -451,7 +581,19 @@ class _MapViewState extends State<MapView> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Row(children: [
-          for (final type in const ['All', 'Doctors', 'Providers', 'Hospitals', 'Labs'])
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              key: const Key('nearby-on-duty-filter'),
+              label: const Text('Accepting requests'),
+              selected: _onDutyOnly,
+              showCheckmark: false,
+              onSelected: _toggleOnDuty,
+            ),
+          ),
+          for (final type in (_onDutyOnly
+              ? const ['All', 'Doctors', 'Providers']
+              : const ['All', 'Doctors', 'Providers', 'Hospitals', 'Labs']))
             Padding(
               padding: const EdgeInsets.only(right: 6),
               child: ChoiceChip(
@@ -463,6 +605,45 @@ class _MapViewState extends State<MapView> {
               ),
             ),
         ]),
+      ),
+    );
+  }
+
+  Widget _buildServiceFilters() {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 2,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        child: Row(children: [
+          _serviceFilterChip(null, 'All services', 'all'),
+          _serviceFilterChip('home_visit', 'Home visits', 'home'),
+          _serviceFilterChip('video_call', 'Virtual care', 'virtual'),
+        ]),
+      ),
+    );
+  }
+
+  Widget _serviceFilterChip(String? type, String label, String key) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ChoiceChip(
+        key: Key('nearby-service-$key'),
+        label: Text(label),
+        selected: _selectedVisitType == type,
+        showCheckmark: false,
+        onSelected: (_) {
+          if (!_onDutyOnly || _onDutyLoading) return;
+          setState(() {
+            _selectedVisitType = type;
+            // Old pins must not remain visible under a different service.
+            _onDuty = [];
+          });
+          _presenceExpiryTimer?.cancel();
+          _fetchOnDuty();
+        },
       ),
     );
   }
@@ -515,6 +696,25 @@ class _MapViewState extends State<MapView> {
 
   List<_NearbyCareOption> _nearestCare() {
     final result = <_NearbyCareOption>[];
+    if (_onDutyOnly) {
+      for (final professional in _onDuty.where((p) => p.isStillAccepting)) {
+        if (!_showType(professional.role == 'doctor'
+            ? 'Doctors' : 'Providers')) continue;
+        result.add(_NearbyCareOption(
+          title: professional.name,
+          type: professional.role == 'doctor'
+              ? 'Doctor · accepting requests'
+              : 'Provider · accepting requests',
+          distanceKm: professional.distanceKm,
+          onOpen: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder: (_) => professional.role == 'doctor'
+                  ? DoctorDetail(id: professional.id)
+                  : ProviderDetail(id: professional.id))),
+        ));
+      }
+      result.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+      return result.take(8).toList();
+    }
     if (_showType('All') || _showType('Doctors')) {
       for (final doctor in doctorList) {
         if (doctor.id == null) continue;
@@ -548,13 +748,15 @@ class _MapViewState extends State<MapView> {
   }
 
   Widget _buildSummaryCard() {
-    final doctorsCount = doctorList.where((d) =>
-        _distanceKmForDoctor(d) != null).length;
-    final providersCount = providerList.where((p) =>
-        _distanceKmForProvider(p) != null).length;
-    final hospitalsCount = hospitalList.where((h) =>
+    final doctorsCount = _onDutyOnly
+        ? _onDuty.where((p) => p.role == 'doctor' && p.isStillAccepting).length
+        : doctorList.where((d) => _distanceKmForDoctor(d) != null).length;
+    final providersCount = _onDutyOnly
+        ? _onDuty.where((p) => p.role == 'provider' && p.isStillAccepting).length
+        : providerList.where((p) => _distanceKmForProvider(p) != null).length;
+    final hospitalsCount = _onDutyOnly ? 0 : hospitalList.where((h) =>
         _parseCoord(h.lat) != null && _parseCoord(h.lng) != null).length;
-    final labsCount = labList.where((l) =>
+    final labsCount = _onDutyOnly ? 0 : labList.where((l) =>
         _parseCoord(l.lat) != null && _parseCoord(l.lng) != null).length;
     final nearest = _nearestCare();
     return Container(
@@ -585,17 +787,31 @@ class _MapViewState extends State<MapView> {
               ],
             ),
             const SizedBox(height: 10),
-            const Text('Closest care professionals',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            Text(_onDutyOnly
+                ? 'Professionals accepting requests'
+                : 'Closest care professionals',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
-            const Text('Approximate straight-line distance · booking times require confirmation',
+            const Text('Approximate straight-line distance · booking requires confirmation',
               style: TextStyle(fontSize: 11, color: Colors.black54)),
+            if (_onDutyOnly && _onDutyError) ...[
+              const SizedBox(height: 8),
+              const Text('The verified availability service is not enabled '
+                'on this backend or is temporarily unreachable.',
+                key: Key('nearby-on-duty-unavailable'),
+                style: TextStyle(fontSize: 12, color: Colors.deepOrange)),
+              TextButton.icon(
+                onPressed: _onDutyLoading ? null : _fetchOnDuty,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Retry'),
+              ),
+            ],
             const SizedBox(height: 8),
             SizedBox(
               height: 92,
               child: nearest.isEmpty
                   ? const Center(child: Text(
-                      'No nearby professional locations are listed for this filter.',
+                      'No professionals are listed for this filter and location.',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: Colors.black54)))
                   : ListView.separated(

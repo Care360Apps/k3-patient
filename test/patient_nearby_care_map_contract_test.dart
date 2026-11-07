@@ -9,7 +9,7 @@ void main() {
     expect(source, contains("Key('nearby-filter-"));
     expect(source, contains("'Closest care professionals'"));
     expect(source, contains("Approximate straight-line distance"));
-    expect(source, contains("booking times require confirmation"));
+    expect(source, contains("booking requires confirmation"));
     expect(source, contains("ProviderDetail(id: provider.id)"));
     expect(source, contains("DoctorDetail(id: doctor.id)"));
     expect(source, isNot(contains("Available now")));
