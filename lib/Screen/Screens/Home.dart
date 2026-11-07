@@ -1402,6 +1402,8 @@ class _HomeState extends State<Home> {
                             SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null)
                           Care360PartnerShowcase(
                             slides: banner.map((data) {
+                              // Never show explicitly disabled backend placements.
+                              if (data.status != 1) return null;
                               final destination = Care360PartnerSlide.safeDestination(data.link);
                               if (destination == null) return null;
                               return Care360PartnerSlide(
