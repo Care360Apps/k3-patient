@@ -20,25 +20,80 @@ void main() {
     expect(find.textContaining('SpeakOut Mental Health Outreach'), findsOneWidget);
   });
 
-  testWidgets('Help is informative and never calls a model', (tester) async {
+  testWidgets('Partner section retains the nonclinical Care360 Guide',
+      (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: Care360PartnerShowcase()),
     ));
-    await tester.tap(find.text('Care360 Help'));
+    await tester.tap(find.text('Care360 Guide · app help'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('offline help guide'), findsOneWidget);
-    expect(find.textContaining('not a generative AI chat'), findsOneWidget);
+    expect(find.text('Find your way around Care360'), findsOneWidget);
+    expect(find.textContaining('Generative AI is not enabled'), findsOneWidget);
+    expect(find.byKey(const Key('guide-ai-consent')), findsNothing);
+  });
+
+  testWidgets('Carousel holds ten seconds before rotating and manual navigation works',
+      (tester) async {
+    final first = Uri.parse('https://partner.example.org/');
+    final second = Uri.parse('https://another.example.org/');
+    Uri? opened;
+    await tester.pumpWidget(MaterialApp(home: Scaffold(
+      body: SingleChildScrollView(child: Care360PartnerShowcase(
+        slides: [
+          Care360PartnerSlide(title: 'Sponsor One',
+            subtitle: 'Independent paid promotion', url: first, sponsored: true),
+          Care360PartnerSlide(title: 'Sponsor Two',
+            subtitle: 'Independent paid promotion', url: second, sponsored: true),
+        ],
+        openExternal: (uri) async { opened = uri; return true; },
+      )),
+    )));
+    expect(find.text('1/3'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 9));
+    expect(find.text('1/3'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.text('2/3'), findsOneWidget);
+    expect(find.text('Sponsored'), findsWidgets);
+    await tester.tap(find.byKey(const ValueKey('care360-slide-dot-2')));
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.text('3/3'), findsOneWidget);
+    await tester.tap(find.text('Sponsor Two'));
+    await tester.pump();
+    expect(opened, second);
+  });
+
+  test('Reject unsafe partner redirects and external image destinations', () {
+    for (final url in [
+      'http://partner.example.org', 'javascript:alert(1)',
+      'https://localhost/', 'https://127.0.0.1:8000/',
+      'https://example.org:8443/', 'https://alice@example.org/'
+    ]) {
+      expect(Care360PartnerSlide.safeDestination(url), isNull, reason: url);
+    }
+    expect(Care360PartnerSlide.safeDestination(
+      'https://partner.example.org/offer?a=1')?.host,
+      'partner.example.org');
   });
 
   test('MindCheck is only displayed inside authenticated Patient home', () {
     final home = File('lib/Screen/Screens/Home.dart').readAsStringSync();
-    expect(home.contains('Care360PartnerShowcase()'), isTrue);
+    expect('Care360PartnerShowcase('.allMatches(home).length, 1);
+    expect(home.contains('Care360PartnerSlide.safeDestination(data.link)'), isTrue);
+    expect(home.contains('sponsored: data.isSponsored'), isTrue);
+    expect(home.contains('banner.addAll(response.data!)'), isFalse);
+    expect(home.contains('/// looking For ///'), isFalse);
     expect(home.contains(
       'SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true'),
       isTrue);
     expect(home.contains('SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null'), isTrue);
     final auth = File('lib/brand/care360_entry.dart').readAsStringSync();
     expect(auth.contains('MindCheck'), isFalse);
+  });
+
+  test('Paid placement flag is explicit in banner data', () {
+    final model = File('lib/model/banner_model.dart').readAsStringSync();
+    expect(model.contains("json['is_sponsored']"), isTrue);
   });
 
   test('All four added languages fall back to the original English strings', () async {
