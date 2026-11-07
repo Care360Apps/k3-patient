@@ -31,6 +31,7 @@ class Add {
   String? link;
   int? status;
   String? desc;
+  bool isSponsored = false;
   String? createdAt;
   String? updatedAt;
   String? fullImage;
@@ -43,7 +44,9 @@ class Add {
     image = json['image'];
     link = json['link'];
     status = json['status'] != null ? int.tryParse(json['status'].toString()) : null;
-    desc = json['desc'];
+    desc = (json['description'] ?? json['desc'])?.toString();
+    isSponsored = json['is_sponsored'] == true ||
+        json['is_sponsored'] == 1 || json['is_sponsored'] == '1';
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
     fullImage = json['fullImage'];
@@ -60,6 +63,8 @@ class Add {
     data['created_at'] = this.createdAt;
     data['updated_at'] = this.updatedAt;
     data['fullImage'] = this.fullImage;
+    data['description'] = this.desc;
+    data['is_sponsored'] = this.isSponsored;
     return data;
   }
 }
