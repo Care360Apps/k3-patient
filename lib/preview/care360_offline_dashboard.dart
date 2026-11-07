@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../ai/care360_guide_screen.dart';
+import 'care360_nearby_preview.dart';
 import '../localization/care360_language_picker.dart';
 import '../diagnostics/k3_startup_diagnostics.dart';
 
@@ -37,6 +38,8 @@ class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
   static const _background = Color(0xFFF5F8F7);
 
   static const _services = <_Service>[
+    _Service('Nearby Care', Icons.map_outlined,
+        'Map and closest professionals · interactive sample'),
     _Service('Doctors', Icons.medical_services_outlined,
         'Virtual care, notes and e-prescriptions'),
     _Service('Hospitals', Icons.local_hospital_outlined,
@@ -54,6 +57,12 @@ class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
   ];
 
   static const _detailLines = <String, List<String>>{
+    'Nearby Care': [
+      'Review an illustrative nearby-care map',
+      'Compare doctor and care provider profiles',
+      'Explore the accepting-requests filter',
+      'Actual booking requires verified availability',
+    ],
     'Doctors': [
       'Find a doctor by specialty',
       'Virtual consultations',
@@ -96,6 +105,12 @@ class _Care360OfflineDashboardState extends State<Care360OfflineDashboard> {
   };
 
   void _open(String category) {
+    if (category == 'Nearby Care') {
+      Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => const Care360NearbyPreview(),
+      ));
+      return;
+    }
     if (category == 'Care360 Guide') {
       Navigator.of(context).push(MaterialPageRoute<void>(
         builder: (_) => Care360GuideScreen(
