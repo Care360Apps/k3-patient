@@ -43,7 +43,8 @@ class _MapViewState extends State<MapView> {
   String? _lat;
   String? _lang;
   GoogleMapController? _mapController;
-  static const LatLng _defaultCenter = LatLng(20.5937, 78.9629);
+  // Nigeria fallback only; never presented as the patient's actual location.
+  static const LatLng _defaultCenter = LatLng(9.0820, 8.6753);
 
   // Custom marker hues: doctor = blue, provider = orange, hospital = red/rose, lab = green
   static const double _hueDoctor = BitmapDescriptor.hueAzure;
@@ -296,6 +297,14 @@ class _MapViewState extends State<MapView> {
     return _distanceKmFromUser(_parseCoord(l.lat), _parseCoord(l.lng));
   }
 
+  bool get _hasValidChosenLocation {
+    final lat = double.tryParse(_lat ?? '');
+    final lng = double.tryParse(_lang ?? '');
+    return lat != null && lng != null &&
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 &&
+        !(lat == 0 && lng == 0);
+  }
+
   LatLng _getInitialPosition() {
     final lat = double.tryParse(_lat ?? '');
     final lng = double.tryParse(_lang ?? '');
@@ -481,7 +490,7 @@ class _MapViewState extends State<MapView> {
         progressIndicator: SpinKitFadingCircle(color: Palette.blue, size: 50),
         child: Builder(
           builder: (context) {
-            if (_lat == null || _lat!.isEmpty || _lang == null || _lang!.isEmpty) {
+            if (!_hasValidChosenLocation) {
               return _buildNoLocationView();
             }
             return Stack(
