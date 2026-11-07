@@ -35,23 +35,12 @@ class _SignUpState extends State<SignUp> {
   bool _isHidden = true;
 
   DateTime? _selectedDate;
-  List<String> gender = [];
   String? _selectGender;
   int? id;
   int? verify;
 
   String newDateApiPass = "";
   var temp;
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(Duration.zero, () {
-      setState(() {
-        gender = [getTranslated(context, AppString.signUp_male).toString(), getTranslated(context, AppString.signUp_female).toString()];
-      });
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -349,17 +338,21 @@ class _SignUpState extends State<SignUp> {
                               );
                             },
                             validator: (dynamic value) => value == null ? getTranslated(context, AppString.signUp_selectGender_validator).toString() : null,
-                            items: gender.map(
-                              (location) {
+                            // Keep backend field values stable in every language.
+                            // Only the visible label is translated.
+                            items: const ['Male', 'Female'].map(
+                              (code) {
                                 return DropdownMenuItem<String>(
-                                  child: new Text(
-                                    location,
+                                  value: code,
+                                  child: Text(
+                                    code == 'Male'
+                                        ? getTranslated(context, AppString.signUp_male).toString()
+                                        : getTranslated(context, AppString.signUp_female).toString(),
                                     style: TextStyle(
                                       fontSize: width * 0.04,
                                       color: Palette.dark_blue,
                                     ),
                                   ),
-                                  value: location,
                                 );
                               },
                             ).toList(),
