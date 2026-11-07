@@ -30,10 +30,6 @@
 		<true/>
 		<key>NSCameraUsageDescription</key>
 		<string>Care360 uses your camera for video consultations with doctors and for uploading profile and medical images.</string>
-		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-		<string>Care360 uses your location to find doctors and healthcare providers near you.</string>
-		<key>NSLocationAlwaysUsageDescription</key>
-		<string>Care360 uses your location to find doctors and healthcare providers near you.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Care360 uses your location to find doctors and healthcare providers near you.</string>
 		<key>NSMicrophoneUsageDescription</key>

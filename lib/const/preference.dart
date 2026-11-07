@@ -67,8 +67,9 @@ class SharedPreferenceHelper {
     return await _preferences.setInt("$key", value);
   }
 
-  static void clearPref() {
-    _preferences.clear();
+  static Future<void> clearPref() async {
+    // Do not race account logout/deletion navigation with disk persistence.
+    await _preferences.clear();
   }
 
   static Future setSecureString(String key, String value) async {

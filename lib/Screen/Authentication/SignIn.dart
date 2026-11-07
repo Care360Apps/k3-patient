@@ -2,7 +2,6 @@ import '../../brand/care360_entry.dart';
 import '../../api/patient_optional_settings.dart';
 import '../../api/care360_connection_error.dart';
 import '../../api/apis.dart';
-import 'dart:io';
 import 'package:doctro_patient/FirebaseProviders/auth_provider.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
 import 'package:doctro_patient/api/network_api.dart';
@@ -437,23 +436,8 @@ class _SignInState extends State<SignIn> {
     OneSignal.Debug.setLogLevel(OSLogLevel.info);
 
     OneSignal.initialize(appId);
-    if (kDebugMode) {
-      print("OneSignal App ID: " + appId);
-    }
-    OneSignal.Notifications.addPermissionObserver((state) {
-      print("Has permission " + state.toString());
-    });
-    print("Permission ${OneSignal.Notifications.permission}");
-    Platform.isIOS
-        ? OneSignal.Notifications.permission == false &&
-                SharedPreferenceHelper.getBoolean(Preferences.notificationPermissionDialog) == false
-            ? OneSignal.Notifications.requestPermission(true)
-            : null
-        : null;
-    Platform.isAndroid ? OneSignal.Notifications.requestPermission(true) : null;
-    if (kDebugMode) {
-      print("OneSignal ID : ${OneSignal.User.pushSubscription.id}");
-    }
+    // Only the Settings > Enable notifications action requests OS permission.
+    // OneSignal can initialize here without interrupting sign-in.
     OneSignal.Debug.setAlertLevel(OSLogLevel.none);
 
     if (SharedPreferenceHelper.getString(Preferences.device_token) == "" ||

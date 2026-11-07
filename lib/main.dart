@@ -531,30 +531,13 @@ class _MyAppState extends State<MyApp> {
     OneSignal.Debug.setLogLevel(OSLogLevel.info);
     OneSignal.initialize(appId);
 
-    if (kDebugMode) {
-      print("OneSignal App ID: $appId");
-    }
-
-    OneSignal.Notifications.addPermissionObserver((state) {
-      print("Has permission $state");
-    });
-
-    if (Platform.isIOS) {
-      if (OneSignal.Notifications.permission == false &&
-          SharedPreferenceHelper.getBoolean(Preferences.notificationPermissionDialog) == false) {
-        OneSignal.Notifications.requestPermission(true);
-      }
-    } else if (Platform.isAndroid) {
-      OneSignal.Notifications.requestPermission(true);
-    }
+    // Push permission must be explicitly requested by the signed-in patient
+    // from Settings, never at app launch (especially for sensitive health data).
 
     OneSignal.User.pushSubscription.addObserver((state) {
       final id = state.current.id;
       if (id != null) {
         SharedPreferenceHelper.setString(Preferences.device_token, id);
-        if (kDebugMode) {
-          print("OneSignal ID : $id");
-        }
       }
     });
 
@@ -565,8 +548,5 @@ class _MyAppState extends State<MyApp> {
       SharedPreferenceHelper.setString(Preferences.device_token, subId);
     }
 
-    if (kDebugMode) {
-      print("OneSignal ID : $subId");
-    }
   }
 }
