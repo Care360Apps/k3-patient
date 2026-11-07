@@ -56,8 +56,9 @@ void main() {
     expect(find.text('2/3'), findsOneWidget);
     expect(find.text('Sponsored'), findsWidgets);
     await tester.tap(find.byKey(const ValueKey('care360-slide-dot-2')));
-    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pumpAndSettle();
     expect(find.text('3/3'), findsOneWidget);
+    expect(find.text('Sponsor Two'), findsOneWidget);
     await tester.tap(find.text('Sponsor Two'));
     await tester.pump();
     expect(opened, second);
