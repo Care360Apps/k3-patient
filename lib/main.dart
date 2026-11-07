@@ -76,6 +76,7 @@ import 'api/server_error.dart';
 import 'const/Palette.dart';
 import 'const/prefConstatnt.dart';
 import 'localization/language_localization.dart';
+import 'localization/care360_framework_locale_fallback.dart';
 import 'localization/localization_constant.dart';
 import 'localization/localization_constant.dart' as care360_locale;
 import 'brand/care360_global_language.dart';
@@ -427,11 +428,11 @@ class _MyAppState extends State<MyApp> {
               Locale(SPANISH, 'ES'),
               Locale(ARABIC, 'AE'),
             ],
-            localizationsDelegates: [
+            localizationsDelegates: const [
               LanguageLocalization.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
+              Care360MaterialFallbackDelegate(),
+              Care360WidgetsFallbackDelegate(),
+              Care360CupertinoFallbackDelegate(),
             ],
             localeResolutionCallback: (deviceLocal, supportedLocales) {
               for (var local in supportedLocales) {
