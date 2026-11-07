@@ -68,7 +68,8 @@ class NearbyOnDutyService {
   }) async {
     final base = Uri.tryParse(Apis.baseUrl);
     if (base == null || base.scheme != 'https' ||
-        base.host.isEmpty || lat < -90 || lat > 90 ||
+        base.host.isEmpty || !base.path.endsWith('/api/') ||
+        lat < -90 || lat > 90 ||
         lng < -180 || lng > 180) {
       throw const FormatException('Nearby care requires a verified HTTPS API.');
     }
