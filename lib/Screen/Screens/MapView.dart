@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 import 'package:doctro_patient/api/network_api.dart';
@@ -36,6 +37,8 @@ class _MapViewState extends State<MapView> {
   bool _onDutyLoading = false;
   bool _onDutyError = false;
   List<NearbyOnDutyProfessional> _onDuty = [];
+  int _onDutyFetchId = 0;
+  Timer? _presenceExpiryTimer;
   String _selectedType = 'All';
   String? _lat;
   String? _lang;
@@ -60,6 +63,33 @@ class _MapViewState extends State<MapView> {
     super.initState();
     _createMarkerIcons();
     _loadLocationAndData();
+  }
+
+  @override
+  void dispose() {
+    _onDutyFetchId++;
+    _presenceExpiryTimer?.cancel();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  void _scheduleExpiry() {
+    _presenceExpiryTimer?.cancel();
+    if (!mounted || !_onDutyOnly || _onDuty.isEmpty) return;
+    final now = DateTime.now().toUtc();
+    final future = _onDuty
+        .where((p) => p.expiresAt.isAfter(now))
+        .map((p) => p.expiresAt)
+        .toList()..sort();
+    if (future.isEmpty) {
+      setState(() => _onDuty.clear());
+      return;
+    }
+    _presenceExpiryTimer = Timer(future.first.difference(now), () {
+      if (!mounted || !_onDutyOnly) return;
+      setState(() => _onDuty.removeWhere((p) => !p.isStillAccepting));
+      _scheduleExpiry();
+    });
   }
 
   void _createMarkerIcons() {
@@ -175,20 +205,27 @@ class _MapViewState extends State<MapView> {
 
   Future<void> _toggleOnDuty(bool enabled) async {
     if (!mounted) return;
+    _onDutyFetchId++;
+    _presenceExpiryTimer?.cancel();
     setState(() {
       _onDutyOnly = enabled;
       _selectedType = 'All';
       _onDutyError = false;
+      if (!enabled) {
+        _onDuty = [];
+        _onDutyLoading = false;
+      }
     });
     if (enabled) await _fetchOnDuty();
   }
 
   Future<void> _fetchOnDuty() async {
+    final requestId = ++_onDutyFetchId;
     final lat = double.tryParse(_lat ?? '');
     final lng = double.tryParse(_lang ?? '');
     if (lat == null || lng == null || lat < -90 || lat > 90 ||
         lng < -180 || lng > 180) {
-      if (mounted) setState(() {
+      if (mounted && _onDutyOnly && requestId == _onDutyFetchId) setState(() {
         _onDuty = [];
         _onDutyError = true;
       });
@@ -201,20 +238,23 @@ class _MapViewState extends State<MapView> {
     try {
       final matches = await const NearbyOnDutyService().find(
         lat: lat, lng: lng);
-      if (mounted && _onDutyOnly) {
-        setState(() => _onDuty = matches);
+      if (mounted && _onDutyOnly && requestId == _onDutyFetchId) {
+        setState(() => _onDuty = matches.where((p) => p.isStillAccepting).toList());
+        _scheduleExpiry();
       }
     } catch (_) {
       // Missing endpoint or network failure must never create fake
       // availability or reveal precise patient coordinates in debug logs.
-      if (mounted && _onDutyOnly) {
+      if (mounted && _onDutyOnly && requestId == _onDutyFetchId) {
         setState(() {
           _onDutyError = true;
           _onDuty = [];
         });
       }
     } finally {
-      if (mounted) setState(() => _onDutyLoading = false);
+      if (mounted && _onDutyOnly && requestId == _onDutyFetchId) {
+        setState(() => _onDutyLoading = false);
+      }
     }
   }
 
@@ -295,7 +335,7 @@ class _MapViewState extends State<MapView> {
       );
     }
     if (_onDutyOnly) {
-      for (final professional in _onDuty) {
+      for (final professional in _onDuty.where((p) => p.isStillAccepting)) {
         if (!_showType(professional.role == 'doctor'
             ? 'Doctors' : 'Providers')) continue;
         markers.add(Marker(
@@ -603,7 +643,7 @@ class _MapViewState extends State<MapView> {
   List<_NearbyCareOption> _nearestCare() {
     final result = <_NearbyCareOption>[];
     if (_onDutyOnly) {
-      for (final professional in _onDuty) {
+      for (final professional in _onDuty.where((p) => p.isStillAccepting)) {
         if (!_showType(professional.role == 'doctor'
             ? 'Doctors' : 'Providers')) continue;
         result.add(_NearbyCareOption(
@@ -655,10 +695,10 @@ class _MapViewState extends State<MapView> {
 
   Widget _buildSummaryCard() {
     final doctorsCount = _onDutyOnly
-        ? _onDuty.where((p) => p.role == 'doctor').length
+        ? _onDuty.where((p) => p.role == 'doctor' && p.isStillAccepting).length
         : doctorList.where((d) => _distanceKmForDoctor(d) != null).length;
     final providersCount = _onDutyOnly
-        ? _onDuty.where((p) => p.role == 'provider').length
+        ? _onDuty.where((p) => p.role == 'provider' && p.isStillAccepting).length
         : providerList.where((p) => _distanceKmForProvider(p) != null).length;
     final hospitalsCount = _onDutyOnly ? 0 : hospitalList.where((h) =>
         _parseCoord(h.lat) != null && _parseCoord(h.lng) != null).length;
