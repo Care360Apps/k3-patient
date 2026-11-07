@@ -45,8 +45,11 @@ void main() {
   });
 
   test('source only queries confirmed availability on user action', () {
+    final home = File('lib/Screen/Screens/Home.dart').readAsStringSync();
     final map = File('lib/Screen/Screens/MapView.dart').readAsStringSync();
     final service = File('lib/nearby/nearby_on_duty_service.dart').readAsStringSync();
+    expect(home, contains("Key('home-find-nearby-care')"));
+    expect(home, contains("Navigator.pushNamed(context, 'MapView')"));
     expect(map, contains("Key('nearby-on-duty-filter')"));
     expect(map, contains('Future<void> _toggleOnDuty(bool enabled) async'));
     expect(map, contains("if (enabled) await _fetchOnDuty()"));
