@@ -22,7 +22,13 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
   final _form = GlobalKey<FormState>();
   final _institution = TextEditingController();
   final _qualification = TextEditingController();
-  final _desiredRole = TextEditingController();
+  static const _roles = <String>[
+    'care_assistant', 'home_care_assistant', 'supervised_intern',
+    'phlebotomy_support', 'laboratory_assistant',
+    'medical_records_assistant', 'nurse', 'community_health_practitioner',
+    'medical_laboratory_scientist', 'pharmacist', 'doctor',
+  ];
+  String _desiredRoleCode = 'care_assistant';
   final _stateName = TextEditingController();
   final _city = TextEditingController();
   final _organizationName = TextEditingController();
@@ -61,7 +67,8 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
         if (widget.role == 'candidate') {
           _fill(_institution, profile['institution']);
           _fill(_qualification, profile['qualification']);
-          _fill(_desiredRole, profile['desired_role']);
+          final role = profile['desired_role']?.toString();
+          if (_roles.contains(role)) _desiredRoleCode = role!;
           _fill(_city, profile['city']);
           final stage = profile['career_stage']?.toString();
           if (['student', 'graduate', 'licensed'].contains(stage)) {
@@ -96,7 +103,7 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
   @override
   void dispose() {
     for (final c in [
-      _institution, _qualification, _desiredRole, _stateName, _city,
+      _institution, _qualification, _stateName, _city,
       _organizationName, _registrationNumber,
     ]) {
       c.dispose();
@@ -116,7 +123,7 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
           'career_stage': _stage,
           'institution': _institution.text.trim(),
           'qualification': _qualification.text.trim(),
-          'desired_role': _desiredRole.text.trim(),
+          'desired_role': _desiredRoleCode,
           'state': _stateName.text.trim(),
           'city': _city.text.trim(),
           'shift_preference': _shift,
@@ -259,7 +266,22 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
                     (v) => setState(() => _stage = v ?? _stage)),
                   _field('Training institution', _institution, minimum: 3),
                   _field('Qualification or programme', _qualification, minimum: 3),
-                  _field('Role you seek', _desiredRole, minimum: 3),
+                  _dropdown('Role you seek', _desiredRoleCode, _roles,
+                    (v) => setState(() =>
+                        _desiredRoleCode = v ?? _desiredRoleCode)),
+                  if ([
+                    'nurse', 'community_health_practitioner',
+                    'medical_laboratory_scientist', 'pharmacist', 'doctor'
+                  ].contains(_desiredRoleCode))
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'This is a regulated profession. Independent '
+                        'licence verification is required before you can '
+                        'appear in employer searches for this role.',
+                        style: TextStyle(color: Color(0xFF8D4E20)),
+                      ),
+                    ),
                 ] else ...[
                   _field('Legal organization name', _organizationName, minimum: 3),
                   _dropdown('Organization category', _organizationType,
@@ -328,7 +350,7 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
                       subtitle: Text(
                         '${person['qualification'] ?? 'Qualification pending'} • '
                         '${person['state'] ?? ''}\n'
-                        '${person['desired_role'] ?? ''}'),
+                        '${(person['desired_role'] ?? '').toString().replaceAll('_', ' ')}'),
                       isThreeLine: true,
                       trailing: const Icon(Icons.verified_outlined,
                           color: workforceTeal),
