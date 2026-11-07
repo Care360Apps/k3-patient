@@ -44,16 +44,32 @@ void main() {
     ));
     expect(find.textContaining('Offline, curated app help'), findsOneWidget);
     expect(find.byKey(const Key('guide-ai-consent')), findsNothing);
-    await tester.tap(find.byKey(const Key('care360-guide-show')));
-    await tester.pump();
+
+    // These controls sit below the first viewport on a compact phone.
+    // dragUntilVisible works even when a ListView child is not laid out yet.
+    final list = find.byType(ListView);
+    final show = find.byKey(const Key('care360-guide-show'));
+    await tester.dragUntilVisible(show, list, const Offset(0, -160));
+    await tester.pumpAndSettle();
+    await tester.tap(show);
+    await tester.pumpAndSettle();
+    final answer = find.byKey(const Key('care360-guide-answer'));
+    await tester.dragUntilVisible(answer, list, const Offset(0, -160));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Create a patient account'), findsOneWidget);
+
+    // Choose a different fixed topic without typing any free-form health data.
     final partners = find.byKey(const Key('guide-topic-partners'));
-    await tester.ensureVisible(partners);
+    await tester.dragUntilVisible(partners, list, const Offset(0, 160));
+    await tester.pumpAndSettle();
     await tester.tap(partners);
-    await tester.pump();
-    await tester.ensureVisible(find.byKey(const Key('care360-guide-show')));
-    await tester.tap(find.byKey(const Key('care360-guide-show')));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.dragUntilVisible(show, list, const Offset(0, -160));
+    await tester.pumpAndSettle();
+    await tester.tap(show);
+    await tester.pumpAndSettle();
+    await tester.dragUntilVisible(answer, list, const Offset(0, -160));
+    await tester.pumpAndSettle();
     expect(find.textContaining('SpeakOut Mental Health'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -73,7 +89,10 @@ void main() {
       expect(find.text('De meilleurs soins, plus près de vous.'), findsOneWidget);
       expect(tester.takeException(), isNull);
       final guide = find.byKey(const Key('preview-care360-guide'));
-      await tester.ensureVisible(guide);
+      await tester.dragUntilVisible(
+          guide, find.byKey(const Key('offline-dashboard-scroll')),
+          const Offset(0, -180));
+      await tester.pumpAndSettle();
       await tester.tap(guide);
       await tester.pumpAndSettle();
       expect(find.text('Guide Care360'), findsOneWidget);
