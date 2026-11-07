@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Care360 Patient: signed TestFlight/App Store IPA on an authorised macOS machine.
 # Does not upload or publish. Private keys and provisioning stay in Keychain.
-# Example: K3_IOS_NEXT_BUILD_NUMBER=90 K3_IOS_APP_VERSION=7.3.0 ./tools/build-patient-ios-ipa.sh
+# Example: K3_IOS_NEXT_BUILD_NUMBER=90 K3_IOS_APP_VERSION=7.3.0 bash tools/build-patient-ios-ipa.sh
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
