@@ -13,6 +13,8 @@ import '../../const/Palette.dart';
 import '../../const/app_string.dart';
 import '../../const/prefConstatnt.dart';
 import '../../localization/localization_constant.dart';
+import '../../localization/care360_language_picker.dart';
+import '../../main.dart';
 import '../../model/register_model.dart';
 
 class SignUp extends StatefulWidget {
@@ -87,6 +89,18 @@ class _SignUpState extends State<SignUp> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Care360LanguagePicker(
+                        languageCode: Localizations.localeOf(context).languageCode,
+                        onSelected: (language) async {
+                          final selected = await setLocale(language);
+                          if (!mounted) return;
+                          MyApp.setLocale(context, selected);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Text(
                       getTranslated(context, AppString.signUp_title).toString(),
                       style: TextStyle(
