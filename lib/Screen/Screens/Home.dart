@@ -2398,11 +2398,11 @@ class _HomeState extends State<Home> {
           });
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2428,11 +2428,11 @@ class _HomeState extends State<Home> {
           pharmacyList.addAll(list);
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2479,11 +2479,11 @@ class _HomeState extends State<Home> {
         });
         doctorList.addAll(list);
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2867,8 +2867,8 @@ class _HomeState extends State<Home> {
         });
         providerList.addAll(list);
       });
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2924,11 +2924,11 @@ class _HomeState extends State<Home> {
         image = response.fullImage;
         _passDetail();
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2951,11 +2951,11 @@ class _HomeState extends State<Home> {
         }
         banner.addAll(response.data!);
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2980,11 +2980,11 @@ class _HomeState extends State<Home> {
         doctorList.clear();
         callApiDoctorList();
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -3001,11 +3001,11 @@ class _HomeState extends State<Home> {
         loading = false;
         offerList.addAll(response.data!);
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -3025,11 +3025,11 @@ class _HomeState extends State<Home> {
         loading = false;
         upcomingAppointment.addAll(response.data!.upcomingAppointment!);
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -3122,11 +3122,11 @@ class _HomeState extends State<Home> {
           }
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
