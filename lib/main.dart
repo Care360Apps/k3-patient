@@ -162,8 +162,10 @@ class MyApp extends StatefulWidget {
   _MyAppState createState() => _MyAppState();
 
   static void setLocale(BuildContext context, Locale newLocale) {
-    _MyAppState state = context.findAncestorStateOfType<_MyAppState>()!;
-    state.setLocale(newLocale);
+    // Isolated widget tests may not mount MyApp. Live app selections still
+    // update the root locale immediately and remain saved on device.
+    final state = context.findAncestorStateOfType<_MyAppState>();
+    state?.setLocale(newLocale);
   }
 }
 
