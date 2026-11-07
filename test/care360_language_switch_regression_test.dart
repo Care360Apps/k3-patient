@@ -21,7 +21,11 @@ void main() {
           Locale('yo', 'NG'),
           Locale('fr', 'FR'),
         ],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         navigatorKey: nav,
         builder: (context, navigatorChild) => Stack(
           children: [
