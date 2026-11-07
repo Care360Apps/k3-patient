@@ -13,6 +13,7 @@ class NearbyOnDutyProfessional {
     required this.lat,
     required this.lng,
     required this.distanceKm,
+    required this.expiresAt,
   });
 
   final int id;
@@ -21,6 +22,9 @@ class NearbyOnDutyProfessional {
   final double lat;
   final double lng;
   final double distanceKm;
+  final DateTime expiresAt;
+
+  bool get isStillAccepting => expiresAt.isAfter(DateTime.now().toUtc());
 
   static NearbyOnDutyProfessional? fromJson(dynamic input) {
     if (input is! Map) return null;
@@ -30,6 +34,8 @@ class NearbyOnDutyProfessional {
     final lat = input['lat'];
     final lng = input['lng'];
     final distance = input['distance_km'];
+    final expires = input['on_duty_until'];
+    final expiresAt = expires is String ? DateTime.tryParse(expires) : null;
     final nLat = lat is num ? lat.toDouble() : double.tryParse('$lat');
     final nLng = lng is num ? lng.toDouble() : double.tryParse('$lng');
     final nDistance = distance is num
@@ -40,12 +46,15 @@ class NearbyOnDutyProfessional {
         nLat == null || !nLat.isFinite || nLat < -90 || nLat > 90 ||
         nLng == null || !nLng.isFinite || nLng < -180 || nLng > 180 ||
         nDistance == null || !nDistance.isFinite || nDistance < 0 ||
-        input['accepting_requests'] != true) {
+        input['accepting_requests'] != true ||
+        expiresAt == null ||
+        !expiresAt.isAfter(DateTime.now().toUtc())) {
       return null;
     }
     return NearbyOnDutyProfessional(
       id: id, name: name.trim(), role: role as String,
-      lat: nLat, lng: nLng, distanceKm: nDistance);
+      lat: nLat, lng: nLng, distanceKm: nDistance,
+      expiresAt: expiresAt.toUtc());
   }
 }
 
