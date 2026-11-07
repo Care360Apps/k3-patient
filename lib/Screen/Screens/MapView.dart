@@ -16,6 +16,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../const/Palette.dart';
 
 class MapView extends StatefulWidget {
@@ -29,6 +30,8 @@ class _MapViewState extends State<MapView> {
   List<LabData> labList = [];
   List<ProviderModel> providerList = [];
   bool loading = true;
+  bool _canShowUserLocation = false;
+  String _selectedType = 'All';
   String? _lat;
   String? _lang;
   GoogleMapController? _mapController;
@@ -64,14 +67,18 @@ class _MapViewState extends State<MapView> {
 
   Future<void> _loadLocationAndData() async {
     final prefs = await SharedPreferences.getInstance();
+    final permissionGranted = (await Permission.location.status).isGranted;
+    if (!mounted) return;
     setState(() {
       _lat = prefs.getString('lat');
       _lang = prefs.getString('lang');
+      _canShowUserLocation = permissionGranted;
     });
     await _fetchAll();
   }
 
   Future<void> _fetchAll() async {
+    if (!mounted) return;
     setState(() => loading = true);
     try {
       await Future.wait([
@@ -81,7 +88,7 @@ class _MapViewState extends State<MapView> {
         _fetchLabs(),
       ]);
     } finally {
-      setState(() => loading = false);
+      if (mounted) setState(() => loading = false);
     }
   }
 
@@ -95,9 +102,15 @@ class _MapViewState extends State<MapView> {
       final response = SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true
           ? await RestClient(RetroApi().dioData()).doctorList(body)
           : await RestClient(RetroApi2().dioData2()).doctorList(body);
-      setState(() => doctorList = response.data ?? []);
+      final doctors = response.data ?? [];
+      doctors.sort((a, b) {
+        final da = _distanceKmForDoctor(a) ?? double.infinity;
+        final db = _distanceKmForDoctor(b) ?? double.infinity;
+        return da.compareTo(db);
+      });
+      if (mounted) setState(() => doctorList = doctors);
     } catch (_) {
-      setState(() => doctorList = []);
+      if (mounted) setState(() => doctorList = []);
     }
   }
 
@@ -110,7 +123,7 @@ class _MapViewState extends State<MapView> {
       final body = {
         'lat': _lat,
         'lang': _lang,
-        'limit': 100,
+        'limit': 50, // API validates a maximum of 50; 100 returned HTTP 422.
       };
       final response = await RestClient(RetroApi2().dioData2()).providersRequest(body);
       final list = response.data ?? [];
@@ -119,9 +132,9 @@ class _MapViewState extends State<MapView> {
         final db = _distanceKmForProvider(b) ?? double.infinity;
         return da.compareTo(db);
       });
-      setState(() => providerList = list);
+      if (mounted) setState(() => providerList = list);
     } catch (_) {
-      setState(() => providerList = []);
+      if (mounted) setState(() => providerList = []);
     }
   }
 
@@ -134,9 +147,9 @@ class _MapViewState extends State<MapView> {
         final db = _distanceKmForHospital(b) ?? double.infinity;
         return da.compareTo(db);
       });
-      setState(() => hospitalList = list);
+      if (mounted) setState(() => hospitalList = list);
     } catch (_) {
-      setState(() => hospitalList = []);
+      if (mounted) setState(() => hospitalList = []);
     }
   }
 
@@ -149,17 +162,21 @@ class _MapViewState extends State<MapView> {
         final db = _distanceKmForLab(b) ?? double.infinity;
         return da.compareTo(db);
       });
-      setState(() => labList = list);
+      if (mounted) setState(() => labList = list);
     } catch (_) {
-      setState(() => labList = []);
+      if (mounted) setState(() => labList = []);
     }
   }
 
   double? _distanceKmFromUser(double? lat, double? lng) {
-    if (lat == null || lng == null) return null;
+    if (lat == null || lng == null || lat == 0 && lng == 0 ||
+        lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
     final userLat = double.tryParse(_lat ?? '');
     final userLng = double.tryParse(_lang ?? '');
-    if (userLat == null || userLng == null) return null;
+    if (userLat == null || userLng == null ||
+        userLat < -90 || userLat > 90 || userLng < -180 || userLng > 180) {
+      return null;
+    }
     const earthRadiusKm = 6371.0;
     final dLat = (lat - userLat) * (pi / 180.0);
     final dLon = (lng - userLng) * (pi / 180.0);
@@ -171,13 +188,13 @@ class _MapViewState extends State<MapView> {
 
   double? _distanceKmForDoctor(DoctorModel d) {
     final dFromApi = d.distanceKm != null ? double.tryParse(d.distanceKm!.trim()) : null;
-    if (dFromApi != null && !dFromApi.isNaN) return dFromApi;
+    if (dFromApi != null && dFromApi.isFinite && dFromApi >= 0) return dFromApi;
     return _distanceKmFromUser(d.lat, d.lng);
   }
 
   double? _distanceKmForProvider(ProviderModel p) {
     final dFromApi = p.distanceKm != null ? double.tryParse(p.distanceKm!.trim()) : null;
-    if (dFromApi != null && !dFromApi.isNaN) return dFromApi;
+    if (dFromApi != null && dFromApi.isFinite && dFromApi >= 0) return dFromApi;
     return _distanceKmFromUser(p.lat, p.lng);
   }
 
@@ -192,7 +209,10 @@ class _MapViewState extends State<MapView> {
   LatLng _getInitialPosition() {
     final lat = double.tryParse(_lat ?? '');
     final lng = double.tryParse(_lang ?? '');
-    if (lat != null && lng != null) return LatLng(lat, lng);
+    if (lat != null && lng != null &&
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return LatLng(lat, lng);
+    }
     return _defaultCenter;
   }
 
@@ -201,7 +221,8 @@ class _MapViewState extends State<MapView> {
     if (v is num) return v.toDouble();
     final s = v.toString().trim();
     if (s.isEmpty || s == 'N_A') return null;
-    return double.tryParse(s);
+    final n = double.tryParse(s);
+    return n != null && n.isFinite ? n : null;
   }
 
   BitmapDescriptor _icon(BitmapDescriptor? custom) =>
