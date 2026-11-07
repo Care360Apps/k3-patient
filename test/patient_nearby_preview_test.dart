@@ -39,6 +39,14 @@ void main() {
     expect(find.byKey(const Key('sample-pin-0')), findsNothing);
     expect(find.byKey(const Key('sample-pin-1')), findsOneWidget);
 
+    final homeVisits = find.byKey(const Key('sample-service-home-visits'));
+    await tester.ensureVisible(homeVisits);
+    await tester.pumpAndSettle();
+    await tester.tap(homeVisits);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('sample-pin-0')), findsNothing);
+    expect(find.byKey(const Key('sample-pin-1')), findsOneWidget);
+
     final accepting = find.byKey(const Key('sample-accepting-requests'));
     await tester.ensureVisible(accepting);
     await tester.pumpAndSettle();
