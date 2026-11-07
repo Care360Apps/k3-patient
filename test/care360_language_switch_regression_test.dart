@@ -49,6 +49,7 @@ void main() {
             key: const Key('locale-text')))),
       ),
     ));
+    await tester.pumpAndSettle();
 
     expect(find.text('Locale: en'), findsOneWidget);
     await tester.tap(find.byKey(const Key('care360-language-every-screen')));
