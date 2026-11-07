@@ -36,6 +36,7 @@ class _MapViewState extends State<MapView> {
   bool _onDutyOnly = false;
   bool _onDutyLoading = false;
   bool _onDutyError = false;
+  String? _selectedVisitType;
   List<NearbyOnDutyProfessional> _onDuty = [];
   int _onDutyFetchId = 0;
   Timer? _presenceExpiryTimer;
@@ -211,6 +212,7 @@ class _MapViewState extends State<MapView> {
     setState(() {
       _onDutyOnly = enabled;
       _selectedType = 'All';
+      _selectedVisitType = null;
       _onDutyError = false;
       if (!enabled) {
         _onDuty = [];
@@ -238,7 +240,7 @@ class _MapViewState extends State<MapView> {
     });
     try {
       final matches = await const NearbyOnDutyService().find(
-        lat: lat, lng: lng);
+        lat: lat, lng: lng, visitType: _selectedVisitType);
       if (mounted && _onDutyOnly && requestId == _onDutyFetchId) {
         setState(() => _onDuty = matches.where((p) => p.isStillAccepting).toList());
         _scheduleExpiry();
@@ -518,6 +520,10 @@ class _MapViewState extends State<MapView> {
                   child: Column(
                     children: [
                       _buildCategoryFilters(),
+                      if (_onDutyOnly) ...[
+                        const SizedBox(height: 8),
+                        _buildServiceFilters(),
+                      ],
                       const SizedBox(height: 8),
                       _buildLegendCard(),
                     ],
@@ -599,6 +605,45 @@ class _MapViewState extends State<MapView> {
               ),
             ),
         ]),
+      ),
+    );
+  }
+
+  Widget _buildServiceFilters() {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 2,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        child: Row(children: [
+          _serviceFilterChip(null, 'All services', 'all'),
+          _serviceFilterChip('home_visit', 'Home visits', 'home'),
+          _serviceFilterChip('video_call', 'Virtual care', 'virtual'),
+        ]),
+      ),
+    );
+  }
+
+  Widget _serviceFilterChip(String? type, String label, String key) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ChoiceChip(
+        key: Key('nearby-service-$key'),
+        label: Text(label),
+        selected: _selectedVisitType == type,
+        showCheckmark: false,
+        onSelected: (_) {
+          if (!_onDutyOnly || _onDutyLoading) return;
+          setState(() {
+            _selectedVisitType = type;
+            // Old pins must not remain visible under a different service.
+            _onDuty = [];
+          });
+          _presenceExpiryTimer?.cancel();
+          _fetchOnDuty();
+        },
       ),
     );
   }
