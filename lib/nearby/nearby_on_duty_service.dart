@@ -65,11 +65,13 @@ class NearbyOnDutyService {
     }
     final uri = base.resolve('nearby-care');
     final Response<dynamic> response =
-        await RetroApi2().dioData2().getUri<dynamic>(
+        await RetroApi2().dioData2().postUri<dynamic>(
       uri,
-      queryParameters: {
-        'lat': lat,
-        'lng': lng,
+      // Coarse search point is sufficient for finding a service area,
+      // and a POST body avoids logging exact device coordinates in URLs.
+      data: {
+        'lat': double.parse(lat.toStringAsFixed(2)),
+        'lng': double.parse(lng.toStringAsFixed(2)),
         'radius_km': radiusKm.clamp(1, 50),
         'limit': 30,
       },
