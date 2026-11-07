@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:doctro_patient/Screen/Location/Showlocation.dart';
+import 'package:doctro_patient/Screen/Location/care360_place_search.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
 import 'package:doctro_patient/api/network_api.dart';
 import 'package:doctro_patient/const/prefConstatnt.dart';
@@ -9,10 +10,7 @@ import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_api_headers/google_api_headers.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:google_maps_webservice/places.dart';
-import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import '../../api/base_model.dart';
 import '../../api/server_error.dart';
@@ -91,6 +89,27 @@ class _AddLocationState extends State<AddLocation> {
     _controller = _cnTlr;
   }
 
+  /// Selecting a map point must work even when legacy Places search has
+  /// no separate web-service key. Do not invent a formatted street address:
+  /// the patient enters the address and label before confirming.
+  void _selectPointOnMap(LatLng point) {
+    if (!mounted) return;
+    setState(() {
+      selectLat = point.latitude;
+      selectLang = point.longitude;
+      _initialCameraPosition = point;
+      address = '';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Location selected. Enter the address and label below to save.',
+        ),
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
   Set<Marker> _createMarker() {
     return <Marker>{
       Marker(
@@ -137,6 +156,7 @@ class _AddLocationState extends State<AddLocation> {
                         mapType: MapType.normal,
                         initialCameraPosition: CameraPosition(target: _initialCameraPosition!, zoom: 13),
                         onMapCreated: _onMapCreated,
+                        onTap: _selectPointOnMap,
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
@@ -177,34 +197,23 @@ class _AddLocationState extends State<AddLocation> {
                               children: [
                                 GestureDetector(
                                   onTap: () async {
-                                    final mapKey = await _resolveMapKey();
-                                    if (!_hasValidMapKey(mapKey)) {
-                                      Fluttertoast.showToast(
-                                        msg: "Google Maps API key is missing",
-                                        toastLength: Toast.LENGTH_SHORT,
-                                        gravity: ToastGravity.BOTTOM,
-                                      );
-                                      return;
-                                    }
-                                    Prediction? p = await PlacesAutocomplete.show(
-                                      context: context,
-                                      mode: Mode.overlay,
-                                      apiKey: mapKey,
-                                      offset: 0,
-                                      radius: 1000,
-                                      types: [],
-                                      strictbounds: false,
-                                      components: [],
-                                    );
-                                    if (p == null) {
-                                      return;
-                                    }
-                                    displayPrediction(p);
-                                    setState(
-                                      () {
-                                        address = '${p!.description}';
-                                        _textFullAddress.text = address;
-                                      },
+                                    final place = await showCare360PlaceSearch(context);
+                                    if (!mounted || place == null) return;
+                                    setState(() {
+                                      address = place.address;
+                                      _textFullAddress.text = place.address;
+                                      selectLat = place.latitude;
+                                      selectLang = place.longitude;
+                                      _initialCameraPosition =
+                                          LatLng(place.latitude, place.longitude);
+                                    });
+                                    await _controller?.animateCamera(
+                                      CameraUpdate.newCameraPosition(
+                                        CameraPosition(
+                                          target: LatLng(place.latitude, place.longitude),
+                                          zoom: 17,
+                                        ),
+                                      ),
                                     );
                                   },
                                   child: Container(
@@ -259,7 +268,8 @@ class _AddLocationState extends State<AddLocation> {
                                         child: TextFormField(
                                           controller: _textAddressLabel,
                                           textCapitalization: TextCapitalization.words,
-                                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9]'))],
+                                          // Preserve Nigerian place names and spaces, including
+                                          // Yoruba/Igbo diacritics. Validate on submit instead.
                                           decoration: InputDecoration(
                                             contentPadding: EdgeInsets.only(left: 10),
                                             hintText: getTranslated(context, AppString.addLocation_attachLabel_hint).toString(),
@@ -274,7 +284,7 @@ class _AddLocationState extends State<AddLocation> {
                                             fillColor: Palette.white,
                                           ),
                                           validator: (String? value) {
-                                            if (value!.isEmpty) {
+                                            if (value == null || value.trim().isEmpty) {
                                               return getTranslated(context, AppString.addLocation_attachLabel_validator).toString();
                                             }
                                             return null;
@@ -306,12 +316,12 @@ class _AddLocationState extends State<AddLocation> {
                                         child: TextFormField(
                                           controller: _textFullAddress,
                                           keyboardType: TextInputType.text,
-                                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9,]'))],
+                                          // Allow multiword, Unicode and numbered street addresses.
                                           decoration: InputDecoration(contentPadding: EdgeInsets.only(left: 10), hintText: getTranslated(context, AppString.addLocation_address_hint).toString(), border: InputBorder.none),
                                           maxLines: 3,
                                           style: TextStyle(fontSize: 16, color: Palette.dark_grey),
                                           validator: (String? value) {
-                                            if (value!.isEmpty) {
+                                            if (value == null || value.trim().isEmpty) {
                                               return getTranslated(context, AppString.addLocation_address_validator).toString();
                                             }
                                             return null;
@@ -371,42 +381,6 @@ class _AddLocationState extends State<AddLocation> {
     );
   }
 
-  Future<Null> displayPrediction(Prediction? p) async {
-    if (p != null) {
-      final mapKey = await _resolveMapKey();
-      if (!_hasValidMapKey(mapKey)) {
-        Fluttertoast.showToast(
-          msg: "Google Maps API key is missing",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-        );
-        return;
-      }
-      GoogleMapsPlaces _places = GoogleMapsPlaces(
-        apiKey: mapKey,
-        apiHeaders: await GoogleApiHeaders().getHeaders(),
-      );
-
-      PlacesDetailsResponse detail = await _places.getDetailsByPlaceId(p.placeId!);
-
-      double lat = detail.result.geometry!.location.lat;
-      double lng = detail.result.geometry!.location.lng;
-
-      selectLang = double.parse('$lng');
-      selectLat = double.parse('$lat');
-
-      setState(() {
-        _controller!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: LatLng(selectLat, selectLang), zoom: 18),
-          ),
-        );
-        _initialCameraPosition = LatLng(selectLat, selectLang);
-        _createMarker();
-      });
-    }
-  }
-
   Future<BaseModel<CommonResponse>> callApiAddAddress() async {
     CommonResponse response;
     if (!_hasAuthToken()) {
@@ -445,28 +419,6 @@ class _AddLocationState extends State<AddLocation> {
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
-  }
-
-  Future<String> _resolveMapKey() async {
-    final savedKey = SharedPreferenceHelper.getString(Preferences.map_key_value);
-    if (_hasValidMapKey(savedKey)) {
-      return savedKey!;
-    }
-    try {
-      final response = await RestClient(RetroApi2().dioData2()).settingRequest();
-      final apiKey = response.data?.mapKey?.toString();
-      if (_hasValidMapKey(apiKey)) {
-        await SharedPreferenceHelper.setString(Preferences.map_key_value, apiKey!);
-        return apiKey;
-      }
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
-    }
-    return Preferences.map_key;
-  }
-
-  bool _hasValidMapKey(String? mapKey) {
-    return mapKey != null && mapKey.isNotEmpty && mapKey != "Enter_Your_google_map_key" && mapKey != "N_A" && mapKey != "null";
   }
 
   bool _hasAuthToken() {

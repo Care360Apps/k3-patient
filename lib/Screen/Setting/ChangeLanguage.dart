@@ -119,8 +119,19 @@ class _ChangeLanguageState extends State<ChangeLanguage> {
                               final selected = Language.languageList()[index].languageCode;
                               final local = await setLocale(selected);
                               if (!mounted) return;
-                              MyApp.setLocale(context, local);
-                              Navigator.pop(context);
+                              // Keep the root state context; this settings route
+                              // will be disposed after Navigator.pop.
+                              final root = navigatorKey.currentState;
+                              if (root == null || !root.mounted) return;
+                              final rootContext = root.context;
+                              final exiting = ModalRoute.of(context);
+                              Navigator.of(context).pop();
+                              // Wait for the exiting settings route to finish
+                              // before reloading the app's localization tree.
+                              await exiting?.completed;
+                              if (root.mounted) {
+                                MyApp.setLocale(rootContext, local);
+                              }
                             },
                             title: Text(Language.languageList()[index].name),
                           ),

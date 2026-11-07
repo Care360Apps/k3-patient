@@ -76,6 +76,7 @@ import 'api/server_error.dart';
 import 'const/Palette.dart';
 import 'const/prefConstatnt.dart';
 import 'localization/language_localization.dart';
+import 'localization/care360_framework_locale_fallback.dart';
 import 'localization/localization_constant.dart';
 import 'localization/localization_constant.dart' as care360_locale;
 import 'brand/care360_global_language.dart';
@@ -427,11 +428,11 @@ class _MyAppState extends State<MyApp> {
               Locale(SPANISH, 'ES'),
               Locale(ARABIC, 'AE'),
             ],
-            localizationsDelegates: [
+            localizationsDelegates: const [
               LanguageLocalization.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
+              Care360MaterialFallbackDelegate(),
+              Care360WidgetsFallbackDelegate(),
+              Care360CupertinoFallbackDelegate(),
             ],
             localeResolutionCallback: (deviceLocal, supportedLocales) {
               for (var local in supportedLocales) {
@@ -444,15 +445,47 @@ class _MyAppState extends State<MyApp> {
             debugShowCheckedModeBanner: false,
             initialRoute: "/",
             theme: ThemeData(
+              // A shared, high-contrast healthcare identity across Patient.
+              // Keep Material 2 compatibility for established clinical forms.
+              useMaterial3: false,
               splashColor: Palette.transparent,
               highlightColor: Palette.transparent,
-              primaryColor: Palette.blue,
-              useMaterial3: false,
+              scaffoldBackgroundColor: const Color(0xFFF5F8F7),
+              primaryColor: const Color(0xFF123E4D),
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFF087D76),
+                brightness: Brightness.light,
+              ),
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Color(0xFF123E4D),
+                foregroundColor: Colors.white,
+              ),
+              inputDecorationTheme: InputDecorationTheme(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               elevatedButtonTheme: ElevatedButtonThemeData(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Palette.blue
-                )
-              )
+                  backgroundColor: const Color(0xFF087D76),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(48, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              outlinedButtonTheme: OutlinedButtonThemeData(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF123E4D),
+                  minimumSize: const Size(48, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
             routes: {
               '/': (context) {

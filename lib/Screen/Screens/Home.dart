@@ -14,6 +14,8 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import '../../brand/care360_partner_showcase.dart';
+import '../../brand/care360_nearby_care_hero.dart';
+import '../../brand/care360_guide_shortcut.dart';
 import '../../brand/care360_horizontal_cards.dart';
 import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -23,7 +25,6 @@ import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:doctro_patient/Screen/MedicineAndPharmacy/PharamacyDetail.dart';
 import '../../VideoCall/PhoneScreen.dart';
@@ -91,7 +92,6 @@ class _HomeState extends State<Home> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   int current = 0;
-  List<String?> imgList = [];
 
   // Search //
   TextEditingController _search = TextEditingController();
@@ -1356,51 +1356,17 @@ class _HomeState extends State<Home> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                          child: Material(
-                            color: const Color(0xFF123E4D),
-                            borderRadius: BorderRadius.circular(16),
-                            child: InkWell(
-                              key: const Key('home-find-nearby-care'),
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () => Navigator.pushNamed(context, 'MapView'),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.map_outlined,
-                                        color: Colors.white, size: 27),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Find nearby care',
-                                            style: TextStyle(color: Colors.white,
-                                              fontSize: 17,
-                                              fontWeight: FontWeight.w800)),
-                                          SizedBox(height: 3),
-                                          Text('Doctors, providers and facilities close to your chosen area',
-                                            style: TextStyle(
-                                              color: Color(0xFFE1F1EE),
-                                              fontSize: 12, height: 1.35)),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(Icons.arrow_forward_ios_rounded,
-                                      color: Colors.white, size: 17),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
+                        Care360NearbyCareHero(
+                          onExplore: () => Navigator.pushNamed(context, 'MapView'),
                         ),
                         if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
-                            SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null)
-                          const Care360PartnerShowcase(),
+                            SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null) ...[
+                          const Care360GuideShortcut(),
+                          Care360PartnerShowcase(
+                            slides: _partnerSlides(),
+                            showGuideButton: false,
+                          ),
+                        ],
                         /// Upcoming Appointment ///
                         upcomingAppointment.length != 0
                             ? Column(
@@ -1726,92 +1692,9 @@ class _HomeState extends State<Home> {
                           height: 4,
                         ),
 
-                        /// looking For ///
-                        Column(
-                          children: [
-                            Container(
-                              alignment: AlignmentDirectional.topStart,
-                              margin: EdgeInsets.only(
-                                left: 20,
-                                right: 20,
-                              ),
-                              // child: Column(
-                              //   children: [
-                              //     Text(
-                              //       getTranslated(context, AppString.home_lookingFor).toString(),
-                              //       style: TextStyle(
-                              //         fontSize: 16,
-                              //         color: Palette.dark_blue,
-                              //         fontWeight: FontWeight.bold,
-                              //       ),
-                              //     ),
-                              //   ],
-                              // ),
-                            ),
-                            //banners
-                            Container(
-                              height: 210,
-                              margin: EdgeInsets.only(top: 10, bottom: 10, left: 0, right: 0),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(15),
-                                ),
-                                child: Stack(
-                                  children: <Widget>[
-                                    CarouselSlider(
-                                      options: CarouselOptions(
-                                        height: 200,
-                                        viewportFraction: 1.0,
-                                        autoPlay: true,
-                                        onPageChanged: (index, index1) {
-                                          setState(
-                                            () {
-                                              current = index;
-                                            },
-                                          );
-                                        },
-                                      ),
-                                      items: banner.map((bannerData) {
-                                        return Builder(
-                                          builder: (BuildContext context) {
-                                            return InkWell(
-                                              onTap: () async {
-                                                // await launch(bannerData.link!);
-                                                Uri _url = Uri.parse(bannerData.link!);
-                                                launchUrl(_url);
-                                              },
-                                              child: Container(
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.all(
-                                                    Radius.circular(15),
-                                                  ),
-                                                  child: CachedNetworkImage(
-                                                    imageUrl: bannerData.fullImage!,
-                                                    fit: BoxFit.fitHeight,
-                                                    placeholder: (context, url) => SpinKitFadingCircle(color: Palette.blue),
-                                                    errorWidget: (context, url, error) => Image.asset(
-                                                      "assets/images/no_image.jpg",
-                                                      width: width,
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(
-                          height: 10,
-                        ),
+                        // Single patient-only placement above; no duplicate
+                        // autoplay banner below the appointment summary.
+                        const SizedBox(height: 10),
 
                         /// Treatments (Categories) ///
                         Column(
@@ -2978,31 +2861,42 @@ class _HomeState extends State<Home> {
     return BaseModel()..data = response;
   }
 
+  /// Only approved external HTTPS destinations enter the public carousel.
+  /// No patient, appointment or location context is sent to partners.
+  List<Care360PartnerSlide> _partnerSlides() {
+    final slides = <Care360PartnerSlide>[];
+    for (final item in banner) {
+      if (item.status == 0) continue;
+      final url = Care360PartnerSlide.safeDestination(item.link);
+      if (url == null) continue;
+      final title = (item.name ?? '').trim();
+      slides.add(Care360PartnerSlide(
+        title: title.isEmpty ? 'Featured service' : title,
+        subtitle: (item.desc ?? '').trim().isEmpty
+            ? 'Explore this featured partner' : item.desc!.trim(),
+        url: url,
+        imageUrl: item.fullImage,
+        sponsored: item.isSponsored,
+      ));
+    }
+    return slides;
+  }
+
   Future<BaseModel<Banners>> callApiBanner() async {
-    Banners response;
-    setState(() {
-      loading = true;
-    });
     try {
-      response = await RestClient(RetroApi2().dioData2()).bannerRequest();
-      setState(() {
-        loading = false;
-        if (response.data!.length != 0) {
-          imgList.clear();
-          for (int i = 0; i < response.data!.length; i++) {
-            imgList.add(response.data![i].fullImage);
-          }
-        }
-        banner.addAll(response.data!);
-      });
+      final response = await RestClient(RetroApi2().dioData2()).bannerRequest();
+      if (mounted) {
+        setState(() {
+          // Refresh replaces old campaigns; it never duplicates stale slides.
+          banner = response.data ?? <Add>[];
+        });
+      }
+      return BaseModel()..data = response;
     } catch (error) {
-      setState(() {
-        loading = false;
-      });
-      // Never log exception bodies containing patient data, query URLs or tokens.
+      // Preserve the existing valid banners on a temporary network failure.
+      // Never log full error bodies containing private URLs or credentials.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
-    return BaseModel()..data = response;
   }
 
   Future<BaseModel<FavoriteDoctor>> callApiFavoriteDoctor() async {
