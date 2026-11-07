@@ -15,6 +15,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import '../../brand/care360_partner_showcase.dart';
 import '../../brand/care360_nearby_care_hero.dart';
+import '../../brand/care360_guide_shortcut.dart';
 import '../../brand/care360_horizontal_cards.dart';
 import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -1359,8 +1360,13 @@ class _HomeState extends State<Home> {
                           onExplore: () => Navigator.pushNamed(context, 'MapView'),
                         ),
                         if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
-                            SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null)
-                          Care360PartnerShowcase(slides: _partnerSlides()),
+                            SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null) ...[
+                          const Care360GuideShortcut(),
+                          Care360PartnerShowcase(
+                            slides: _partnerSlides(),
+                            showGuideButton: false,
+                          ),
+                        ],
                         /// Upcoming Appointment ///
                         upcomingAppointment.length != 0
                             ? Column(
