@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:doctro_patient/localization/language_localization.dart';
 import 'package:doctro_patient/brand/care360_guide_shortcut.dart';
 
 void main() {
@@ -7,6 +9,16 @@ void main() {
       (tester) async {
     await tester.pumpWidget(const MaterialApp(
       locale: Locale('fr', 'FR'),
+      supportedLocales: [
+        Locale('en', 'US'),
+        Locale('fr', 'FR'),
+      ],
+      localizationsDelegates: [
+        LanguageLocalization.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: Scaffold(body: Care360GuideShortcut()),
     ));
 
