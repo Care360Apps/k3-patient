@@ -1,38 +1,287 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../ai/care360_guide_screen.dart';
 
-/// Curated discovery only. This deliberately does not import, send, or link
-/// Care360 identifiers, patient data, tokens, or navigation state.
-class Care360PartnerShowcase extends StatelessWidget {
-  const Care360PartnerShowcase({super.key, this.openExternal});
+/// A curated external placement. This intentionally contains no patient ID,
+/// booking state, symptoms, authentication credentials or tracking parameters.
+class Care360PartnerSlide {
+  const Care360PartnerSlide({
+    required this.title,
+    required this.subtitle,
+    required this.url,
+    this.imageUrl,
+    this.sponsored = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final Uri url;
+  final String? imageUrl;
+  final bool sponsored;
+
+  static Uri? safeDestination(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final uri = Uri.tryParse(raw.trim());
+    if (uri == null || uri.scheme.toLowerCase() != 'https' ||
+        uri.host.isEmpty || uri.userInfo.isNotEmpty || uri.port != 443) {
+      return null;
+    }
+    final host = uri.host.toLowerCase();
+    if (host == 'localhost' || host.endsWith('.local') ||
+        host.endsWith('.localhost') || host.endsWith('.internal') ||
+        host.endsWith('.invalid') || host.endsWith('.test') ||
+        !host.contains('.') ||
+        RegExp(r'^\d{1,3}(\.\d{1,3}){3}$').hasMatch(host) ||
+        host.contains(':')) {
+      return null;
+    }
+    return uri;
+  }
+
+  /// Remote assets use HTTPS. The locally configured staging Laravel host is
+  /// also permitted to serve uploaded images in debug builds only.
+  static Uri? safeImageUri(String? raw) {
+    final https = safeDestination(raw);
+    if (https != null) return https;
+    if (!kDebugMode || raw == null) return null;
+    final image = Uri.tryParse(raw);
+    const apiBase = String.fromEnvironment('K3_API_BASE_URL');
+    final api = Uri.tryParse(apiBase);
+    if (image != null && api != null && api.host.isNotEmpty &&
+        image.scheme == 'http' && api.scheme == 'http' &&
+        image.host == api.host && image.port == api.port &&
+        image.userInfo.isEmpty &&
+        image.path.startsWith('/images/upload/')) {
+      return image;
+    }
+    return null;
+  }
+}
+
+/// Rotating discovery area on authenticated Patient Home only. No advertising
+/// appears in clinical records, prescription, call, or Care360 Plus screens.
+class Care360PartnerShowcase extends StatefulWidget {
+  const Care360PartnerShowcase({
+    super.key,
+    this.slides = const [],
+    this.openExternal,
+    this.interval = const Duration(seconds: 10),
+  });
+
+  final List<Care360PartnerSlide> slides;
   final Future<bool> Function(Uri)? openExternal;
+  final Duration interval;
 
-  static final Uri mindCheckUrl = Uri.https(
-    'mindcheck.speakoutmentalhealth.org', '/');
+  static final Uri mindCheckUrl =
+      Uri.https('mindcheck.speakoutmentalhealth.org', '/');
 
-  Future<void> _openMindCheck(BuildContext context) async {
+  @override
+  State<Care360PartnerShowcase> createState() => _Care360PartnerShowcaseState();
+}
+
+class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
+    with WidgetsBindingObserver {
+  late final PageController _pages;
+  Timer? _rotation;
+  int _current = 0;
+  bool _hovered = false;
+  bool _foreground = true;
+  bool _reducedMotion = false;
+
+  List<Care360PartnerSlide> get _slides => [
+        Care360PartnerSlide(
+          title: 'MindCheck',
+          subtitle: 'Everyday mental wellbeing by SpeakOut Mental Health Outreach',
+          url: Care360PartnerShowcase.mindCheckUrl,
+        ),
+        ...widget.slides.where((slide) =>
+            Care360PartnerSlide.safeDestination(slide.url.toString()) != null),
+      ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = PageController();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final media = MediaQuery.maybeOf(context);
+    _reducedMotion =
+        (media?.disableAnimations ?? false) || (media?.accessibleNavigation ?? false);
+    _resetTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant Care360PartnerShowcase oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.slides != widget.slides ||
+        oldWidget.interval != widget.interval) {
+      final count = _slides.length;
+      if (_current >= count) {
+        _current = 0;
+        if (_pages.hasClients) {
+          _pages.jumpToPage(0);
+        }
+      }
+      _resetTimer();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _resetTimer();
+  }
+
+  void _resetTimer() {
+    _rotation?.cancel();
+    if (!mounted || !_foreground || _hovered || _reducedMotion ||
+        _slides.length <= 1 || widget.interval <= Duration.zero) return;
+    _rotation = Timer.periodic(widget.interval, (_) {
+      if (!mounted || !_pages.hasClients) return;
+      _pages.animateToPage(
+        (_current + 1) % _slides.length,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  void _goTo(int page) {
+    if (!_pages.hasClients || page < 0 || page >= _slides.length) return;
+    _rotation?.cancel();
+    _pages.animateToPage(
+      page,
+      duration: _reducedMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+    _resetTimer();
+  }
+
+  Future<void> _openPartner(Care360PartnerSlide slide) async {
+    final safe = Care360PartnerSlide.safeDestination(slide.url.toString());
+    if (safe == null) return;
     bool opened = false;
     try {
-      opened = await (openExternal?.call(mindCheckUrl) ??
-          launchUrl(mindCheckUrl, mode: LaunchMode.externalApplication));
+      opened = await (widget.openExternal?.call(safe) ??
+          launchUrl(safe, mode: LaunchMode.externalApplication));
     } catch (_) {
       opened = false;
     }
-    if (!opened && context.mounted) {
+    if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Could not open MindCheck. Check your connection.'),
+        content: Text('Could not open the partner site. Check your connection.'),
       ));
     }
   }
 
-  void _openLocalGuide(BuildContext context) {
-    // The guide never accesses clinical views or sends unstructured content.
-    // Optional server-assisted answers remain OFF without the explicit pilot
-    // build flag and a per-session consent action.
+  void _openLocalGuide() {
+    // Keep existing AI navigation pilot gate: no clinical data or prompts
+    // leave Care360. The local LAN build has this pilot disabled.
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => const Care360GuideScreen(allowRemote: true),
     ));
+  }
+
+  Widget _slideCard(Care360PartnerSlide slide) {
+    final img = Care360PartnerSlide.safeImageUri(slide.imageUrl);
+    final accent = slide.sponsored
+        ? const Color(0xFF173A5F)
+        : const Color(0xFF096E67);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 3),
+      child: Material(
+        color: Colors.white,
+        elevation: 1,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          key: ValueKey('care360-slide-${slide.title}'),
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _openPartner(slide),
+          child: Semantics(
+            button: true,
+            label: '${slide.sponsored ? 'Sponsored' : 'Partner'}: '
+                '${slide.title}. Opens external website.',
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFD8E6E9)),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF7FBFA), Color(0xFFE9F3F4)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(children: [
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: accent.withOpacity(.10),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 5),
+                        child: Text(slide.sponsored ? 'Sponsored' : 'Partner',
+                          style: TextStyle(fontSize: 11,
+                            fontWeight: FontWeight.w800, color: accent)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(slide.title, maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 19,
+                        height: 1.15, fontWeight: FontWeight.w800,
+                        color: Color(0xFF122D43))),
+                    const SizedBox(height: 5),
+                    Text(slide.subtitle, maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, height: 1.35,
+                        color: Color(0xFF3A5565))),
+                    const SizedBox(height: 10),
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('Explore service',
+                        style: TextStyle(fontWeight: FontWeight.w700,
+                          fontSize: 12, color: accent)),
+                      const SizedBox(width: 5),
+                      Icon(Icons.open_in_new, size: 14, color: accent),
+                    ]),
+                  ],
+                )),
+                const SizedBox(width: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    width: 88, height: 126,
+                    child: img == null
+                        ? ColoredBox(
+                            color: accent,
+                            child: const Icon(Icons.health_and_safety_outlined,
+                              color: Colors.white, size: 38))
+                        : Image.network(img.toString(), fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => ColoredBox(
+                              color: accent,
+                              child: const Icon(Icons.public,
+                                color: Colors.white, size: 34))),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -45,47 +294,99 @@ class Care360PartnerShowcase extends StatelessWidget {
       'yo' => 'Ṣàwárí àwọn alábàáṣiṣẹ́pọ̀',
       _ => 'Explore partner services',
     };
+    final slides = _slides;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Card(
-        color: const Color(0xFFF0F7F6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(heading, style: const TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF102B48))),
-            const SizedBox(height: 4),
-            const Text('Independent, reviewed services. Opening a partner '
-              'site takes you outside Care360.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF47606B))),
-            const SizedBox(height: 8),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const CircleAvatar(
-                radius: 25,
-                backgroundColor: Color(0xFF087D76),
-                child: Icon(Icons.psychology_alt_outlined,
-                  color: Colors.white, size: 28),
-              ),
-              title: const Text('MindCheck', style: TextStyle(
-                fontWeight: FontWeight.w700)),
-              subtitle: const Text('Mental wellbeing • By SpeakOut Mental Health Outreach'),
-              trailing: const Icon(Icons.open_in_new),
-              onTap: () => _openMindCheck(context),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text(heading, style: const TextStyle(
+            fontSize: 19, fontWeight: FontWeight.w800,
+            color: Color(0xFF122D43)))),
+          Text('${_current + 1}/${slides.length}',
+            style: const TextStyle(fontSize: 12,
+              fontWeight: FontWeight.w600, color: Color(0xFF47606B))),
+        ]),
+        const SizedBox(height: 4),
+        const Text('Useful services and featured partners. '
+          'External websites have their own privacy policies.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF47606B))),
+        const SizedBox(height: 9),
+        MouseRegion(
+          onEnter: (_) { _hovered = true; _resetTimer(); },
+          onExit: (_) { _hovered = false; _resetTimer(); },
+          child: SizedBox(
+            height: 204,
+            child: PageView.builder(
+              key: const ValueKey('care360-partner-carousel'),
+              controller: _pages,
+              itemCount: slides.length,
+              onPageChanged: (index) {
+                setState(() => _current = index);
+                _resetTimer();
+              },
+              itemBuilder: (context, index) => _slideCard(slides[index]),
             ),
-            const Divider(height: 16),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _openLocalGuide(context),
-                icon: const Icon(Icons.help_outline),
-                label: const Text('Care360 Guide · optional AI pilot'),
-              ),
-            ),
-          ]),
+          ),
         ),
-      ),
+        const SizedBox(height: 7),
+        Row(children: [
+          IconButton(
+            tooltip: 'Previous partner',
+            icon: const Icon(Icons.chevron_left),
+            onPressed: slides.length > 1
+                ? () => _goTo((_current - 1 + slides.length) % slides.length)
+                : null,
+          ),
+          Expanded(child: slides.length <= 6
+              ? Row(mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(slides.length, (index) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: Semantics(
+                      label: 'Show slide ${index + 1} of ${slides.length}',
+                      button: true,
+                      child: InkWell(
+                        key: ValueKey('care360-slide-dot-$index'),
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () => _goTo(index),
+                        child: SizedBox(
+                          height: 32, width: 22,
+                          child: Center(child: Icon(_current == index
+                            ? Icons.circle : Icons.circle_outlined,
+                            size: 12, color: const Color(0xFF096E67))),
+                        ),
+                      ),
+                    ),
+                  )),
+                )
+              : Text('Slide ${_current + 1} of ${slides.length}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12,
+                    color: Color(0xFF47606B)))),
+          IconButton(
+            tooltip: 'Next partner',
+            icon: const Icon(Icons.chevron_right),
+            onPressed: slides.length > 1
+                ? () => _goTo((_current + 1) % slides.length)
+                : null,
+          ),
+        ]),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _openLocalGuide,
+            icon: const Icon(Icons.help_outline, size: 16),
+            label: const Text('Care360 Help'),
+          ),
+        ),
+      ]),
     );
+  }
+
+  @override
+  void dispose() {
+    _rotation?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _pages.dispose();
+    super.dispose();
   }
 }
