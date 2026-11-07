@@ -30,8 +30,8 @@ void main() {
     final home = File('lib/Screen/Screens/Home.dart').readAsStringSync();
     expect(home, isNot(contains('print("UID')));
     expect(home, isNot(contains('Live Location Lat & Long')));
-    expect(home, isNot(contains('print("${_locationData.latitude')));
-    expect(home, isNot(contains('stackTrace: $stacktrace')));
+    expect(home, isNot(contains(r'print("${_locationData.latitude')));
+    expect(home, isNot(contains(r'stackTrace: $stacktrace')));
   });
 
   test('Dio client uses bounded timeouts but does not automatically retry payments', () {
