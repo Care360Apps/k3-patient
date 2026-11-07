@@ -1,5 +1,5 @@
 import 'package:doctro_patient/FirebaseProviders/auth_provider.dart';
-import 'package:doctro_patient/Screen/Screens/Home.dart';
+import 'package:doctro_patient/Screen/Authentication/SignIn.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
 import 'package:doctro_patient/api/base_model.dart';
 import 'package:doctro_patient/api/network_api.dart';
@@ -307,60 +307,58 @@ class _SettingState extends State<Setting> {
     );
   }
 
-  Future logoutUser() async {
+  Future<void> logoutUser() async {
+    // A deleted patient must never navigate to an API-backed Home screen.
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     await SharedPreferenceHelper.clearSecure();
-    SharedPreferenceHelper.clearPref();
-    await SharedPreferenceHelper.setBoolean(Preferences.has_auth_token, false);
-    Provider.of<AuthProvider>(context, listen: false).handleSignOut();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (BuildContext context) => Home()),
-      ModalRoute.withName('SplashScreen'),
+    await SharedPreferenceHelper.clearPref();
+    try {
+      await auth.handleSignOut();
+    } catch (_) {
+      // Local credentials were cleared even if Firebase is offline.
+    }
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => SignIn()),
+      (route) => false,
     );
   }
 
   Future<BaseModel<AccountDeleteModel>> callDeleteAccount() async {
-    AccountDeleteModel response;
+    // Block duplicate irreversible requests.
+    if (!mounted || loading) return BaseModel<AccountDeleteModel>();
+    setState(() => loading = true);
     try {
-      setState(() {
-        loading = true;
-      });
-      response = await RestClient(RetroApi().dioData()).deleteAccount();
-      if (response.success == true) {
-        setState(() {
-          if (response.message != null) {
-            Fluttertoast.showToast(
-              msg: '${response.message}',
-              toastLength: Toast.LENGTH_SHORT,
-              gravity: ToastGravity.BOTTOM,
-              backgroundColor: Palette.blue,
-              textColor: Palette.white,
-            );
-          }
-          logoutUser();
-        });
-      } else {
-        if (response.message != null) {
-          Fluttertoast.showToast(
-            msg: '${response.message}',
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.BOTTOM,
-            backgroundColor: Palette.blue,
-            textColor: Palette.white,
-          );
-        }
+      final response = await RestClient(RetroApi().dioData()).deleteAccount();
+      if (!mounted) return BaseModel<AccountDeleteModel>()..data = response;
+      final message = response.message;
+      if (message != null && message.isNotEmpty) {
+        Fluttertoast.showToast(
+          msg: message,
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Palette.blue,
+          textColor: Palette.white,
+        );
       }
-      setState(() {
-        loading = false;
-      });
+      if (response.success == true) {
+        // Only backend-confirmed erasure ends the account.
+        await logoutUser();
+      }
+      return BaseModel<AccountDeleteModel>()..data = response;
     } catch (error) {
-      setState(() {
-        loading = false;
-      });
-      return BaseModel()..setException(ServerError.withError(error: error));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Account deletion is unavailable. Please try again or contact support.'),
+        ));
+      }
+      return BaseModel<AccountDeleteModel>()
+        ..setException(ServerError.withError(error: error));
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-    return BaseModel()..data;
   }
+
 }
 
 class SwitchScreen extends StatefulWidget {
