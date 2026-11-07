@@ -46,6 +46,19 @@ class PatientStoreSafetyContract(unittest.TestCase):
         self.assertIn("TextButton.icon(", privacy)
         self.assertIn("onPressed: loading ? null : appAllDetail", privacy)
 
+    def test_account_deletion_uses_post_and_clears_session_before_signin(self):
+        network = self.read("lib/api/network_api.dart")
+        settings = self.read("lib/Screen/Screens/Setting.dart")
+        prefs = self.read("lib/const/preference.dart")
+        self.assertIn("@POST(Apis.deleteAccount)", network)
+        self.assertNotIn("@GET(Apis.deleteAccount)", network)
+        self.assertIn("await SharedPreferenceHelper.clearSecure()", settings)
+        self.assertIn("await SharedPreferenceHelper.clearPref()", settings)
+        self.assertIn("await auth.handleSignOut()", settings)
+        self.assertIn("MaterialPageRoute<void>(builder: (_) => SignIn())", settings)
+        self.assertNotIn("MaterialPageRoute(builder: (BuildContext context) => Home())", settings)
+        self.assertIn("static Future<void> clearPref() async", prefs)
+
     def test_app_store_release_push_environment_is_production(self):
         proj = self.read("ios/Runner.xcodeproj/project.pbxproj")
         release = self.read("ios/Runner/RunnerRelease.entitlements")
