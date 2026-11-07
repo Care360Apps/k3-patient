@@ -11,9 +11,18 @@ void main() {
       const MaterialApp(home: Care360WorkforceLanding(pilotEnabled: false)),
     );
     expect(find.text('Join Workforce'), findsOneWidget);
-    expect(find.text('Hire Workforce'), findsOneWidget);
     expect(find.textContaining('not yet open'), findsOneWidget);
-
+    // Large accessible text and smaller screens make the second card lazy.
+    // Scroll rather than assuming every ListView child is in the viewport.
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('workforce-hire')), 200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Hire Workforce'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('workforce-join')), -200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.byKey(const Key('workforce-join')));
     await tester.pumpAndSettle();
     expect(find.text('Workforce applications are not open yet'), findsOneWidget);
@@ -22,6 +31,10 @@ void main() {
 
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('workforce-hire')), 200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.byKey(const Key('workforce-hire')));
     await tester.pumpAndSettle();
     expect(find.textContaining('No credentials or contact'), findsOneWidget);
@@ -48,6 +61,10 @@ void main() {
       home: Care360WorkforceLanding(pilotEnabled: false),
     ));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('workforce-join')), 180,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.byKey(const Key('workforce-join')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
