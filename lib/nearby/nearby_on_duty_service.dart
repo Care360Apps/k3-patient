@@ -65,7 +65,12 @@ class NearbyOnDutyService {
     required double lat,
     required double lng,
     double radiusKm = 20,
+    String? visitType,
   }) async {
+    if (visitType != null &&
+        visitType != 'home_visit' && visitType != 'video_call') {
+      throw const FormatException('Unknown Nearby Care service filter.');
+    }
     final base = Uri.tryParse(Apis.baseUrl);
     if (base == null || base.scheme != 'https' ||
         base.host.isEmpty || !base.path.endsWith('/api/') ||
@@ -84,6 +89,7 @@ class NearbyOnDutyService {
         'lng': double.parse(lng.toStringAsFixed(2)),
         'radius_km': radiusKm.clamp(1, 50),
         'limit': 30,
+        if (visitType != null) 'visit_type': visitType,
       },
     );
     final root = response.data;
