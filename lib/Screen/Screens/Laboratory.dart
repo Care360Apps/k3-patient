@@ -215,7 +215,9 @@ class _LaboratoryState extends State<Laboratory> {
               children: [
                 const Care360ServiceIntro(
                   title: 'Laboratories',
+                  titleKey: 'care360_service_laboratories',
                   description: 'Search labs and available tests',
+                  descriptionKey: 'care360_dir_laboratories_description',
                   icon: Icons.biotech_outlined,
                 ),
                 SizedBox(height: 5),
@@ -1787,7 +1789,9 @@ class _HospitalScreenState extends State<HospitalScreen> {
               children: [
                 const Care360ServiceIntro(
                   title: 'Hospitals',
+                  titleKey: 'care360_service_hospitals',
                   description: 'Explore healthcare facilities',
+                  descriptionKey: 'care360_dir_hospitals_description',
                   icon: Icons.local_hospital_outlined,
                 ),
                 SizedBox(height: 5),
