@@ -45,7 +45,7 @@ class Care360WorkforceHomeTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(care360NavigationText(context,
                         'care360_workforce_subtitle',
-                        'Verified healthcare talent and job opportunities'),
+                        'Healthcare careers and hiring — pilot preview'),
                         style: const TextStyle(fontSize: 12, color: Color(0xFF46636A))),
                   ],
                 ),
