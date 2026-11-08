@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:doctro_patient/brand/care360_patient_service_grid.dart';
 import 'package:doctro_patient/brand/care360_first_language.dart';
@@ -101,12 +102,18 @@ void main() {
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 650));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    // Set the device's surface size at the binding level. A synthetic
-    // MediaQuery wrapped around MaterialApp can shadow the app's own locale
-    // inheritance and give a false negative on some Flutter revisions.
+    // First use of a Nigerian language loads a JSON bundle asynchronously.
+    // Warm the real shipped bundle before checking the first rendered frame.
+    final raw = await rootBundle.loadString(
+        'lib/localization/languages/yo.json');
+    expect(jsonDecode(raw), containsPair(
+        'care360_services_heading', 'Ṣàwárí àwọn iṣẹ́ ìlera'));
     await tester.pumpWidget(appFor('yo'));
     await tester.pumpAndSettle();
-    final headerFinder = find.byKey(const Key('care360-services-heading'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.takeException(), isNull);
+    final headerFinder = find.byKey(
+        const Key('care360-services-heading'), skipOffstage: false);
     expect(headerFinder, findsOneWidget);
     final headerContext = tester.element(headerFinder);
     final actualLocale = Localizations.localeOf(headerContext).languageCode;
