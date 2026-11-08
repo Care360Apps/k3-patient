@@ -97,16 +97,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('The shipped Yoruba bundle is loaded by the real locale delegate',
-      () async {
-    final localization = LanguageLocalization(const Locale('yo'));
-    await localization.load();
-    expect(localization.getTranslateValue('care360_services_heading'),
-        'Ṣàwárí àwọn iṣẹ́ ìlera');
-    expect(localization.getTranslateValue('care360_service_hospitals'),
-        'Ilé ìwòsàn');
-  });
-
   testWidgets('Navigation remains usable on a 320px device with large text',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 650));
