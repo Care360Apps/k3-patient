@@ -15,6 +15,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import '../../brand/care360_partner_showcase.dart';
 import '../../brand/care360_nearby_care_hero.dart';
+import '../../brand/care360_patient_service_grid.dart';
 import '../../workforce/workforce_landing.dart';
 import '../../brand/care360_guide_shortcut.dart';
 import '../../brand/care360_horizontal_cards.dart';
@@ -1383,6 +1384,31 @@ class _HomeState extends State<Home> {
                     children: [
                         Care360NearbyCareHero(
                           onExplore: () => Navigator.pushNamed(context, 'MapView'),
+                        ),
+                        Care360PatientServiceGrid(
+                          onOpen: (destination) {
+                            switch (destination) {
+                              case Care360ServiceDestination.hospitals:
+                                Navigator.pushNamed(context, 'Hospitals');
+                                break;
+                              case Care360ServiceDestination.doctors:
+                                Navigator.pushNamed(context, 'Treatment');
+                                break;
+                              case Care360ServiceDestination.providers:
+                                Navigator.pushNamed(context, 'FindProviders');
+                                break;
+                              case Care360ServiceDestination.pharmacies:
+                                Navigator.pushNamed(context, 'AllPharamacy');
+                                break;
+                              case Care360ServiceDestination.laboratories:
+                                Navigator.pushNamed(context, 'Laboratory');
+                                break;
+                              case Care360ServiceDestination.appointments:
+                                Navigator.pushNamed(
+                                  context, _hasAuthToken() ? 'Appointment' : 'SignIn');
+                                break;
+                            }
+                          },
                         ),
                         Care360WorkforceHomeTile(
                           onTap: () => Navigator.push(
