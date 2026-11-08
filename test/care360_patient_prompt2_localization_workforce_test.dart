@@ -106,7 +106,18 @@ void main() {
     // inheritance and give a false negative on some Flutter revisions.
     await tester.pumpWidget(appFor('yo'));
     await tester.pumpAndSettle();
-    expect(find.text('Ṣàwárí àwọn iṣẹ́ ìlera'), findsOneWidget);
+    final headerFinder = find.byKey(const Key('care360-services-heading'));
+    expect(headerFinder, findsOneWidget);
+    final headerContext = tester.element(headerFinder);
+    final actualLocale = Localizations.localeOf(headerContext).languageCode;
+    final loadedCopy = LanguageLocalization.of(headerContext)
+        ?.getTranslateValue('care360_services_heading');
+    final visibleText = tester.widget<Text>(headerFinder).data;
+    expect(actualLocale, 'yo', reason: 'App selected framework locale');
+    expect(loadedCopy, 'Ṣàwárí àwọn iṣẹ́ ìlera',
+        reason: 'JSON overlay must supply Yoruba');
+    expect(visibleText, loadedCopy,
+        reason: 'The service header must use the selected locale');
     await tester.ensureVisible(
         find.byKey(const Key('care360-service-appointments')));
     expect(tester.takeException(), isNull);
