@@ -19,6 +19,11 @@ import '../../const/Palette.dart';
 import '../../const/app_string.dart';
 import '../../localization/localization_constant.dart';
 import '../../model/prescription_model.dart';
+import 'package:file_picker/file_picker.dart';
+import '../../security/care360_medical_pdf_client.dart';
+import '../../api/apis.dart';
+import '../../const/prefConstatnt.dart';
+import '../../const/preference.dart';
 
 class MyPrescription extends StatefulWidget {
   final String? doctorImage;
@@ -519,44 +524,7 @@ class _MyPrescriptionState extends State<MyPrescription> {
                                               color: Palette.dark_blue,
                                             ),
                                           ),
-                                          onPressed: () async {
-                                            if (await Permission.storage.isDenied) {
-                                              Permission.storage.request();
-                                            }
-                                            if (Platform.isAndroid) {
-                                              final Directory? appDirectory = await getExternalStorageDirectory();
-                                              str = appDirectory!.path;
-                                              parts = str.split("/");
-                                              startPart = parts[0].trim() + "/" + parts[1].trim() + "/" + parts[2].trim() + "/" + parts[3].trim();
-                                              lastPart = parts.sublist(0).join('/').trim();
-                                              final String outputDirectory = '$startPart/Download/Doctro';
-                                              await Directory(outputDirectory).create(recursive: true);
-                                              final String currentTime = DateTime.now().millisecondsSinceEpoch.toString();
-                                              downloadFile('$pdfPath', 'Doctro$currentTime.pdf', "$outputDirectory").whenComplete(
-                                                () => Fluttertoast.showToast(
-                                                  msg: getTranslated(context, AppString.myPrescription_downloadComplete_toast).toString(),
-                                                  toastLength: Toast.LENGTH_SHORT,
-                                                  gravity: ToastGravity.BOTTOM,
-                                                ),
-                                              );
-                                            } else if (Platform.isIOS) {
-                                              final Directory? appDirectory = await getApplicationDocumentsDirectory();
-                                              str = appDirectory!.path;
-                                              parts = str.split("/");
-                                              startPart = parts[0].trim() + "/" + parts[1].trim() + "/" + parts[2].trim() + "/" + parts[3].trim();
-                                              lastPart = parts.sublist(0).join('/').trim();
-                                              final String outputDirectory = '$startPart/Download/Doctro';
-                                              await Directory(outputDirectory).create(recursive: true);
-                                              final String currentTime = DateTime.now().millisecondsSinceEpoch.toString();
-                                              downloadFile('$pdfPath', 'Doctro$currentTime.pdf', "$outputDirectory").whenComplete(
-                                                () => Fluttertoast.showToast(
-                                                  msg: getTranslated(context, AppString.myPrescription_downloadComplete_toast).toString(),
-                                                  toastLength: Toast.LENGTH_SHORT,
-                                                  gravity: ToastGravity.BOTTOM,
-                                                ),
-                                              );
-                                            }
-                                          },
+                                          onPressed: _downloadPrescription,
                                         ),
                                       ),
                                       Text(
@@ -717,31 +685,49 @@ class _MyPrescriptionState extends State<MyPrescription> {
       setState(() {
         _loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      if (kDebugMode) debugPrint('Care360 prescription request failed.');
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
   }
 
-  Future<String> downloadFile(String url, String fileName, String dir) async {
-    HttpClient httpClient = new HttpClient();
-    File file;
-    String filePath = '';
-    String myUrl = '';
-    try {
-      myUrl = url;
-      var request = await httpClient.getUrl(Uri.parse(myUrl));
-      var response = await request.close();
-      if (response.statusCode == 200) {
-        var bytes = await consolidateHttpClientResponseBytes(response);
-        filePath = '$dir/$fileName';
-        file = File(filePath);
-        await file.writeAsBytes(bytes);
-      } else
-        filePath = 'Error code: ' + response.statusCode.toString();
-    } catch (ex) {
-      filePath = 'Can not fetch url';
+  Future<void> _downloadPrescription() async {
+    final appointmentId = widget.appointmentIdPrescription;
+    final serverPdfUrl = pdfPath;
+    if (appointmentId == null || appointmentId <= 0 ||
+        serverPdfUrl == null || serverPdfUrl.trim().isEmpty) {
+      Fluttertoast.showToast(msg: 'No prescription PDF is available.');
+      return;
     }
-    return filePath;
+
+    final pdfClient = Care360MedicalPdfClient(
+      apiBase: Uri.parse(Apis.baseUrl),
+      readToken: () =>
+          SharedPreferenceHelper.getSecureString(Preferences.auth_token),
+      allowLoopbackHttp:
+          const bool.fromEnvironment('K3_ALLOW_LOCAL_CLINICAL_HTTP'),
+    );
+    if (mounted) setState(() => _loading = true);
+    try {
+      final bytes = await pdfClient.fetchForAppointment(
+        appointmentId, serverPdfUrl: serverPdfUrl);
+      final saved = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save your confidential prescription PDF',
+        fileName: 'Care360-prescription.pdf',
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        bytes: bytes,
+      );
+      if (saved != null && saved.isNotEmpty) {
+        Fluttertoast.showToast(msg: 'Prescription saved to your chosen location.');
+      }
+    } catch (_) {
+      Fluttertoast.showToast(
+        msg: 'Could not download this prescription securely. Please retry.',
+      );
+    } finally {
+      pdfClient.close();
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }
