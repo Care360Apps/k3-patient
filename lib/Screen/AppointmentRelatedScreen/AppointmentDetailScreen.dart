@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
+import '../../security/care360_medical_pdf_client.dart';
+import '../../api/apis.dart';
 import '../../api/base_model.dart';
 import '../../api/server_error.dart';
 import '../../const/Palette.dart';
@@ -531,6 +534,47 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
     );
   }
 
+  Future<void> _savePrescriptionPdf() async {
+    final url = _data?.pdf?.trim();
+    if (url == null || url.isEmpty) return;
+
+    final client = Care360MedicalPdfClient(
+      apiBase: Uri.parse(Apis.baseUrl),
+      readToken: () =>
+          SharedPreferenceHelper.getSecureString(Preferences.auth_token),
+      allowLoopbackHttp:
+          const bool.fromEnvironment('K3_ALLOW_LOCAL_CLINICAL_HTTP'),
+    );
+
+    try {
+      final bytes = await client.fetchForAppointment(
+        widget.appointmentId,
+        serverPdfUrl: url,
+      );
+      if (!mounted) return;
+      final saved = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save your confidential prescription PDF',
+        fileName: 'Care360-prescription.pdf',
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        bytes: bytes,
+      );
+      if (saved != null && saved.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Prescription saved to your chosen location.'),
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Prescription unavailable. Please try again.'),
+        ));
+      }
+    } finally {
+      client.close();
+    }
+  }
+
   Widget _prescriptionTab() {
     final hasPdf = _data!.pdf != null && _data!.pdf!.trim().isNotEmpty;
     final note = _data!.note?.trim();
@@ -548,9 +592,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
                   ],
                   if (hasPdf)
                     TextButton.icon(
-                      onPressed: () {},
+                      onPressed: _savePrescriptionPdf,
                       icon: const Icon(Icons.picture_as_pdf_outlined, color: Palette.blue),
-                      label: const Text('View prescription PDF'),
+                      label: const Text('Save prescription PDF'),
                     ),
                 ],
               ),
