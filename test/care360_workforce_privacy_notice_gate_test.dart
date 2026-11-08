@@ -45,9 +45,19 @@ void main() {
 
     if (!WorkforceNoticeGate.configured) {
       expect(find.byKey(const Key('workforce-notice-pending')), findsOneWidget);
+      // The form uses a lazily constructed ListView. Reach the checkbox
+      // and submit controls before reading their widget state.
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('workforce-terms')), 180,
+        scrollable: find.byType(Scrollable).first,
+      );
       final checkbox = tester.widget<CheckboxListTile>(
         find.byKey(const Key('workforce-terms')));
       expect(checkbox.onChanged, isNull);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('workforce-submit')), 150,
+        scrollable: find.byType(Scrollable).first,
+      );
       final submit = tester.widget<ElevatedButton>(
         find.byKey(const Key('workforce-submit')));
       expect(submit.onPressed, isNull);
