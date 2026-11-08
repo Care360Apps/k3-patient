@@ -10,6 +10,7 @@ This branch stacks on Patient private-prescription PR #46. It **does not** repla
 ## Implemented in this slice
 
 - Added **21 navigation-only keys in each of five languages** (English, Hausa, Igbo, Yoruba, French) using the existing overlay localization files.
+- First-launch welcome, language selection, Continue button, explanatory note and recoverable save error now update **immediately upon the user's language choice**, before any preference is saved. This copy is purposefully limited to UI instructions and does not imply clinical translation signoff.
 - The six Patient dashboard service cards, section heading, descriptive copy and five service-directory headings now look up these localized strings. Missing keys continue to display English, never `null` or unreviewed machine-generated clinical claims.
 - Card labels support two-line wrapping with a taller layout when system text scaling is increased; no extra hidden tabs or popup routing.
 - Workforce tile remains available as an **informational preview**, not an operational verified hiring marketplace. Its subtitle clearly identifies a pilot rather than claiming already-verified candidates. No signup or employer candidate search is enabled by this change.
