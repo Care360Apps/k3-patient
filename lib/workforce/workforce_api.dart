@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../api/apis.dart';
+import 'workforce_notice_gate.dart';
 
 /// The Workforce API uses a *separate* 64-character opaque session token.
 /// Do not reuse Retrofit/Patient OAuth interceptors or clinical Firestore chat.
@@ -67,6 +68,13 @@ class WorkforceApi {
     required bool adultAttestation,
     required bool acceptedTerms,
   }) async {
+    // Transport security is mandatory even when the recruitment notice has
+    // not yet been approved. Neither case can submit credentials.
+    _requireSecureWorkforceOrigin();
+    if (!WorkforceNoticeGate.configured) {
+      throw const WorkforceApiException(
+        'Workforce registration is paused until its privacy notice is approved.');
+    }
     await _request('post', 'workforce/v1/register', body: {
       'name': name.trim(),
       'email': email.trim().toLowerCase(),

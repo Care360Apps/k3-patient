@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'workforce_api.dart';
+import 'workforce_notice_gate.dart';
+import 'workforce_data_use_notice.dart';
 import 'workforce_dashboard.dart';
 import 'workforce_landing.dart';
 
@@ -39,6 +41,11 @@ class _WorkforceAccessScreenState extends State<WorkforceAccessScreen> {
 
   Future<void> _submit() async {
     if (_busy || !_form.currentState!.validate()) return;
+    if (_registering && !WorkforceNoticeGate.configured) {
+      setState(() => _message =
+          'Workforce applications are closed until the recruitment privacy notice is approved.');
+      return;
+    }
     if (_registering && (!_adult || !_terms)) {
       setState(() => _message =
           'Please confirm you are 18 or older and accept the Workforce terms.');
@@ -167,17 +174,20 @@ class _WorkforceAccessScreenState extends State<WorkforceAccessScreen> {
               value: _adult,
               onChanged: (v) => setState(() => _adult = v ?? false),
             ),
+            WorkforceDataUseNotice(accountType: widget.accountType),
             CheckboxListTile(
               key: const Key('workforce-terms'),
               controlAffinity: ListTileControlAffinity.leading,
-              title: const Text('I agree to Workforce-only profile '
-                  'verification and the recruitment privacy notice'),
+              title: const Text('I have read the Workforce recruitment '
+                  'privacy notice and agree to the profile verification process'),
               subtitle: const Text(
                 'Your consent to appear in talent search is requested '
                 'separately after verification.'),
               contentPadding: EdgeInsets.zero,
               value: _terms,
-              onChanged: (v) => setState(() => _terms = v ?? false),
+              onChanged: !WorkforceNoticeGate.configured
+                  ? null
+                  : (v) => setState(() => _terms = v ?? false),
             ),
           ],
           if (_message != null) ...[
@@ -188,7 +198,9 @@ class _WorkforceAccessScreenState extends State<WorkforceAccessScreen> {
           const SizedBox(height: 20),
           ElevatedButton(
             key: const Key('workforce-submit'),
-            onPressed: _busy ? null : _submit,
+            onPressed: _busy ||
+                    (_registering && !WorkforceNoticeGate.configured)
+                ? null : _submit,
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: _busy
