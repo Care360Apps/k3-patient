@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:doctro_patient/brand/care360_patient_service_grid.dart';
+import 'package:doctro_patient/brand/care360_first_language.dart';
 import 'package:doctro_patient/brand/care360_service_intro.dart';
 import 'package:doctro_patient/localization/language_localization.dart';
 import 'package:doctro_patient/localization/care360_framework_locale_fallback.dart';
@@ -108,6 +109,37 @@ void main() {
     expect(find.text('Ṣàwárí àwọn iṣẹ́ ìlera'), findsOneWidget);
     await tester.ensureVisible(
         find.byKey(const Key('care360-service-appointments')));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('First-launch language choice immediately translates welcome copy',
+      (tester) async {
+    String? selected;
+    await tester.pumpWidget(MaterialApp(
+      home: Care360FirstLanguageScreen(
+        onContinue: (value) async { selected = value; },
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome to Care360'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('first-language-ha')));
+    await tester.tap(find.byKey(const Key('first-language-ha')));
+    await tester.pumpAndSettle();
+    expect(find.text('Barka da zuwa Care360'), findsOneWidget);
+    expect(find.text('Ci gaba'), findsOneWidget);
+
+    await tester.ensureVisible(
+        find.byKey(const Key('first-language-continue')));
+    await tester.tap(find.byKey(const Key('first-language-continue')));
+    await tester.pumpAndSettle();
+    expect(selected, 'ha');
+
+    await tester.ensureVisible(find.byKey(const Key('first-language-fr')));
+    await tester.tap(find.byKey(const Key('first-language-fr')));
+    await tester.pumpAndSettle();
+    expect(find.text('Bienvenue sur Care360'), findsOneWidget);
+    expect(find.text('Continuer'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
