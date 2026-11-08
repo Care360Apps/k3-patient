@@ -30,6 +30,56 @@ class _Care360FirstLanguageScreenState
     'fr': 'Français',
   };
 
+  /// Short first-launch instructions update immediately when a language
+  /// is chosen, even before the root locale has been persisted.
+  /// This is navigation copy only; clinical translations need review.
+  static const _firstLaunchCopy = <String, Map<String, String>>{
+    'en': {
+      'welcome': 'Welcome to Care360',
+      'instruction': 'Choose the language that feels right for you.',
+      'select': 'Select language',
+      'continue': 'Continue',
+      'review': 'You can change language later on any screen. Some text may remain in English while translations are being reviewed.',
+      'error': 'Could not save your language. Please try again.',
+    },
+    'ha': {
+      'welcome': 'Barka da zuwa Care360',
+      'instruction': 'Zaɓi harshen da ya fi dacewa da kai.',
+      'select': 'Zaɓi harshe',
+      'continue': 'Ci gaba',
+      'review': 'Za ka iya sauya harshe daga baya. Wasu rubuce-rubuce za su kasance da Turanci yayin da ake duba fassara.',
+      'error': 'Ba a iya ajiye harshen ba. Sake gwadawa.',
+    },
+    'ig': {
+      'welcome': 'Nnọọ na Care360',
+      'instruction': 'Họrọ asụsụ masịrị gị.',
+      'select': 'Họrọ asụsụ',
+      'continue': "Gaa n'ihu",
+      'review': "Ị nwere ike ịgbanwe asụsụ n'oge ọzọ. Ụfọdụ ederede nwere ike ịdị n'asụsụ Bekee ka a na-enyocha ntụgharị asụsụ.",
+      'error': 'Enweghị ike ịchekwa asụsụ. Gbalịa ọzọ.',
+    },
+    'yo': {
+      'welcome': 'Ẹ káàbọ̀ sí Care360',
+      'instruction': 'Yan èdè tó rọrùn fún ọ.',
+      'select': 'Yan èdè',
+      'continue': 'Tẹ̀síwájú',
+      'review': 'O lè yí èdè padà nígbà míì. Díẹ̀ lára àwọn ọ̀rọ̀ lè wà ní èdè Gẹ̀ẹ́sì nígbà tí a ń ṣàyẹ̀wò ìtumọ̀.',
+      'error': 'A kò lè fi èdè náà pamọ́. Gbìyànjú lẹ́ẹ̀kan síi.',
+    },
+    'fr': {
+      'welcome': 'Bienvenue sur Care360',
+      'instruction': 'Choisissez la langue qui vous convient.',
+      'select': 'Choisir une langue',
+      'continue': 'Continuer',
+      'review': 'Vous pourrez changer de langue à tout moment. Certains textes peuvent rester en anglais pendant la révision des traductions.',
+      'error': 'Impossible d’enregistrer la langue. Réessayez.',
+    },
+  };
+
+  String _screenText(String name) =>
+      _firstLaunchCopy[_selected]?[name] ??
+      _firstLaunchCopy['en']![name]!;
+
   late String _selected;
   bool _submitting = false;
   String? _error;
@@ -53,7 +103,7 @@ class _Care360FirstLanguageScreenState
     } catch (_) {
       if (mounted) {
         setState(() =>
-            _error = 'Could not save your language. Please try again.');
+            _error = _screenText('error'));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -119,10 +169,10 @@ class _Care360FirstLanguageScreenState
                         ),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'Welcome to Care360',
+                      Text(
+                        _screenText('welcome'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: _navy,
                           fontSize: 25,
                           height: 1.15,
@@ -130,19 +180,19 @@ class _Care360FirstLanguageScreenState
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Choose the language that feels right for you.',
+                      Text(
+                        _screenText('instruction'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Color(0xFF536B72),
                           fontSize: 14,
                           height: 1.45,
                         ),
                       ),
                       const SizedBox(height: 19),
-                      const Text(
-                        'Select language',
-                        style: TextStyle(
+                      Text(
+                        _screenText('select'),
+                        style: const TextStyle(
                           color: _navy,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -237,9 +287,9 @@ class _Care360FirstLanguageScreenState
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: Colors.white))
-                              : const Text(
-                                  'Continue',
-                                  style: TextStyle(
+                              : Text(
+                                  _screenText('continue'),
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -247,12 +297,10 @@ class _Care360FirstLanguageScreenState
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'You can change language later on any screen. '
-                        'Some text may remain in English while translations '
-                        'are being reviewed.',
+                      Text(
+                        _screenText('review'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
                           height: 1.5,
                           color: Color(0xFF63757C),
