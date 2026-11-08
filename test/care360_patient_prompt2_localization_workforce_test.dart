@@ -12,8 +12,6 @@ import 'package:doctro_patient/localization/care360_framework_locale_fallback.da
 import 'package:doctro_patient/workforce/workforce_api.dart';
 import 'package:doctro_patient/workforce/workforce_landing.dart';
 
-void _noopService(Care360ServiceDestination _) {}
-
 void main() {
   const supported = ['en', 'ha', 'ig', 'yo', 'fr'];
   const requiredKeys = [
@@ -113,10 +111,10 @@ void main() {
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 650));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(const MaterialApp(
+    await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: SingleChildScrollView(
-          child: Care360PatientServiceGrid(onOpen: _noopService),
+          child: Care360PatientServiceGrid(onOpen: (_) {}),
         ),
       ),
     ));
