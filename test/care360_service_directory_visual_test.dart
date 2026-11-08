@@ -67,7 +67,7 @@ void main() {
       ],
       'lib/Screen/MedicineAndPharmacy/AllPharamacy.dart': [
         'Care360ServiceIntro(',
-        'pharmacysRequest()', 
+        'pharmacyRequest(_lat, _lang)', 
         'PharamacyDetail(',
       ],
     };
