@@ -21,8 +21,36 @@ class WorkforceApi {
   final Dio _dio;
   final FlutterSecureStorage _storage;
 
+  /// Workforce credentials are never sent over plaintext HTTP, even if the
+  /// separate Patient API was configured for a LAN debugging session.
+  void _requireSecureWorkforceOrigin() {
+    final base = Uri.tryParse(_dio.options.baseUrl);
+    if (base == null ||
+        base.host.isEmpty ||
+        base.userInfo.isNotEmpty ||
+        base.hasQuery ||
+        base.hasFragment ||
+        base.path != '/api/') {
+      throw const WorkforceApiException('Invalid Workforce API configuration.');
+    }
+    if (base.scheme == 'https') return;
+
+    // The exception is ONLY for a deliberately opted-in loopback debug build,
+    // never a remote LAN device, raw IP or public plain-HTTP hostname.
+    const localOnly = bool.fromEnvironment(
+      'K3_ALLOW_LOCAL_WORKFORCE_HTTP', defaultValue: false);
+    final loopback = base.host == 'localhost' ||
+        base.host == '127.0.0.1' ||
+        base.host == '::1';
+    if (localOnly && base.scheme == 'http' && loopback) return;
+
+    throw const WorkforceApiException(
+      'Secure HTTPS is required for Workforce accounts.');
+  }
+
   Future<bool> applicationsOpen() async {
     try {
+      _requireSecureWorkforceOrigin();
       final response = await _dio.get('workforce/v1/status');
       final data = _body(response)['data'];
       return data is Map && data['applications_open'] == true;
@@ -109,6 +137,7 @@ class WorkforceApi {
       Map<String, dynamic>? query,
       bool authenticated = true,
   }) async {
+    _requireSecureWorkforceOrigin();
     final headers = <String, String>{'Accept': 'application/json'};
     if (authenticated) {
       final token = await _storage.read(key: tokenKey);
@@ -128,6 +157,9 @@ class WorkforceApi {
       return result;
     } on DioException catch (error) {
       if (error.response?.statusCode == 401) {
+        // A revoked token must not remain cached after an authorization
+        // failure, even if the user has not opened the logout screen.
+        if (authenticated) await _storage.delete(key: tokenKey);
         throw const WorkforceApiException(
             'Your Workforce session has expired. Sign in again.');
       }
