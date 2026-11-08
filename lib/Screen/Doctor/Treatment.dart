@@ -186,7 +186,9 @@ class _TreatmentState extends State<Treatment> {
           children: [
             const Care360ServiceIntro(
               title: 'Doctors',
+              titleKey: 'care360_service_doctors',
               description: 'Browse specialties and find care',
+              descriptionKey: 'care360_dir_doctors_description',
               icon: Icons.medical_services_outlined,
             ),
             Expanded(child: GestureDetector(

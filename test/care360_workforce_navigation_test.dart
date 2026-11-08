@@ -48,7 +48,7 @@ void main() {
       body: Care360WorkforceHomeTile(onTap: () => opens++),
     )));
     expect(find.text('Workforce'), findsOneWidget);
-    expect(find.textContaining('Verified healthcare talent'), findsOneWidget);
+    expect(find.textContaining('Healthcare careers and hiring'), findsOneWidget);
     await tester.tap(find.byKey(const Key('home-workforce')));
     expect(opens, 1);
   });

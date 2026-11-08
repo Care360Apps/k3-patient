@@ -192,7 +192,9 @@ class _AllPharamacyState extends State<AllPharamacy> {
           children: [
             const Care360ServiceIntro(
               title: 'Pharmacies',
+              titleKey: 'care360_service_pharmacies',
               description: 'Find nearby medicine services',
+              descriptionKey: 'care360_dir_pharmacies_description',
               icon: Icons.local_pharmacy_outlined,
             ),
             Expanded(child: ModalProgressHUD(

@@ -232,7 +232,9 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
           children: [
             const Care360ServiceIntro(
               title: 'Providers',
+              titleKey: 'care360_service_providers',
               description: 'Video and home-care services',
+              descriptionKey: 'care360_dir_providers_description',
               icon: Icons.health_and_safety_outlined,
             ),
             Expanded(child: RefreshIndicator(

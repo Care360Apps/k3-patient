@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'care360_navigation_copy.dart';
+
 /// Existing Patient destinations, not additional APIs or clinical privileges.
 enum Care360ServiceDestination {
   hospitals,
@@ -43,17 +45,18 @@ class Care360PatientServiceGrid extends StatelessWidget {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final columns = screenWidth >= 610 ? 3 : 2;
     final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-    final height = textScale > 1.0 ? 128.0 + 28 * (textScale - 1) : 128.0;
+    final height = 140.0 + (textScale > 1.0 ? 65.0 * (textScale - 1) : 0.0);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Explore healthcare',
+          Text(
+            care360NavigationText(context, 'care360_services_heading',
+                'Explore healthcare'),
             key: Key('care360-services-heading'),
-            style: TextStyle(
+            style: const TextStyle(
               color: _navy,
               fontSize: 21,
               fontWeight: FontWeight.w800,
@@ -61,9 +64,10 @@ class Care360PatientServiceGrid extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 5),
-          const Text(
-            'Choose a service to continue.',
-            style: TextStyle(color: Color(0xFF526F77), fontSize: 13),
+          Text(
+            care360NavigationText(context, 'care360_services_intro',
+                'Choose a service to continue.'),
+            style: const TextStyle(color: Color(0xFF526F77), fontSize: 13),
           ),
           const SizedBox(height: 14),
           GridView.builder(
@@ -107,8 +111,10 @@ class Care360PatientServiceGrid extends StatelessWidget {
                         ),
                         const Spacer(),
                         Text(
-                          service.title,
-                          maxLines: 1,
+                          care360NavigationText(context,
+                            'care360_service_${service.destination.name}',
+                            service.title),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
@@ -118,8 +124,10 @@ class Care360PatientServiceGrid extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          service.subtitle,
-                          maxLines: 1,
+                          care360NavigationText(context,
+                            'care360_service_${service.destination.name}_description',
+                            service.subtitle),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Color(0xFF526F77),
