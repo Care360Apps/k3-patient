@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/base_model.dart';
 import '../../api/server_error.dart';
 import '../../const/Palette.dart';
+import '../../brand/care360_service_intro.dart';
 import '../../localization/localization_constant.dart';
 
 class AllPharamacy extends StatefulWidget {
@@ -187,7 +188,14 @@ class _AllPharamacyState extends State<AllPharamacy> {
             ),
           ),
         ),
-        body: ModalProgressHUD(
+        body: Column(
+          children: [
+            const Care360ServiceIntro(
+              title: 'Pharmacies',
+              description: 'Find nearby medicine services',
+              icon: Icons.local_pharmacy_outlined,
+            ),
+            Expanded(child: ModalProgressHUD(
           inAsyncCall: loading,
           opacity: 0.5,
           progressIndicator: SpinKitFadingCircle(
@@ -216,6 +224,9 @@ class _AllPharamacyState extends State<AllPharamacy> {
                         ),
                       ),
           ),
+        ),
+            ),
+          ],
         ),
       ),
     );

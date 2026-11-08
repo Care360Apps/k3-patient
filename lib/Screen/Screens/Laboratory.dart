@@ -26,6 +26,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../const/Palette.dart';
+import '../../brand/care360_service_intro.dart';
 import '../../database/form_helper.dart';
 import '../../localization/localization_constant.dart';
 
@@ -212,7 +213,12 @@ class _LaboratoryState extends State<Laboratory> {
           ? Center(child: SpinKitFadingCircle(color: Palette.blue))
           : Column(
               children: [
-                SizedBox(height: 12),
+                const Care360ServiceIntro(
+                  title: 'Laboratories',
+                  description: 'Search labs and available tests',
+                  icon: Icons.biotech_outlined,
+                ),
+                SizedBox(height: 5),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 15),
                   child: Container(
@@ -1779,7 +1785,12 @@ class _HospitalScreenState extends State<HospitalScreen> {
           ? Center(child: SpinKitFadingCircle(color: Palette.blue))
           : Column(
               children: [
-                SizedBox(height: 12),
+                const Care360ServiceIntro(
+                  title: 'Hospitals',
+                  description: 'Explore healthcare facilities',
+                  icon: Icons.local_hospital_outlined,
+                ),
+                SizedBox(height: 5),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 15),
                   child: Container(
