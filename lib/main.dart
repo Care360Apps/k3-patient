@@ -57,7 +57,7 @@ import 'Screen/Payment/StripePaymentScreenMedicine.dart';
 import 'Screen/Payment/medicines_stripe_services.dart';
 import 'Screen/Screens/Home.dart';
 import 'Screen/Screens/Home.dart';
-import 'Screen/Screens/HospitalsScreen.dart';
+// Real hospital directory is provided by Laboratory.dart's HospitalScreen.
 import 'Screen/Screens/Laboratory.dart';
 import 'Screen/Screens/MapView.dart';
 import 'Screen/Screens/Offer.dart';
@@ -552,7 +552,7 @@ class _MyAppState extends State<MyApp> {
               'TreatmentSpecialist': (context) => TreatmentSpecialist(),
               'Notifications': (context) => Notifications(),
               'Laboratory': (context) => Laboratory(title: 'Find Laboratories', icon: Icons.science_outlined),
-              'Hospitals': (context) => HospitalsScreen(),
+              'Hospitals': (context) => HospitalScreen(),
               'MapView': (context) => MapView(),
               'StripePaymentScreen': (context) => StripePaymentScreen(),
               'StripePaymentScreenMedicine': (context) => StripePaymentScreenMedicine(),
