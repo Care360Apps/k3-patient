@@ -15,6 +15,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import '../../brand/care360_partner_showcase.dart';
 import '../../brand/care360_nearby_care_hero.dart';
+import '../../brand/care360_service_grid.dart';
 import '../../workforce/workforce_landing.dart';
 import '../../brand/care360_guide_shortcut.dart';
 import '../../brand/care360_horizontal_cards.dart';
@@ -1381,16 +1382,58 @@ class _HomeState extends State<Home> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                        Care360NearbyCareHero(
-                          onExplore: () => Navigator.pushNamed(context, 'MapView'),
-                        ),
-                        Care360WorkforceHomeTile(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const Care360WorkforceLanding(),
+                        Care360ServiceGrid(actions: [
+                          Care360ServiceAction(
+                            id: 'hospitals',
+                            title: 'Hospitals',
+                            description: 'Explore healthcare facilities',
+                            icon: Icons.local_hospital_outlined,
+                            onTap: () => Navigator.pushNamed(context, 'Hospitals'),
+                          ),
+                          Care360ServiceAction(
+                            id: 'doctors',
+                            title: 'Doctors',
+                            description: 'Find a specialist',
+                            icon: Icons.medical_services_outlined,
+                            onTap: () => Navigator.pushNamed(context, 'Treatment'),
+                          ),
+                          Care360ServiceAction(
+                            id: 'providers',
+                            title: 'Providers',
+                            description: 'Home and virtual care',
+                            icon: Icons.health_and_safety_outlined,
+                            onTap: () => Navigator.pushNamed(context, 'FindProviders'),
+                          ),
+                          Care360ServiceAction(
+                            id: 'pharmacies',
+                            title: 'Pharmacies',
+                            description: 'Medicines and supplies',
+                            icon: Icons.local_pharmacy_outlined,
+                            onTap: () => Navigator.pushNamed(context, 'AllPharamacy'),
+                          ),
+                          Care360ServiceAction(
+                            id: 'laboratories',
+                            title: 'Laboratories',
+                            description: 'Tests and diagnostics',
+                            icon: Icons.science_outlined,
+                            onTap: () => Navigator.pushNamed(context, 'Laboratory'),
+                          ),
+                          Care360ServiceAction(
+                            id: 'workforce',
+                            title: 'Workforce',
+                            description: 'Careers and hiring preview',
+                            icon: Icons.work_outline_rounded,
+                            isPreview: true,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (_) => const Care360WorkforceLanding(),
+                              ),
                             ),
                           ),
+                        ]),
+                        Care360NearbyCareHero(
+                          onExplore: () => Navigator.pushNamed(context, 'MapView'),
                         ),
                         if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
                             SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null) ...[
