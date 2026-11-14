@@ -38,26 +38,50 @@ class _Care360GuideScreenState extends State<Care360GuideScreen> {
   static const topics = <String, ({String label, String answer, IconData icon})>{
     'get_started': (
       label: 'Getting started',
-      answer: 'Create a patient account, complete any required verification '
-          'and then sign in to explore Care360 services.',
+      answer: 'Use Care360 Patient to find care, manage appointments and access supported services.\n\n'
+          '1. Choose your preferred language on the welcome or sign-in screen.\n\n'
+          '2. Tap Sign Up if you are new. Enter your own contact details, create a password and complete the verification requested by the app. Already registered? Use Sign In instead.\n\n'
+          '3. After signing in, use Select Address to add a location when a service needs it. Give the address a recognisable label and check it before saving.\n\n'
+          '4. Explore the dashboard: Hospitals, Doctors, Providers, Pharmacies, Laboratories and Appointments. Open a category to see available options. Availability depends on your location and the service setup.\n\n'
+          '5. Open the menu for your account and Settings. Review your details and privacy information before using a service.\n\n'
+          '6. If you cannot sign in, use Forgot Password rather than creating a duplicate account. A local test build needs its test server running; an offline preview cannot sign in.',
       icon: Icons.how_to_reg_outlined,
     ),
     'appointments': (
       label: 'Booking appointments',
-      answer: 'Sign in, choose a healthcare professional and check the '
-          'available appointment options before confirming a booking.',
+      answer: 'Book only after checking the professional, appointment details and any stated charge.\n\n'
+          '1. Sign in and open Doctors, or search for a doctor from the dashboard. You can also explore the supported care categories.\n\n'
+          '2. Select a professional and read the profile, speciality, location and available appointment options. Do not assume that every listed professional offers video consultations.\n\n'
+          '3. Choose an available date, time and consultation option. Check the displayed time carefully. If no slot is available, choose another date or professional.\n\n'
+          '4. Review the booking summary, patient details, location and displayed fee before continuing. Provide only the information requested for the appointment.\n\n'
+          '5. If payment is required, use the supported checkout. Wait for confirmation; do not submit another payment while the first result is uncertain.\n\n'
+          '6. Open Appointments to confirm the booking status and review its details. A payment attempt or loading screen alone is not a confirmed appointment.\n\n'
+          '7. For changes or cancellation, open that appointment and review the options and any stated conditions. For a supported video appointment, open its call option at the appropriate time and allow camera or microphone only when needed.\n\n'
+          '8. If confirmation is missing or a payment result is unclear, check Appointments first, then contact the service support shown in the app. Do not share your password or payment PIN.',
       icon: Icons.event_available_outlined,
     ),
     'account': (
       label: 'Account and settings',
-      answer: 'Open your profile or Settings to manage your account, '
-          'update supported preferences and review privacy information.',
+      answer: 'Keep your account details and device preferences up to date.\n\n'
+          '1. Open the dashboard menu, then choose your profile or Settings. Review the details attached to your account before making changes.\n\n'
+          '2. Edit supported profile fields and save. Check that the updated information appears when you return.\n\n'
+          '3. Use Select Address to manage a location for supported services. Check the map or search result and the written address; do not save an incorrect location.\n\n'
+          '4. Use the language control to choose the interface language. Some guide content may still be in English.\n\n'
+          '5. Enable notifications from Settings if you want supported reminders. Camera, microphone and location permissions should be requested only when you use the related feature.\n\n'
+          '6. For a forgotten password, return to Sign In and use Forgot Password. Follow verification instructions using your registered contact details.\n\n'
+          '7. Review the privacy information before requesting account deletion. Read the confirmation carefully: deletion can affect access to your account and associated services.\n\n'
+          '8. Use Log Out on a shared device. Never give another person your password, verification code or payment PIN.',
       icon: Icons.manage_accounts_outlined,
     ),
     'partners': (
       label: 'Partner services',
-      answer: 'Partner services such as MindCheck by SpeakOut Mental Health '
-          'Outreach open separately. Read their privacy information first.',
+      answer: 'Partner services are separate from the core Care360 appointment flow.\n\n'
+          '1. Scroll to Explore partner services on the dashboard and read the service name and description.\n\n'
+          '2. Select the service you intend to use. For example, MindCheck is provided by SpeakOut Mental Health Outreach.\n\n'
+          '3. Check the destination before continuing. A partner may open in your browser and have its own account, terms, privacy notice and charges. Your Care360 sign-in does not guarantee access.\n\n'
+          '4. Read that service\'s information before sharing personal details. Do not enter your Care360 password into a partner website.\n\n'
+          '5. Return to Care360 with your device\'s back control or reopen the app. Check Care360 Appointments separately if you need to verify a Care360 booking.\n\n'
+          'This guide explains app navigation. It does not assess symptoms, interpret results or replace advice from a qualified healthcare professional.',
       icon: Icons.diversity_3_outlined,
     ),
   };
@@ -127,8 +151,8 @@ class _Care360GuideScreenState extends State<Care360GuideScreen> {
           final answer = (data['answer'] as String).trim();
           if (answer.isNotEmpty && mounted) {
             setState(() {
-              _answer = answer.length > 900
-                  ? answer.substring(0, 900) : answer;
+              _answer = answer.length > 4500
+                  ? answer.substring(0, 4500) : answer;
               _source = data['source'] as String;
             });
           }
@@ -268,7 +292,7 @@ class _Care360GuideScreenState extends State<Care360GuideScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(_source == 'ai' ? 'AI-assisted answer (pilot)'
-                      : 'Reviewed app guide',
+                      : 'Step-by-step app guide',
                     style: const TextStyle(color: _green,
                         fontWeight: FontWeight.w700)),
                   const SizedBox(height: 10),

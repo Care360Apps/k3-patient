@@ -1,11 +1,12 @@
 import 'package:doctro_patient/FirebaseProviders/auth_provider.dart';
-import 'package:doctro_patient/Screen/Screens/Home.dart';
+import 'package:doctro_patient/Screen/Authentication/SignIn.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
 import 'package:doctro_patient/api/base_model.dart';
 import 'package:doctro_patient/api/network_api.dart';
 import 'package:doctro_patient/api/server_error.dart';
 import 'package:doctro_patient/model/account_delete_model.dart';
 import 'package:flutter/material.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
@@ -23,6 +24,27 @@ class Setting extends StatefulWidget {
 
 class _SettingState extends State<Setting> {
   bool loading = false;
+
+  Future<void> _requestNotifications() async {
+    // The OS prompt is shown only after a patient deliberately taps Settings.
+    // Notification delivery must never be a condition of logging in or booking.
+    try {
+      if (!OneSignal.Notifications.permission) {
+        await OneSignal.Notifications.requestPermission(true);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(OneSignal.Notifications.permission
+            ? 'Appointment notifications are enabled.'
+            : 'Notifications are not enabled. You can change this in your phone settings.'),
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Notification settings are unavailable right now.'),
+      ));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +104,17 @@ class _SettingState extends State<Setting> {
                   ),
                   child: Column(
                     children: [
+                      ListTile(
+                        key: const Key('patient-enable-notifications'),
+                        onTap: _requestNotifications,
+                        leading: Icon(Icons.notifications_active_outlined, color: Palette.blue),
+                        title: Text('Enable appointment notifications',
+                          style: TextStyle(fontSize: 15, color: Palette.dark_blue,
+                            fontWeight: FontWeight.w600)),
+                        subtitle: const Text('Optional reminders and updates about your care.'),
+                        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Palette.dark_grey),
+                      ),
+                      Divider(height: 1, thickness: 1, color: Palette.dark_white),
                       ListTile(
                         onTap: () {
                           Navigator.pushNamed(context, 'ChangeLanguage');
@@ -274,60 +307,58 @@ class _SettingState extends State<Setting> {
     );
   }
 
-  Future logoutUser() async {
+  Future<void> logoutUser() async {
+    // A deleted patient must never navigate to an API-backed Home screen.
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     await SharedPreferenceHelper.clearSecure();
-    SharedPreferenceHelper.clearPref();
-    await SharedPreferenceHelper.setBoolean(Preferences.has_auth_token, false);
-    Provider.of<AuthProvider>(context, listen: false).handleSignOut();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (BuildContext context) => Home()),
-      ModalRoute.withName('SplashScreen'),
+    await SharedPreferenceHelper.clearPref();
+    try {
+      await auth.handleSignOut();
+    } catch (_) {
+      // Local credentials were cleared even if Firebase is offline.
+    }
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => SignIn()),
+      (route) => false,
     );
   }
 
   Future<BaseModel<AccountDeleteModel>> callDeleteAccount() async {
-    AccountDeleteModel response;
+    // Block duplicate irreversible requests.
+    if (!mounted || loading) return BaseModel<AccountDeleteModel>();
+    setState(() => loading = true);
     try {
-      setState(() {
-        loading = true;
-      });
-      response = await RestClient(RetroApi().dioData()).deleteAccount();
-      if (response.success == true) {
-        setState(() {
-          if (response.message != null) {
-            Fluttertoast.showToast(
-              msg: '${response.message}',
-              toastLength: Toast.LENGTH_SHORT,
-              gravity: ToastGravity.BOTTOM,
-              backgroundColor: Palette.blue,
-              textColor: Palette.white,
-            );
-          }
-          logoutUser();
-        });
-      } else {
-        if (response.message != null) {
-          Fluttertoast.showToast(
-            msg: '${response.message}',
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.BOTTOM,
-            backgroundColor: Palette.blue,
-            textColor: Palette.white,
-          );
-        }
+      final response = await RestClient(RetroApi().dioData()).deleteAccount();
+      if (!mounted) return BaseModel<AccountDeleteModel>()..data = response;
+      final message = response.message;
+      if (message != null && message.isNotEmpty) {
+        Fluttertoast.showToast(
+          msg: message,
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Palette.blue,
+          textColor: Palette.white,
+        );
       }
-      setState(() {
-        loading = false;
-      });
+      if (response.success == true) {
+        // Only backend-confirmed erasure ends the account.
+        await logoutUser();
+      }
+      return BaseModel<AccountDeleteModel>()..data = response;
     } catch (error) {
-      setState(() {
-        loading = false;
-      });
-      return BaseModel()..setException(ServerError.withError(error: error));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Account deletion is unavailable. Please try again or contact support.'),
+        ));
+      }
+      return BaseModel<AccountDeleteModel>()
+        ..setException(ServerError.withError(error: error));
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-    return BaseModel()..data;
   }
+
 }
 
 class SwitchScreen extends StatefulWidget {

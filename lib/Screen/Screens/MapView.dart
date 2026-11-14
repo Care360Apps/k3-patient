@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'dart:math';
 import 'dart:ui';
 import 'package:doctro_patient/api/network_api.dart';
@@ -32,6 +34,7 @@ class _MapViewState extends State<MapView> {
   List<LabData> labList = [];
   List<ProviderModel> providerList = [];
   bool loading = true;
+  bool? _mapsConfigured;
   bool _canShowUserLocation = false;
   bool _onDutyOnly = false;
   bool _onDutyLoading = false;
@@ -63,8 +66,26 @@ class _MapViewState extends State<MapView> {
   @override
   void initState() {
     super.initState();
+    _checkMapsConfiguration();
     _createMarkerIcons();
     _loadLocationAndData();
+  }
+
+  Future<void> _checkMapsConfiguration() async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      if (mounted) setState(() => _mapsConfigured = true);
+      return;
+    }
+    bool ready = false;
+    try {
+      ready = await const MethodChannel('care360/maps_configuration')
+          .invokeMethod<bool>('isConfigured') ?? false;
+    } on PlatformException {
+      ready = false;
+    } on MissingPluginException {
+      ready = false;
+    }
+    if (mounted) setState(() => _mapsConfigured = ready);
   }
 
   @override
@@ -499,7 +520,15 @@ class _MapViewState extends State<MapView> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                  child: GoogleMap(
+                  child: _mapsConfigured != true
+                      ? Center(child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 160, 24, 270),
+                          child: Text(_mapsConfigured == null
+                              ? 'Preparing map...'
+                              : 'Map unavailable in this version. You can still browse nearby care below.',
+                              textAlign: TextAlign.center),
+                        ))
+                      : GoogleMap(
                     initialCameraPosition: CameraPosition(
                       target: _getInitialPosition(),
                       zoom: 12,

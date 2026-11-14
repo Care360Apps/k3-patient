@@ -1,3 +1,4 @@
+import '../../brand/care360_discovery.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -171,6 +172,7 @@ class _HomeState extends State<Home> {
       getOneSingleToken();
     }
     callApiBanner();
+    callApIDisplayOffer();
     callApiPharmacy();
     _loadCartCount();
   }
@@ -370,7 +372,6 @@ class _HomeState extends State<Home> {
       callApiProviders();
     }
     callApiTreatment();
-    callApIDisplayOffer();
   }
 
   _passDetail() async {
@@ -1382,6 +1383,12 @@ class _HomeState extends State<Home> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                        if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
+                            SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null)
+                          Care360PartnerShowcase(
+                            slides: _partnerSlides(),
+                            showGuideButton: false,
+                          ),
                         Care360NearbyCareHero(
                           onExplore: () => Navigator.pushNamed(context, 'MapView'),
                         ),
@@ -1421,11 +1428,9 @@ class _HomeState extends State<Home> {
                         if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
                             SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null) ...[
                           const Care360GuideShortcut(),
-                          Care360PartnerShowcase(
-                            slides: _partnerSlides(),
-                            showGuideButton: false,
-                          ),
+
                         ],
+                        const Care360Discovery(),
                         /// Upcoming Appointment ///
                         upcomingAppointment.length != 0
                             ? Column(
@@ -2216,148 +2221,7 @@ class _HomeState extends State<Home> {
                           height: 10,
                         ),
 
-                        /// Offer ///
-                        offerList.length != 0
-                            ? Column(
-                                children: [
-                                  Container(
-                                    alignment: AlignmentDirectional.topStart,
-                                    margin: EdgeInsets.only(left: width * 0.05, right: width * 0.05),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          getTranslated(context, AppString.home_offers).toString(),
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            color: Palette.dark_blue,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    height: 200,
-                                    width: width * 1,
-                                    child: ListView.builder(
-                                      itemCount: offerList.length,
-                                      physics: BouncingScrollPhysics(),
-                                      scrollDirection: Axis.horizontal,
-                                      itemBuilder: (context, index) {
-                                        return Container(
-                                          margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                          child: Container(
-                                            height: 160,
-                                            width: 175,
-                                            child: Card(
-                                              color: index % 2 == 0 ? Palette.light_blue.withOpacity(0.9) : Palette.offer_card.withOpacity(0.9),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(10.0),
-                                              ),
-                                              child: Column(
-                                                children: [
-                                                  ClipRRect(
-                                                    borderRadius: BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
-                                                    child: Container(
-                                                      height: 40,
-                                                      margin: EdgeInsets.symmetric(vertical: 5),
-                                                      child: Center(
-                                                        child: Text(
-                                                          offerList[index].name!,
-                                                          style: TextStyle(fontSize: 16, color: Palette.dark_blue, fontWeight: FontWeight.bold),
-                                                          textAlign: TextAlign.center,
-                                                          overflow: TextOverflow.ellipsis,
-                                                          maxLines: 1,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    margin: EdgeInsets.symmetric(vertical: 0, horizontal: 0),
-                                                    child: Column(
-                                                      children: [
-                                                        DottedLine(
-                                                          direction: Axis.horizontal,
-                                                          lineLength: double.infinity,
-                                                          lineThickness: 1.0,
-                                                          dashLength: 3.0,
-                                                          dashColor: index % 2 == 0 ? Palette.light_blue.withOpacity(0.9) : Palette.offer_card.withOpacity(0.9),
-                                                          dashRadius: 0.0,
-                                                          dashGapLength: 1.0,
-                                                          dashGapColor: Palette.transparent,
-                                                          dashGapRadius: 0.0,
-                                                        )
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  if (offerList[index].discountType == "amount" && offerList[index].isFlat == 0)
-                                                    Container(
-                                                      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                                      child: Text(
-                                                        getTranslated(context, AppString.home_flat).toString() + ' ' + SharedPreferenceHelper.getString(Preferences.currency_symbol).toString() + offerList[index].discount.toString(),
-                                                        style: TextStyle(
-                                                          fontSize: 20,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Palette.dark_blue,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  if (offerList[index].discountType == "percentage" && offerList[index].isFlat == 0)
-                                                    Container(
-                                                      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                                      // alignment: Alignment.topLeft,
-                                                      child: Text(
-                                                        offerList[index].discount.toString() + getTranslated(context, AppString.home_discount).toString(),
-                                                        textAlign: TextAlign.center,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        maxLines: 2,
-                                                        style: TextStyle(
-                                                          fontSize: 20,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Palette.dark_blue,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  if (offerList[index].discountType == "amount" && offerList[index].isFlat == 1)
-                                                    Container(
-                                                      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                                      child: Text(
-                                                        getTranslated(context, AppString.home_flat).toString() + SharedPreferenceHelper.getString(Preferences.currency_symbol).toString() + offerList[index].flatDiscount.toString(),
-                                                        textAlign: TextAlign.center,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        maxLines: 2,
-                                                        style: TextStyle(
-                                                          fontSize: 20,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Palette.dark_blue,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  Container(
-                                                    margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                                    decoration: BoxDecoration(color: Palette.white, borderRadius: BorderRadius.circular(10)),
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.all(8),
-                                                      child: SelectableText(
-                                                        offerList[index].offerCode!,
-                                                        style: TextStyle(
-                                                          fontSize: 16,
-                                                          // fontWeight: FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  )
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Container(),
+
                       ],
                     ),
                   ),
@@ -2988,24 +2852,13 @@ class _HomeState extends State<Home> {
   }
 
   Future<BaseModel<DisplayOffer>> callApIDisplayOffer() async {
-    DisplayOffer response;
-    setState(() {
-      loading = true;
-    });
     try {
-      response = await RestClient(RetroApi2().dioData2()).displayOfferRequest();
-      setState(() {
-        loading = false;
-        offerList.addAll(response.data!);
-      });
+      final response = await RestClient(RetroApi2().dioData2()).displayOfferRequest();
+      if (mounted) setState(() => offerList = response.data ?? <OfferModel>[]);
+      return BaseModel()..data = response;
     } catch (error) {
-      setState(() {
-        loading = false;
-      });
-      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
-    return BaseModel()..data = response;
   }
 
   Future<BaseModel<Appointments>> callApiAppointment() async {
@@ -3137,9 +2990,11 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> refresh() async {
-    setState(() {
-      callApiDoctorList();
-    });
+    await Future.wait([
+      callApiBanner(), callApIDisplayOffer(), callApiAppointment(),
+      if (_lat != null && _lat!.isNotEmpty && _lang != null && _lang!.isNotEmpty)
+        callApiDoctorList(),
+    ]);
   }
 
   Future<void> getOneSingleToken() async {

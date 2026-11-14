@@ -948,23 +948,26 @@ class _DoctorDetailState extends State<DoctorDetail> with TickerProviderStateMix
     print(body);
     try {
       response = await RestClient(RetroApi2().dioData2()).doctorDetailRequest(id, body);
+      if (response.success == true && response.data == null) {
+        throw StateError('Doctor details are unavailable');
+      }
       if (response.success == true && mounted) {
         setState(() {
           loading = false;
           id = response.data!.id;
           doctorId = response.data!.userId;
           name = response.data!.name;
-          rate = response.data!.rate!.toDouble();
+          rate = response.data!.rate?.toDouble() ?? 0.0;
           experience = response.data!.experience;
           appointmentFees = response.data!.appointmentFees;
           desc = response.data!.desc;
-          expertise = response.data!.expertise!.name;
+          expertise = response.data!.expertise?.name ?? '';
           fullImage = response.data!.fullImage;
-          treatmentName = response.data!.treatment!.name;
-          reviews.addAll(response.data!.reviews!);
+          treatmentName = response.data!.treatment?.name ?? '';
+          reviews.addAll(response.data!.reviews ?? []);
           videoCall = response.data!.patientVideoCall == 0 ? false : true;
-          hospitalDetail.addAll(response.data!.hospitalId!);
-          var convertDegree = json.decode(response.data!.education!);
+          hospitalDetail.addAll(response.data!.hospitalId ?? []);
+          var convertDegree = json.decode(response.data!.education ?? '[]');
           degree.clear();
           collage.clear();
           degreeYear.clear();
@@ -973,7 +976,7 @@ class _DoctorDetailState extends State<DoctorDetail> with TickerProviderStateMix
             collage.add(convertDegree[i]['college']);
             degreeYear.add(convertDegree[i]['year']);
           }
-          var convertCertificate = json.decode(response.data!.certificate!);
+          var convertCertificate = json.decode(response.data!.certificate ?? '[]');
           award.clear();
           awardYear.clear();
           for (int i = 0; i < convertCertificate.length; i++) {

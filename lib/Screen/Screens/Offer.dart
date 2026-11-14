@@ -1,219 +1,74 @@
-import 'package:doctro_patient/api/retrofit_Api.dart';
-import 'package:doctro_patient/api/network_api.dart';
-import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
-import 'package:doctro_patient/Chat/loading_view.dart';
-import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
-import '../../api/base_model.dart';
-import '../../api/server_error.dart';
-import '../../const/Palette.dart';
-import '../../const/app_string.dart';
+import '../../api/network_api.dart';
+import '../../api/retrofit_Api.dart';
+import '../../brand/care360_discovery.dart';
 import '../../const/prefConstatnt.dart';
 import '../../const/preference.dart';
-import '../../localization/localization_constant.dart';
 import '../../model/display_offer_model.dart';
 
 class Offer extends StatefulWidget {
+  const Offer({super.key, this.loadOffers});
+  final Future<DisplayOffer> Function()? loadOffers;
   @override
-  _OfferState createState() => _OfferState();
+  State<Offer> createState() => _OfferState();
 }
 
 class _OfferState extends State<Offer> {
-  bool loading = true;
-
-  List<OfferModel> offerList = [];
+  List<OfferModel> _offers = [];
+  bool _loading = true;
+  bool _failed = false;
 
   @override
-  void initState() {
-    super.initState();
-    callApIDisplayOffer();
+  void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    if (!_loading && mounted) setState(() => _loading = true);
+    try {
+      final result = await (widget.loadOffers?.call() ??
+        RestClient(RetroApi2().dioData2()).displayOfferRequest());
+      if (result.success != true) throw StateError('Offers unavailable');
+      if (!mounted) return;
+      setState(() { _offers = result.data ?? []; _failed = false; });
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    double width;
-    width = MediaQuery.of(context).size.width;
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios,
-            size: 20,
-            color: Palette.dark_blue,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        centerTitle: true,
-        backgroundColor: Palette.white,
-        title: Text(
-          getTranslated(context, AppString.offer_title).toString(),
-          style: TextStyle(fontSize: 20, color: Palette.dark_blue, fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: ModalProgressHUD(
-        inAsyncCall: loading,
-        opacity: 0.5,
-        progressIndicator: SpinKitFadingCircle(
-          color: Palette.blue,
-          size: 50.0,
-        ),
-        child: Container(
-          margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          child: offerList.length != 0
-              ? ListView.builder(
-                  itemCount: offerList.length,
-                  itemBuilder: (context, index) {
-                    return Column(
-                      children: [
-                        Container(
-                          margin: EdgeInsets.all(10),
-                          width: width,
-                          color: index % 2 == 0 ? Palette.light_blue : Palette.offer_card,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Container(
-                                  child: Container(
-                                    height: 30,
-                                    child: Center(
-                                      child: Text(
-                                        offerList[index].name!,
-                                        style: TextStyle(color: index % 2 == 0 ? Palette.white : Palette.light_blue),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (offerList[index].discountType == "amount" && offerList[index].isFlat == 0)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 15.0),
-                                    child: Center(
-                                      child: Text(
-                                        getTranslated(context, AppString.offer_flat).toString() + SharedPreferenceHelper.getString(Preferences.currency_symbol).toString() + offerList[index].discount.toString(),
-                                        style: TextStyle(color: Palette.dark_blue, fontSize: 16.0, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ),
-                                if (offerList[index].discountType == "percentage" && offerList[index].isFlat == 0)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 15.0),
-                                    child: Center(
-                                      child: Text(
-                                        offerList[index].discount.toString() + '% ' + getTranslated(context, AppString.offer_discount).toString(),
-                                        style: TextStyle(color: Palette.dark_blue, fontSize: 16.0, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ),
-                                if (offerList[index].discountType == "amount" && offerList[index].isFlat == 1)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 15.0),
-                                    child: Center(
-                                      child: Text(
-                                        getTranslated(context, AppString.offer_flat).toString() + SharedPreferenceHelper.getString(Preferences.currency_symbol).toString() + offerList[index].flatDiscount.toString(),
-                                        style: TextStyle(color: Palette.dark_blue, fontSize: 16.0, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ),
-                                Container(
-                                  margin: EdgeInsets.symmetric(vertical: 10, horizontal: 0),
-                                  child: Column(
-                                    children: [
-                                      DottedLine(
-                                        direction: Axis.horizontal,
-                                        lineLength: double.infinity,
-                                        lineThickness: 1.0,
-                                        dashLength: 3.0,
-                                        dashColor: index % 2 == 0 ? Palette.white : Palette.light_blue,
-                                        dashRadius: 0.0,
-                                        dashGapLength: 1.0,
-                                        dashGapColor: Palette.transparent,
-                                        dashGapRadius: 0.0,
-                                      )
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  children: [
-                                    Container(
-                                      child: Text(
-                                        getTranslated(context, AppString.offer_useCouponCode).toString(),
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: index % 2 == 0 ? Palette.dark_white.withOpacity(0.7) : Palette.grey,
-                                        ),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(8),
-                                      child: Align(
-                                        alignment: Alignment.center,
-                                        child: Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 8,vertical: 4),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(30.0),
-                                            border: Border.all(width: 1.0, color: index % 2 == 0 ? Palette.white : Palette.blue),
-                                          ),
-                                          child: SelectableText(
-                                            offerList[index].offerCode!,
-                                            cursorColor: Palette.white,
-                                            style: TextStyle(fontSize: 16, color: index % 2 == 0 ? Palette.white : Palette.light_blue),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          height: 20,
-                        )
-                      ],
-                    );
-                  },
-                )
-              : Container(
-                  alignment: AlignmentDirectional.center,
-                  child: Text(
-                    getTranslated(context, AppString.offer_offerNotAvailable).toString(),
-                    style: TextStyle(fontSize: width * 0.05, color: Palette.grey, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-        ),
-      ),
+    final stored = SharedPreferenceHelper.getString(Preferences.currency_symbol);
+    final currency = stored == null || stored == 'N_A' ? '' : stored;
+    return Scaffold(backgroundColor: const Color(0xFFF5F8F7),
+      appBar: AppBar(title: const Text('Offers')),
+      body: SafeArea(child: RefreshIndicator(onRefresh: _load,
+        child: ListView(padding: const EdgeInsets.all(16),
+          physics: const AlwaysScrollableScrollPhysics(), children: [
+            const Text('More value for your care', style: TextStyle(
+              fontSize: 24, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            const Text('Current promotions published by Care360. '
+              'Pull down to check for updates.'),
+            if (_loading) const Padding(padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator())),
+            if (_failed) Card(child: Padding(padding: const EdgeInsets.all(20),
+              child: Column(children: [
+                const Text('We could not refresh offers. Check your connection.'),
+                TextButton(onPressed: _loading ? null : _load,
+                  child: const Text('Try again')),
+              ]))),
+            if (!_loading && !_failed && _offers.isEmpty)
+              const Card(child: Padding(padding: EdgeInsets.all(24),
+                child: Column(children: [Icon(Icons.local_offer_outlined, size: 40),
+                  SizedBox(height: 12), Text('No offers available right now',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                  SizedBox(height: 8), Text('Check back here for new promotions. '
+                    'You can still book available care at the displayed price.',
+                    textAlign: TextAlign.center),
+                ]))),
+            for (final offer in _offers) Care360OfferCard(offer: offer, currency: currency),
+          ]))),
     );
-  }
-
-  Future<BaseModel<DisplayOffer>> callApIDisplayOffer() async {
-    DisplayOffer response;
-    setState(() {
-      loading = true;
-    });
-    try {
-      response = await RestClient(RetroApi2().dioData2()).displayOfferRequest();
-      setState(() {
-        loading = false;
-        if (response.success == true) {
-          setState(() {
-            loading = false;
-            offerList.addAll(response.data!);
-          });
-        }
-      });
-    } catch (error, stacktrace) {
-      setState(() {
-        loading = false;
-      });
-      print("Exception occur: $error stackTrace: $stacktrace");
-      return BaseModel()..setException(ServerError.withError(error: error));
-    }
-    return BaseModel()..data = response;
   }
 }

@@ -46,9 +46,11 @@ void main() {
 
   test('source only queries confirmed availability on user action', () {
     final home = File('lib/Screen/Screens/Home.dart').readAsStringSync();
+    final hero = File('lib/brand/care360_nearby_care_hero.dart').readAsStringSync();
     final map = File('lib/Screen/Screens/MapView.dart').readAsStringSync();
     final service = File('lib/nearby/nearby_on_duty_service.dart').readAsStringSync();
-    expect(home, contains("Key('home-find-nearby-care')"));
+    expect(hero, contains("Key('home-find-nearby-care')"));
+    expect(home, contains('Care360NearbyCareHero('));
     expect(home, contains("Navigator.pushNamed(context, 'MapView')"));
     expect(map, contains("Key('nearby-on-duty-filter')"));
     expect(map, contains("Key('nearby-service-\$key')"));

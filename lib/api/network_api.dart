@@ -212,7 +212,8 @@ abstract class RestClient {
   @GET(Apis.ShowVideoCallHistory)
   Future<ShowVideoCallHistoryModel> showVideoCallHistoryRequest();
 
-  @GET(Apis.deleteAccount)
+  // Deliberate authenticated mutation; never issue account erasure through GET.
+  @POST(Apis.deleteAccount)
   Future<AccountDeleteModel> deleteAccount();
 
   @GET(Apis.insurers)

@@ -32,11 +32,14 @@ class OfferModel {
   String? name;
   String? image;
   String? offerCode;
-  int? discount;
+  num? discount;
   int? isFlat;
   String? discountType;
-  int? flatDiscount;
+  num? flatDiscount;
   String? fullImage;
+  String? terms;
+  String? validity;
+  num? discountCap;
 
   OfferModel({this.id, this.name, this.image, this.offerCode, this.discount, this.isFlat, this.discountType, this.flatDiscount, this.fullImage});
 
@@ -45,11 +48,14 @@ class OfferModel {
     name = json['name'];
     image = json['image'];
     offerCode = json['offer_code'];
-    discount = json['discount'] != null ? int.tryParse(json['discount'].toString()) : null;
+    discount = json['discount'] != null ? num.tryParse(json['discount'].toString()) : null;
     isFlat = json['is_flat'] != null ? int.tryParse(json['is_flat'].toString()) : null;
     discountType = json['discount_type'];
-    flatDiscount = json['flatDiscount'] != null ? int.tryParse(json['flatDiscount'].toString()) : null;
+    flatDiscount = json['flatDiscount'] != null ? num.tryParse(json['flatDiscount'].toString()) : null;
     fullImage = json['fullImage'];
+    terms = json['desc']?.toString();
+    validity = json['start_end_date']?.toString();
+    discountCap = num.tryParse(json['min_discount']?.toString() ?? '');
   }
 
   Map<String, dynamic> toJson() {
@@ -63,6 +69,9 @@ class OfferModel {
     data['discount_type'] = this.discountType;
     data['flatDiscount'] = this.flatDiscount;
     data['fullImage'] = this.fullImage;
+    data['desc'] = terms;
+    data['start_end_date'] = validity;
+    data['min_discount'] = discountCap;
     return data;
   }
 }

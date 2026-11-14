@@ -325,7 +325,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
           onEnter: (_) { _hovered = true; _resetTimer(); },
           onExit: (_) { _hovered = false; _resetTimer(); },
           child: SizedBox(
-            height: 204,
+            height: 230 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.4),
             child: PageView.builder(
               key: const ValueKey('care360-partner-carousel'),
               controller: _pages,

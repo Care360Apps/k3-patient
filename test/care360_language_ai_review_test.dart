@@ -56,7 +56,7 @@ void main() {
     final answer = find.byKey(const Key('care360-guide-answer'));
     await tester.dragUntilVisible(answer, list, const Offset(0, -160));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Create a patient account'), findsOneWidget);
+    expect(find.textContaining('2. Tap Sign Up'), findsOneWidget);
 
     // Choose a different fixed topic without typing any free-form health data.
     final partners = find.byKey(const Key('guide-topic-partners'));

@@ -24,6 +24,19 @@ xml = manifest.read_text(encoding="utf-8")
 group = "group 'io.github.zeshuaro.google_api_headers'"
 if group not in source:
     sys.exit("Unexpected google_api_headers Gradle group; manual review required")
+expected_block = ("\n    namespace 'io.github.zeshuaro.google_api_headers'"
+    "\n    compileOptions {"
+    "\n        sourceCompatibility JavaVersion.VERSION_17"
+    "\n        targetCompatibility JavaVersion.VERSION_17"
+    "\n    }"
+    "\n    kotlinOptions {"
+    "\n        jvmTarget = '17'"
+    "\n    }")
+if source.count(expected_block) == 1 and xml.strip() == '<manifest xmlns:android="http://schemas.android.com/apk/res/android" />':
+    remaining = source.replace(expected_block, '', 1)
+    if not re.search(r"(?m)^\s*(namespace|compileOptions|kotlinOptions)\s", remaining):
+        print('CI-ONLY: exact google_api_headers compatibility patch already present.')
+        sys.exit(0)
 if re.search(r"(?m)^\s*(namespace|compileOptions|kotlinOptions)\s", source):
     sys.exit("Namespace or JVM compatibility already configured; refusing to patch")
 gradle_pattern = re.compile(r"(?m)^(android\s*\{)$")
