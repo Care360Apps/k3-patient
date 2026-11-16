@@ -1,3 +1,4 @@
+import '../../payments/care360_paystack_checkout.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -2765,14 +2766,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                       } else if (_character!.index == 3) {
                         flutterWavePayment(context, appointmentFees);
                       } else if (_character!.index == 4) {
-                        Fluttertoast.showToast(
-                          msg:
-                              getTranslated(
-                                context,
-                                AppString.payStackLabel,
-                              ).toString() +
-                              " is not available",
-                        );
+                        _payWithPaystack();
                       } else if (_character!.index == 5) {
                         setState(() {
                           callApiBook();
@@ -2787,6 +2781,23 @@ class _BookAppointmentState extends State<BookAppointment> {
         ),
       ),
     );
+  }
+
+
+  bool _paystackSubmitting = false;
+  Future<void> _payWithPaystack() async {
+    if (_paystackSubmitting) return;
+    _paystackSubmitting = true;
+    try {
+      final amount = newAppointmentFees != 0.0
+          ? num.tryParse(newAppointmentFees.toString())
+          : num.tryParse(appointmentFees.toString());
+      if (amount == null) return;
+      final reference = await Care360PaystackCheckout.start(context, amount: amount);
+      if (!mounted || reference == null) return;
+      _paymentToken = reference;
+      await callApiBook();
+    } finally { _paystackSubmitting = false; }
   }
 
   ///flutter wave
@@ -2893,9 +2904,8 @@ class _BookAppointmentState extends State<BookAppointment> {
       } else {
         Preferences.hideDialog(context);
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       Preferences.hideDialog(context);
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2968,11 +2978,10 @@ class _BookAppointmentState extends State<BookAppointment> {
           timeList.addAll(response.data!);
         });
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -3016,7 +3025,7 @@ class _BookAppointmentState extends State<BookAppointment> {
             );
           }
         });
-      } catch (error, stacktrace) {
+      } catch (error) {
         if (mounted) setState(() => loading = false);
         debugPrint('Care360 provider details unavailable (booking disabled).');
         return BaseModel()..setException(ServerError.withError(error: error));
@@ -3063,11 +3072,10 @@ class _BookAppointmentState extends State<BookAppointment> {
           // hospitalGallery.addAll(response.data!.hospitalId![0].hospitalGallery!);
         });
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -3088,11 +3096,10 @@ class _BookAppointmentState extends State<BookAppointment> {
           showAddress.addAll(response.data!);
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -3118,11 +3125,10 @@ class _BookAppointmentState extends State<BookAppointment> {
         payStack = response.data!.payStack;
         isLiveKey = response.data!.isLiveKey;
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -3189,7 +3195,7 @@ class _BookAppointmentState extends State<BookAppointment> {
           reportImages.add(reportImage);
         }
       } else {
-        print('No image selected.');
+
       }
     });
   }
@@ -3211,7 +3217,7 @@ class _BookAppointmentState extends State<BookAppointment> {
           reportImages.add(reportImage);
         }
       } else {
-        print('No image selected.');
+
       }
     });
   }
@@ -3234,7 +3240,7 @@ class _BookAppointmentState extends State<BookAppointment> {
           reportImages.add(reportImage1);
         }
       } else {
-        print('No image selected.');
+
       }
     });
   }
@@ -3256,7 +3262,7 @@ class _BookAppointmentState extends State<BookAppointment> {
           reportImages.add(reportImage1);
         }
       } else {
-        print('No image selected.');
+
       }
     });
   }
@@ -3279,7 +3285,7 @@ class _BookAppointmentState extends State<BookAppointment> {
           reportImages.add(reportImage2);
         }
       } else {
-        print('No image selected.');
+
       }
     });
   }
@@ -3301,7 +3307,7 @@ class _BookAppointmentState extends State<BookAppointment> {
           reportImages.add(reportImage2);
         }
       } else {
-        print('No image selected.');
+
       }
     });
   }
@@ -3451,11 +3457,10 @@ class _BookAppointmentState extends State<BookAppointment> {
           );
         });
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;

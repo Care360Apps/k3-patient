@@ -1,3 +1,4 @@
+import '../../payments/care360_paystack_checkout.dart';
 import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:doctro_patient/Screen/Payment/PaypalPaymentScreen.dart';
@@ -183,11 +184,10 @@ class _LaboratoryState extends State<Laboratory> {
         }
       });
       _applyFilters();
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -496,8 +496,7 @@ class _LabDetailScreenState extends State<LabDetailScreen> {
           pathology.addAll(response.data ?? []);
         });
       }
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -512,8 +511,7 @@ class _LabDetailScreenState extends State<LabDetailScreen> {
           radiology.addAll(response.data ?? []);
         });
       }
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -536,11 +534,10 @@ class _LabDetailScreenState extends State<LabDetailScreen> {
           detailLoading = false;
         });
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         detailLoading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -574,11 +571,10 @@ class _LabDetailScreenState extends State<LabDetailScreen> {
           timeslotLoading = false;
         });
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         timeslotLoading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -1080,11 +1076,10 @@ class _LabBookingScreenState extends State<LabBookingScreen> {
           loading = false;
         });
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -1123,9 +1118,8 @@ class _LabBookingScreenState extends State<LabBookingScreen> {
       } else {
         Preferences.hideDialog(context);
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       Preferences.hideDialog(context);
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -1243,11 +1237,23 @@ class _LabBookingScreenState extends State<LabBookingScreen> {
           payStack = response.data!.payStack;
         });
       }
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
+  }
+
+
+  bool _paystackSubmitting = false;
+  Future<void> _payWithPaystack() async {
+    if (_paystackSubmitting) return;
+    _paystackSubmitting = true;
+    try {
+      final reference = await Care360PaystackCheckout.start(context, amount: widget.amount);
+      if (!mounted || reference == null) return;
+      _paymentToken = reference;
+      await callApiLabBook();
+    } finally { _paystackSubmitting = false; }
   }
 
   Future<void> _handlePayment() async {
@@ -1295,7 +1301,7 @@ class _LabBookingScreenState extends State<LabBookingScreen> {
     } else if (_payment == LabPayment.FlutterWave) {
       flutterWavePayment(context, widget.amount);
     } else if (_payment == LabPayment.PayStack) {
-      Fluttertoast.showToast(msg: getTranslated(context, AppString.payStackLabel).toString() + " is not available");
+      await _payWithPaystack();
     } else if (_payment == LabPayment.COD) {
       callApiLabBook();
     }
@@ -1757,11 +1763,10 @@ class _HospitalScreenState extends State<HospitalScreen> {
         }
       });
       _applyFilters();
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2047,11 +2052,10 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen> {
           detailLoading = false;
         });
       }
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         detailLoading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;

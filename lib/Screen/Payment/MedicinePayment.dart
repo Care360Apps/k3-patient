@@ -1,3 +1,4 @@
+import '../../payments/care360_paystack_checkout.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:doctro_patient/const/preference.dart';
@@ -709,19 +710,17 @@ class _MedicinePaymentState extends State<MedicinePayment> {
             if (deliveryType == 'Home') {
               if (address != null && address != "N_A") {
                 if (_payment!.index == 0) {
-                  print('Paypal');
+
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (BuildContext context) => PaypalPayment(
                         total: grandTotal.toString(),
                         onFinish: (number) async {
-                          print('order id: ' + number);
                           if (number != null && number.toString() != '') {
                             setState(() {
                               _paymentToken = number;
                               callApiBookMedicine();
                             });
-                            print("success paypal payment ${number.toString()}");
                           }
                         },
                       ),
@@ -730,10 +729,10 @@ class _MedicinePaymentState extends State<MedicinePayment> {
                 }
                 if (_payment!.index == 1) {
                   openCheckoutRazorPay();
-                  print('Razorpay');
+
                 }
                 if (_payment!.index == 2) {
-                  print('Stripe');
+
                   Provider.of<MedicinesStripePayment>(context, listen: false)
                       .makePayment(context: context, pharamacyId: pharmacyId, amount: grandTotal.toString(), deliveryType: deliveryType, prescriptionFilePath: prescriptionFilePath, strFinalDeliveryCharge: strFinalDeliveryCharge, listData: listData);
                 }
@@ -741,10 +740,10 @@ class _MedicinePaymentState extends State<MedicinePayment> {
                   flutterWavePayment(context, payAmount);
                 }
                 if (_payment!.index == 4) {
-                  Fluttertoast.showToast(msg: getTranslated(context, AppString.payStackLabel).toString() + " is not available");
+                  await _payWithPaystack();
                 }
                 if (_payment!.index == 5) {
-                  print('cod');
+
                   callApiBookMedicine();
                 }
               } else {
@@ -752,19 +751,17 @@ class _MedicinePaymentState extends State<MedicinePayment> {
               }
             } else {
               if (_payment!.index == 0) {
-                print('Paypal');
+
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (BuildContext context) => PaypalPayment(
                       total: grandTotal.toString(),
                       onFinish: (number) async {
-                        print('order id: ' + number);
                         if (number != null && number.toString() != '') {
                           setState(() {
                             _paymentToken = number;
                             callApiBookMedicine();
                           });
-                          print("success paypal payment ${number.toString()}");
                         }
                       },
                     ),
@@ -773,10 +770,10 @@ class _MedicinePaymentState extends State<MedicinePayment> {
               }
               if (_payment!.index == 1) {
                 openCheckoutRazorPay();
-                print('Razorpay');
+
               }
               if (_payment!.index == 2) {
-                print('Stripe');
+
                 Provider.of<MedicinesStripePayment>(context, listen: false)
                     .makePayment(context: context, pharamacyId: pharmacyId, amount: grandTotal.toString(), deliveryType: deliveryType, prescriptionFilePath: prescriptionFilePath, strFinalDeliveryCharge: strFinalDeliveryCharge, listData: listData);
               }
@@ -784,10 +781,10 @@ class _MedicinePaymentState extends State<MedicinePayment> {
                 flutterWavePayment(context, payAmount);
               }
               if (_payment!.index == 4) {
-                Fluttertoast.showToast(msg: getTranslated(context, AppString.payStackLabel).toString() + " is not available");
+                await _payWithPaystack();
               }
               if (_payment!.index == 5) {
-                print('cod');
+
                 callApiBookMedicine();
               }
             }
@@ -799,6 +796,20 @@ class _MedicinePaymentState extends State<MedicinePayment> {
         ),
       ),
     );
+  }
+
+
+  bool _paystackSubmitting = false;
+  Future<void> _payWithPaystack() async {
+    if (_paystackSubmitting) return;
+    _paystackSubmitting = true;
+    try {
+      final reference = await Care360PaystackCheckout.start(context, amount: payAmount);
+      if (!mounted || reference == null) return;
+      paymentType = 'PayStack';
+      _paymentToken = reference;
+      await callApiBookMedicine();
+    } finally { _paystackSubmitting = false; }
   }
 
   Future<BaseModel<DetailSetting>> _detailSetting() async {
@@ -824,11 +835,10 @@ class _MedicinePaymentState extends State<MedicinePayment> {
           setState(() {});
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -923,7 +933,6 @@ class _MedicinePaymentState extends State<MedicinePayment> {
       body["pdf"] = MultipartFile.fromFileSync(prescriptionFilePath!, filename: fileName);
     }
     try {
-      print(body);
       setState(() {
         Preferences.onLoading(context);
       });
@@ -1088,11 +1097,10 @@ class _MedicinePaymentState extends State<MedicinePayment> {
           });
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -1155,11 +1163,10 @@ class _MedicinePaymentState extends State<MedicinePayment> {
           }
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
