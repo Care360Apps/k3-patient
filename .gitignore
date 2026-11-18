@@ -12,6 +12,7 @@ coverage/
 ios/.cocoapods_home/
 ios/Pods/
 ios/Flutter/Generated.xcconfig
+ios/Flutter/Care360PrivateRelease.xcconfig
 ios/Flutter/flutter_export_environment.sh
 ios/Flutter/App.framework/
 ios/Flutter/Flutter.framework/

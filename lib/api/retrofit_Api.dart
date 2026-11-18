@@ -91,8 +91,12 @@ class _ApiDio {
     final dio = Dio();
     dio.options.headers["Accept"] = "application/json";
     dio.options.followRedirects = false;
-    dio.options.connectTimeout = Duration(seconds: 30);
-    dio.options.receiveTimeout = Duration(seconds: 30);
+    // Give slow connections a bounded opportunity to respond, then surface
+    // the existing recoverable error state instead of a 30-second stall.
+    // Booking/payment actions must NEVER be blindly retried automatically.
+    dio.options.connectTimeout = const Duration(seconds: 10);
+    dio.options.sendTimeout = const Duration(seconds: 20);
+    dio.options.receiveTimeout = const Duration(seconds: 20);
     return dio;
   }
 

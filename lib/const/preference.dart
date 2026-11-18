@@ -15,10 +15,17 @@ class SharedPreferenceHelper {
   /// lifetime of the process without falling back to cleartext storage.
   static final Map<String, String> _secureCache = {};
 
-  static Future init() async {
+  static Future init({bool offlineSandbox = false}) async {
     _preferences = await SharedPreferences.getInstance();
     // One-time removal of a legacy cleartext Firebase password from old installs.
     await _preferences.remove(FirestoreConstants.password);
+    if (offlineSandbox) {
+      // Only for the distinct .k3sandbox debug application; no credential
+      // migration or Android Keystore access is needed in a design preview.
+      _secureCache.clear();
+      await _preferences.remove(Preferences.auth_token);
+      return;
+    }
     for (final key in _secureKeys) {
       await _loadSecure(key);
     }
@@ -67,8 +74,9 @@ class SharedPreferenceHelper {
     return await _preferences.setInt("$key", value);
   }
 
-  static void clearPref() {
-    _preferences.clear();
+  static Future<void> clearPref() async {
+    // Do not race account logout/deletion navigation with disk persistence.
+    await _preferences.clear();
   }
 
   static Future setSecureString(String key, String value) async {

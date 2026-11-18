@@ -442,12 +442,13 @@ class _ShowLocationState extends State<ShowLocation> {
     });
     try {
       response = await RestClient(RetroApi().dioData()).showAddressRequest();
+      if (!mounted) return BaseModel()..data = response;
       showAddress.clear();
 
       if (response.success == true) {
         setState(() {
           loading = false;
-          showAddress.addAll(response.data!);
+          showAddress.addAll(response.data ?? []);
         });
         if (showAddress.length == 0) {
           SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -455,11 +456,11 @@ class _ShowLocationState extends State<ShowLocation> {
         }
       }
     } catch (error, stacktrace) {
-      setState(() {
-        loading = false;
-      });
+      if (mounted) setState(() { loading = false; });
       print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
+    } finally {
+      if (mounted) setState(() { loading = false; });
     }
     return BaseModel()..data = response;
   }

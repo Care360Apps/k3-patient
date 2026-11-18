@@ -1,208 +1,82 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:doctro_patient/Chat/loading_view.dart';
-import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
-import 'HealthTipsDetail.dart';
-import '../../api/retrofit_Api.dart';
 import '../../api/network_api.dart';
-import '../../model/health_tip_model.dart';
-import '../../api/base_model.dart';
-import '../../api/server_error.dart';
-import '../../const/Palette.dart';
-import '../../const/app_string.dart';
-import '../../localization/localization_constant.dart';
+import '../../api/retrofit_Api.dart';
+import '../../brand/care360_health_essentials.dart';
+import '../../model/health_tip_model.dart' as tips;
+import 'HealthTipsDetail.dart';
 
 class HealthTips extends StatefulWidget {
+  const HealthTips({super.key, this.loadTips});
+  final Future<tips.HealthTip> Function()? loadTips;
   @override
-  _HealthTipsState createState() => _HealthTipsState();
+  State<HealthTips> createState() => _HealthTipsState();
 }
 
 class _HealthTipsState extends State<HealthTips> {
-  bool loading = false;
-  List<Data> healthTip = [];
-
+  List<tips.Data> _published = [];
+  bool _loading = true;
+  bool _failed = false;
   @override
-  void initState() {
-    super.initState();
-    callApiHealthTip();
-  }
+  void initState() { super.initState(); _load(); }
 
-  @override
-  Widget build(BuildContext context) {
-    double width;
-    double height;
-    width = MediaQuery.of(context).size.width;
-    height = MediaQuery.of(context).size.height;
-    return ModalProgressHUD(
-      inAsyncCall: loading,
-      opacity: 0.5,
-      progressIndicator: SpinKitFadingCircle(
-        color: Palette.blue,
-        size: 50.0,
-      ),
-      child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back_ios,
-              size: 20,
-              color: Palette.dark_blue,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-          centerTitle: true,
-          backgroundColor: Palette.white,
-          title: Text(
-            getTranslated(context, AppString.healthTips_title).toString(),
-            style: TextStyle(fontSize: 18, color: Color(0xFF003165), fontWeight: FontWeight.bold),
-          ),
-        ),
-        body: GestureDetector(
-          onTap: () {
-            FocusScope.of(context).requestFocus(new FocusNode());
-          },
-          child: healthTip.length != 0
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          ListView.builder(
-                            physics: BouncingScrollPhysics(),
-                            shrinkWrap: true,
-                            itemCount: healthTip.length,
-                            itemBuilder: (context, index) {
-                              return Container(
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      margin: EdgeInsets.symmetric(
-                                        horizontal: width * 0.03,
-                                        vertical: height * 0.002,
-                                      ),
-                                      width: width * 1,
-                                      height: 100,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => HealthTipsDetail(
-                                                id: healthTip[index].id,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        child: Card(
-                                          color: Palette.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          elevation: 5,
-                                          child: Row(
-                                            children: [
-                                              Container(
-                                                margin: EdgeInsets.symmetric(
-                                                  horizontal: width * 0.015,
-                                                  vertical: height * 0.015,
-                                                ),
-                                                child: Container(
-                                                  width: width * 0.2,
-                                                  height: 80,
-                                                  child: CachedNetworkImage(
-                                                    alignment: Alignment.center,
-                                                    imageUrl: healthTip[index].fullImage!,
-                                                    fit: BoxFit.cover,
-                                                    placeholder: (context, url) => SpinKitFadingCircle(
-                                                      color: Palette.blue,
-                                                    ),
-                                                    errorWidget: (context, url, error) => Image.asset(
-                                                      "assets/images/no_image.jpg",
-                                                      fit: BoxFit.fitHeight,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              Container(
-                                                width: width * 0.65,
-                                                child: Padding(
-                                                  padding: const EdgeInsets.all(5),
-                                                  child: Column(
-                                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        healthTip[index].title!,
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        style: TextStyle(fontSize: width * 0.045, color: Palette.dark_blue, fontWeight: FontWeight.bold),
-                                                      ),
-                                                      Text(
-                                                        healthTip[index].blogRef!,
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        style: TextStyle(
-                                                          fontSize: width * 0.035,
-                                                          color: Palette.dark_blue,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    )
-                  ],
-                )
-              : Container(
-                  alignment: AlignmentDirectional.center,
-                  margin: EdgeInsets.symmetric(vertical: 40),
-                  child: Text(
-                    getTranslated(context, AppString.healthTips_noTips).toString(),
-                    style: TextStyle(fontSize: width * 0.04, color: Palette.grey, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-
-  Future<BaseModel<HealthTip>> callApiHealthTip() async {
-    HealthTip response;
-    setState(() {
-      loading = true;
-    });
+  Future<void> _load() async {
+    if (mounted) setState(() => _loading = true);
     try {
-      response = await RestClient(RetroApi2().dioData2()).healthTipRequest();
-      setState(() {
-        loading = false;
-        if (response.success == true) {
-          healthTip.addAll(response.data!);
-        }
-      });
-    } catch (error, stacktrace) {
-      setState(() {
-        loading = false;
-      });
-      print("Exception occur: $error stackTrace: $stacktrace");
-      return BaseModel()..setException(ServerError.withError(error: error));
+      final result = await (widget.loadTips?.call() ??
+        RestClient(RetroApi2().dioData2()).healthTipRequest());
+      if (result.success != true) throw StateError('Articles unavailable');
+      if (!mounted) return;
+      setState(() { _published = result.data ?? []; _failed = false; });
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
-    return BaseModel()..data = response;
   }
+
+  Widget _tile(tips.Data tip, {bool bundled = false}) => Card(
+    child: ListTile(contentPadding: const EdgeInsets.all(16),
+      leading: const Icon(Icons.menu_book_outlined, color: Color(0xFF087D76)),
+      title: Text(tip.title ?? 'Health article', style: const TextStyle(
+        fontWeight: FontWeight.w700, fontSize: 18)),
+      subtitle: Padding(padding: const EdgeInsets.only(top: 6),
+        child: Text(tip.blogRef ?? 'Care360 editorial')),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.push(context, MaterialPageRoute<void>(
+        builder: (_) => HealthTipsDetail(id: tip.id,
+          bundled: bundled ? tip : null))),
+    ));
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFF5F8F7),
+    appBar: AppBar(title: const Text('Health tips')),
+    body: SafeArea(child: RefreshIndicator(onRefresh: _load,
+      child: ListView(padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(), children: [
+          const Text('Small steps for everyday wellbeing', style: TextStyle(
+            fontSize: 24, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          const Text('General education. For advice about your own health, '
+            'speak with a qualified clinician.'),
+          const SizedBox(height: 18),
+          const Text('Care360 essentials • available offline', style: TextStyle(
+            fontSize: 18, fontWeight: FontWeight.w700)),
+          for (final tip in care360HealthEssentials) _tile(tip, bundled: true),
+          const SizedBox(height: 18),
+          const Text('Latest articles', style: TextStyle(fontSize: 18,
+            fontWeight: FontWeight.w700)),
+          if (_loading) const Center(child: Padding(padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator())),
+          if (_failed) Column(children: [
+            const Text('Latest articles could not be refreshed. '
+              'The essentials above are still available.'),
+            TextButton(onPressed: _loading ? null : _load, child: const Text('Try again')),
+          ]),
+          if (!_loading && !_failed && _published.isEmpty)
+            const Padding(padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text('New articles will appear here when published.')),
+          for (final tip in _published) _tile(tip),
+        ]))),
+  );
 }

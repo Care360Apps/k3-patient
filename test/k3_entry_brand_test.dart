@@ -1,8 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../lib/brand/care360_entry.dart';
+import '../lib/brand/care360_global_language.dart';
 
 void main() {
+  testWidgets(
+    'persistent language button works above Navigator without an Overlay error',
+    (tester) async {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      String? changedTo;
+      await tester.pumpWidget(MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, navigatorChild) => Stack(
+          children: [
+            if (navigatorChild != null) navigatorChild,
+            PositionedDirectional(
+              end: 10,
+              bottom: 64,
+              child: Care360GlobalLanguageSwitch(
+                rootNavigatorKey: navigatorKey,
+                onSelect: (languageCode) async {
+                  changedTo = languageCode;
+                },
+              ),
+            ),
+          ],
+        ),
+        home: const Scaffold(body: Center(child: Text('Sign-in screen'))),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Sign-in screen'), findsOneWidget);
+      expect(find.byKey(const Key('care360-language-every-screen')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('care360-language-every-screen')));
+      await tester.pumpAndSettle();
+      expect(find.text('Choose language'), findsOneWidget);
+      await tester.tap(find.text('Hausa'));
+      await tester.pumpAndSettle();
+      expect(changedTo, 'ha');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('CNU attribution opens the institute HTTPS site', (tester) async {
     Uri? opened;
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: CnuAttribution(

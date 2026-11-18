@@ -1,8 +1,11 @@
+import '../../preview/care360_offline_dashboard.dart';
+import '../../localization/care360_language_picker.dart';
+import '../../main.dart';
+import '../../diagnostics/k3_startup_diagnostics.dart';
 import '../../brand/care360_entry.dart';
 import '../../api/patient_optional_settings.dart';
 import '../../api/care360_connection_error.dart';
 import '../../api/apis.dart';
-import 'dart:io';
 import 'package:doctro_patient/FirebaseProviders/auth_provider.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
 import 'package:doctro_patient/api/network_api.dart';
@@ -56,7 +59,10 @@ class _SignInState extends State<SignIn> {
     
     // Location permission belongs to location-dependent features, not sign-in.
     // Users must be able to authenticate without granting GPS access.
-    callApiSetting();
+    // Synthetic previews must not attempt any API or OneSignal initialization.
+    if (!Care360ConnectionError.isOfflinePreview(Apis.baseUrl)) {
+      callApiSetting();
+    }
   }
 
   AuthProvider? authProvider;
@@ -75,14 +81,25 @@ class _SignInState extends State<SignIn> {
   @override
   Widget build(BuildContext context) {
     authProvider = Provider.of<AuthProvider>(context);
-    double width;
-    width = MediaQuery.of(context).size.width;
-    final size = MediaQuery.of(context).size;
     return Care360AuthShell(
       professional: false,
       child: Form(
         key: formKey,
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Care360LanguagePicker(
+                languageCode: Localizations.localeOf(context).languageCode,
+                onSelected: (language) async {
+                  final selected = await setLocale(language);
+                  if (!mounted) return;
+                  MyApp.setLocale(context, selected);
+                },
+              ),
+            ),
+          ),
           if (Care360ConnectionError.isOfflinePreview(Apis.baseUrl))
             Container(
               margin: const EdgeInsets.fromLTRB(20, 6, 20, 12),
@@ -92,8 +109,8 @@ class _SignInState extends State<SignIn> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
-                'OFFLINE DESIGN TEST — This APK cannot sign in or access '
-                'Care360 services. A connected test build is required.',
+                'OFFLINE DESIGN TEST — Real sign-in and services are disabled. '
+                'Use the design preview below, or install a connected staging APK.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xFF5D4300),
@@ -102,178 +119,207 @@ class _SignInState extends State<SignIn> {
                 ),
               ),
             ),
+          if (k3OfflineSynthetic &&
+              Care360ConnectionError.isOfflinePreview(Apis.baseUrl))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const Key('care360-offline-preview-open'),
+                  icon: const Icon(Icons.dashboard_outlined),
+                  label: const Text('Preview patient dashboard'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF08785E),
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const Care360OfflineDashboard(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
 
-                                  Container(
-                                    margin: EdgeInsets.only(top: width * 0.08),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          getTranslated(context, AppString.signIn_welcome).toString(),
-                                          style: TextStyle(fontSize: width * 0.1, fontWeight: FontWeight.bold, color: Palette.light_black),
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          getTranslated(context, AppString.signIn_title).toString(),
-                                          style: TextStyle(fontSize: width * 0.04, color: Palette.dark_grey1),
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 30,
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 15,
-                                      ),
-                                      decoration: BoxDecoration(color: Palette.dark_white, borderRadius: BorderRadius.circular(10)),
-                                      child: TextFormField(
-                                        controller: emailController,
-                                        keyboardType: TextInputType.text,
-                                        textAlignVertical: TextAlignVertical.center,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Palette.dark_blue,
-                                        ),
-                                        decoration: InputDecoration(
-                                          border: InputBorder.none,
-                                          hintText: getTranslated(context, AppString.signIn_email_hint).toString(),
-                                          hintStyle: TextStyle(
-                                            fontSize: 16,
-                                            color: Palette.dark_grey,
-                                          ),
-                                        ),
-                                        validator: (String? value) {
-                                          if (value!.isEmpty) {
-                                            return getTranslated(context, AppString.signIn_email_validator1).toString();
-                                          }
-                                          if (!RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)) {
-                                            return getTranslated(context, AppString.signIn_email_validator2).toString();
-                                          }
-                                          return null;
-                                        },
-                                        onSaved: (String? name) {},
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 15,
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 15,
-                                      ),
-                                      decoration: BoxDecoration(color: Palette.dark_white, borderRadius: BorderRadius.circular(10)),
-                                      child: TextFormField(
-                                        controller: passwordController,
-                                        keyboardType: TextInputType.text,
-                                        textAlignVertical: TextAlignVertical.center,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Palette.dark_blue,
-                                        ),
-                                        decoration: InputDecoration(
-                                          border: InputBorder.none,
-                                          hintText: getTranslated(context, AppString.signIn_password_hint).toString(),
-                                          hintStyle: TextStyle(
-                                            fontSize: 16,
-                                            color: Palette.dark_grey,
-                                          ),
-                                          suffixIcon: IconButton(
-                                            icon: Icon(
-                                              _isHidden ? Icons.visibility : Icons.visibility_off,
-                                              color: Palette.grey,
-                                            ),
-                                            onPressed: () {
-                                              setState(() {
-                                                _isHidden = !_isHidden;
-                                              });
-                                            },
-                                          ),
-                                        ),
-                                        obscureText: _isHidden,
-                                        validator: (String? value) {
-                                          if (value!.isEmpty) {
-                                            return getTranslated(context, AppString.signIn_password_validator).toString();
-                                          }
-                                          return null;
-                                        },
-                                        onSaved: (String? name) {},
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 20,
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
-                                    child: Container(
-                                      width: width * 1,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: ElevatedButton(
-                                        child: Text(
-                                          getTranslated(context, AppString.signIn_signIn_button).toString(),
-                                          style: TextStyle(fontSize: 18),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        onPressed: (Care360ConnectionError.isOfflinePreview(Apis.baseUrl) || _loginInProgress) ? null : () {
-                                          if (formKey.currentState!.validate()) {
-                                            callForLogin();
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  TextButton(
-                                    child: Text(
-                                      getTranslated(context, AppString.signIn_forgotPassword_button).toString(),
-                                      style: TextStyle(fontSize: 16, color: Palette.dark_grey),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    onPressed: () {
-                                      Navigator.pushNamed(context, 'ForgotPasswordScreen');
-                                    },
-                                  ),
-                                  SizedBox(
-                                    height: 20,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        getTranslated(context, AppString.signIn_notAccount).toString(),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Palette.dark_grey,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 10,
-                                      ),
-                                      GestureDetector(
-                                        onTap: () {
-                                          Navigator.pushNamed(context, 'SignUp');
-                                        },
-                                        child: Text(
-                                          getTranslated(context, AppString.signIn_signUp_button).toString(),
-                                          style: TextStyle(fontSize: 16, color: Palette.blue, fontWeight: FontWeight.bold),
-                                        ),
-                                      )
-                                    ],
-                                  ),
+          const SizedBox(height: 3),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                Text(
+                  getTranslated(context, AppString.signIn_welcome).toString(),
+                  key: const Key('care360-signin-heading'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    height: 1.2,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF123E4D),
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  getTranslated(context, AppString.signIn_title).toString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: Color(0xFF526F77),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TextFormField(
+              key: const Key('care360-signin-email'),
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.username, AutofillHints.email],
+              autocorrect: false,
+              textCapitalization: TextCapitalization.none,
+              style: const TextStyle(fontSize: 16, color: Color(0xFF123E4D)),
+              decoration: InputDecoration(
+                labelText: getTranslated(context, AppString.signIn_email_hint).toString(),
+                hintText: 'name@example.com',
+                prefixIcon: const Icon(Icons.mail_outline_rounded, color: Color(0xFF087D76)),
+                filled: true,
+                fillColor: const Color(0xFFF5F8F7),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(13),
+                  borderSide: const BorderSide(color: Color(0xFFDCE8E5)),
+                ),
+              ),
+              validator: (value) {
+                final text = value?.trim() ?? '';
+                if (text.isEmpty) {
+                  return getTranslated(context, AppString.signIn_email_validator1).toString();
+                }
+                if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(text)) {
+                  return getTranslated(context, AppString.signIn_email_validator2).toString();
+                }
+                return null;
+              },
+            ),
+          ),
+          const SizedBox(height: 15),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TextFormField(
+              key: const Key('care360-signin-password'),
+              controller: passwordController,
+              obscureText: _isHidden,
+              keyboardType: TextInputType.visiblePassword,
+              textInputAction: TextInputAction.done,
+              autofillHints: const [AutofillHints.password],
+              autocorrect: false,
+              enableSuggestions: false,
+              onFieldSubmitted: (_) {
+                if (Care360ConnectionError.isOfflinePreview(Apis.baseUrl) ||
+                    _loginInProgress) return;
+                if (formKey.currentState?.validate() == true) callForLogin();
+              },
+              style: const TextStyle(fontSize: 16, color: Color(0xFF123E4D)),
+              decoration: InputDecoration(
+                labelText: getTranslated(context, AppString.signIn_password_hint).toString(),
+                prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF087D76)),
+                filled: true,
+                fillColor: const Color(0xFFF5F8F7),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(13),
+                  borderSide: const BorderSide(color: Color(0xFFDCE8E5)),
+                ),
+                suffixIcon: IconButton(
+                  key: const Key('care360-signin-toggle-password'),
+                  tooltip: _isHidden ? 'Show password' : 'Hide password',
+                  icon: Icon(
+                    _isHidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    color: const Color(0xFF526F77),
+                  ),
+                  onPressed: () => setState(() => _isHidden = !_isHidden),
+                ),
+              ),
+              validator: (value) => (value?.isEmpty ?? true)
+                  ? getTranslated(context, AppString.signIn_password_validator).toString()
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                key: const Key('care360-signin-submit'),
+                onPressed: (Care360ConnectionError.isOfflinePreview(Apis.baseUrl) ||
+                    _loginInProgress) ? null : () {
+                  if (formKey.currentState?.validate() == true) {
+                    callForLogin();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF087D76),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                ),
+                child: _loginInProgress
+                    ? const SizedBox(
+                        width: 21, height: 21,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        getTranslated(context, AppString.signIn_signIn_button).toString(),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 7),
+          TextButton(
+            key: const Key('care360-signin-forgot-password'),
+            onPressed: () => Navigator.pushNamed(context, 'ForgotPasswordScreen'),
+            child: Text(
+              getTranslated(context, AppString.signIn_forgotPassword_button).toString(),
+              style: const TextStyle(
+                color: Color(0xFF087D76),
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 7,
+            children: [
+              Text(
+                getTranslated(context, AppString.signIn_notAccount).toString(),
+                style: const TextStyle(color: Color(0xFF526F77), fontSize: 14),
+              ),
+              TextButton(
+                key: const Key('care360-signin-create-account'),
+                onPressed: () => Navigator.pushNamed(context, 'SignUp'),
+                child: Text(
+                  getTranslated(context, AppString.signIn_signUp_button).toString(),
+                  style: const TextStyle(
+                    color: Color(0xFF087D76), fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
                                 
         ]),
       ),
@@ -426,8 +472,10 @@ class _SignInState extends State<SignIn> {
           getOneSignalToken(appId);
         }
       }
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
+      // Never log full upstream exceptions or stack traces from optional
+      // settings: they may include tokens, locations or user identifiers.
+      if (kDebugMode) debugPrint('Care360: optional settings unavailable.');
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -437,23 +485,8 @@ class _SignInState extends State<SignIn> {
     OneSignal.Debug.setLogLevel(OSLogLevel.info);
 
     OneSignal.initialize(appId);
-    if (kDebugMode) {
-      print("OneSignal App ID: " + appId);
-    }
-    OneSignal.Notifications.addPermissionObserver((state) {
-      print("Has permission " + state.toString());
-    });
-    print("Permission ${OneSignal.Notifications.permission}");
-    Platform.isIOS
-        ? OneSignal.Notifications.permission == false &&
-                SharedPreferenceHelper.getBoolean(Preferences.notificationPermissionDialog) == false
-            ? OneSignal.Notifications.requestPermission(true)
-            : null
-        : null;
-    Platform.isAndroid ? OneSignal.Notifications.requestPermission(true) : null;
-    if (kDebugMode) {
-      print("OneSignal ID : ${OneSignal.User.pushSubscription.id}");
-    }
+    // Only the Settings > Enable notifications action requests OS permission.
+    // OneSignal can initialize here without interrupting sign-in.
     OneSignal.Debug.setAlertLevel(OSLogLevel.none);
 
     if (SharedPreferenceHelper.getString(Preferences.device_token) == "" ||

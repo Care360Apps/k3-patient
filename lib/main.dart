@@ -57,7 +57,7 @@ import 'Screen/Payment/StripePaymentScreenMedicine.dart';
 import 'Screen/Payment/medicines_stripe_services.dart';
 import 'Screen/Screens/Home.dart';
 import 'Screen/Screens/Home.dart';
-import 'Screen/Screens/HospitalsScreen.dart';
+// Real hospital directory is provided by Laboratory.dart's HospitalScreen.
 import 'Screen/Screens/Laboratory.dart';
 import 'Screen/Screens/MapView.dart';
 import 'Screen/Screens/Offer.dart';
@@ -76,9 +76,11 @@ import 'api/server_error.dart';
 import 'const/Palette.dart';
 import 'const/prefConstatnt.dart';
 import 'localization/language_localization.dart';
+import 'localization/care360_framework_locale_fallback.dart';
 import 'localization/localization_constant.dart';
 import 'localization/localization_constant.dart' as care360_locale;
 import 'brand/care360_global_language.dart';
+import 'brand/care360_first_language.dart';
 import 'model/detail_setting_model.dart';
 import 'package:doctro_patient/firebase_options.dart';
 import 'package:doctro_patient/api/patient_optional_settings.dart';
@@ -107,8 +109,10 @@ Future<Widget> _initializeApp() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform);
   
-  await SharedPreferenceHelper.init();
-  final token = await SharedPreferenceHelper.getSecureString(Preferences.auth_token);
+  await SharedPreferenceHelper.init(offlineSandbox: k3OfflineSynthetic);
+  final token = k3OfflineSynthetic
+      ? null
+      : await SharedPreferenceHelper.getSecureString(Preferences.auth_token);
   final hasToken = token != null && token.isNotEmpty && token != "N_A" && token != "null";
   await SharedPreferenceHelper.setBoolean(Preferences.has_auth_token, hasToken);
   await SharedPreferenceHelper.setBoolean(Preferences.is_logged_in, hasToken);
@@ -129,6 +133,7 @@ Future<Widget> _initializeApp() async {
 }
 
 Future<void> _initFirebaseMessagingWithLogging() async {
+  if (k3OfflineSynthetic) return;
   try {
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
       alert: true, badge: true, sound: true,
@@ -159,8 +164,10 @@ class MyApp extends StatefulWidget {
   _MyAppState createState() => _MyAppState();
 
   static void setLocale(BuildContext context, Locale newLocale) {
-    _MyAppState state = context.findAncestorStateOfType<_MyAppState>()!;
-    state.setLocale(newLocale);
+    // Isolated widget tests may not mount MyApp. Live app selections still
+    // update the root locale immediately and remain saved on device.
+    final state = context.findAncestorStateOfType<_MyAppState>();
+    state?.setLocale(newLocale);
   }
 }
 
@@ -187,6 +194,10 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    if (k3OfflineSynthetic) {
+      debugPrint('K3_OFFLINE_TEST: optional network and push setup skipped');
+      return;
+    }
     callApiSetting();
     Future.delayed(const Duration(seconds: 2), () {
       FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
@@ -322,11 +333,12 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void didChangeDependencies() {
-    getLocale().then((local) => {
-          setState(() {
-            this._locale = local;
-          })
-        });
+    getLocale().then((local) {
+      if (!mounted) return;
+      setState(() => _locale = local);
+    }).catchError((Object _) {
+      if (kDebugMode) debugPrint('Care360: language preference unavailable; using English.');
+    });
     super.didChangeDependencies();
   }
 
@@ -382,7 +394,12 @@ class _MyAppState extends State<MyApp> {
             builder: (context, navigatorChild) => Stack(
               children: [
                 if (navigatorChild != null) navigatorChild,
-                PositionedDirectional(
+                // The floating live language widget is deliberately excluded
+                // from disconnected synthetic builds. Language options remain
+                // visible inside the offline-only review hub; no service-backed
+                // screens, overlays or state are mounted by that hub.
+                if (!k3OfflineSynthetic)
+                  PositionedDirectional(
                   end: 10,
                   bottom: 64,
                   child: SafeArea(
@@ -412,11 +429,11 @@ class _MyAppState extends State<MyApp> {
               Locale(SPANISH, 'ES'),
               Locale(ARABIC, 'AE'),
             ],
-            localizationsDelegates: [
+            localizationsDelegates: const [
               LanguageLocalization.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
+              Care360MaterialFallbackDelegate(),
+              Care360WidgetsFallbackDelegate(),
+              Care360CupertinoFallbackDelegate(),
             ],
             localeResolutionCallback: (deviceLocal, supportedLocales) {
               for (var local in supportedLocales) {
@@ -429,15 +446,47 @@ class _MyAppState extends State<MyApp> {
             debugShowCheckedModeBanner: false,
             initialRoute: "/",
             theme: ThemeData(
+              // A shared, high-contrast healthcare identity across Patient.
+              // Keep Material 2 compatibility for established clinical forms.
+              useMaterial3: false,
               splashColor: Palette.transparent,
               highlightColor: Palette.transparent,
-              primaryColor: Palette.blue,
-              useMaterial3: false,
+              scaffoldBackgroundColor: const Color(0xFFF5F8F7),
+              primaryColor: const Color(0xFF123E4D),
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xFF087D76),
+                brightness: Brightness.light,
+              ),
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Color(0xFF123E4D),
+                foregroundColor: Colors.white,
+              ),
+              inputDecorationTheme: InputDecorationTheme(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               elevatedButtonTheme: ElevatedButtonThemeData(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Palette.blue
-                )
-              )
+                  backgroundColor: const Color(0xFF087D76),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(48, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              outlinedButtonTheme: OutlinedButtonThemeData(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF123E4D),
+                  minimumSize: const Size(48, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
             routes: {
               '/': (context) {
@@ -446,8 +495,25 @@ class _MyAppState extends State<MyApp> {
                 final isLoggedIn = SharedPreferenceHelper.getBoolean(Preferences.is_logged_in);
 
                 if (!hasSeenOnboarding) {
-                  k3ReportInitialRoute('onboarding');
-                  return const OnboardingScreen();
+                  // First-time users see the real Care360-branded selector
+                  // before onboarding. Returning users keep their routes.
+                  k3ReportInitialRoute('first-language');
+                  return Care360FirstLanguageScreen(
+                    initialLanguage:
+                        (_locale ?? const Locale(ENGLISH, 'US')).languageCode,
+                    onContinue: (code) async {
+                      final selectedLocale = await care360_locale.setLocale(code);
+                      if (!context.mounted) return;
+                      final navigator = Navigator.of(context);
+                      setLocale(selectedLocale);
+                      if (!context.mounted) return;
+                      navigator.pushReplacement<void, void>(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const OnboardingScreen(),
+                        ),
+                      );
+                    },
+                  );
                 }
 
                 k3ReportInitialRoute(isLoggedIn ? 'home' : 'sign-in');
@@ -486,7 +552,7 @@ class _MyAppState extends State<MyApp> {
               'TreatmentSpecialist': (context) => TreatmentSpecialist(),
               'Notifications': (context) => Notifications(),
               'Laboratory': (context) => Laboratory(title: 'Find Laboratories', icon: Icons.science_outlined),
-              'Hospitals': (context) => HospitalsScreen(),
+              'Hospitals': (context) => HospitalScreen(),
               'MapView': (context) => MapView(),
               'StripePaymentScreen': (context) => StripePaymentScreen(),
               'StripePaymentScreenMedicine': (context) => StripePaymentScreenMedicine(),
@@ -516,7 +582,7 @@ class _MyAppState extends State<MyApp> {
         getOneSignalToken(appId);
       }
     } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+      if (kDebugMode) debugPrint('Care360: optional settings unavailable; continuing.');
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -531,30 +597,13 @@ class _MyAppState extends State<MyApp> {
     OneSignal.Debug.setLogLevel(OSLogLevel.info);
     OneSignal.initialize(appId);
 
-    if (kDebugMode) {
-      print("OneSignal App ID: $appId");
-    }
-
-    OneSignal.Notifications.addPermissionObserver((state) {
-      print("Has permission $state");
-    });
-
-    if (Platform.isIOS) {
-      if (OneSignal.Notifications.permission == false &&
-          SharedPreferenceHelper.getBoolean(Preferences.notificationPermissionDialog) == false) {
-        OneSignal.Notifications.requestPermission(true);
-      }
-    } else if (Platform.isAndroid) {
-      OneSignal.Notifications.requestPermission(true);
-    }
+    // Push permission must be explicitly requested by the signed-in patient
+    // from Settings, never at app launch (especially for sensitive health data).
 
     OneSignal.User.pushSubscription.addObserver((state) {
       final id = state.current.id;
       if (id != null) {
         SharedPreferenceHelper.setString(Preferences.device_token, id);
-        if (kDebugMode) {
-          print("OneSignal ID : $id");
-        }
       }
     });
 
@@ -565,8 +614,5 @@ class _MyAppState extends State<MyApp> {
       SharedPreferenceHelper.setString(Preferences.device_token, subId);
     }
 
-    if (kDebugMode) {
-      print("OneSignal ID : $subId");
-    }
   }
 }

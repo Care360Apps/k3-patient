@@ -18,6 +18,7 @@ import '../../Chat/loading_view.dart';
 import '../../api/base_model.dart';
 import '../../api/server_error.dart';
 import '../../const/Palette.dart';
+import '../../brand/care360_service_intro.dart';
 import '../../const/prefConstatnt.dart';
 import '../../localization/localization_constant.dart';
 
@@ -227,7 +228,16 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
             ),
           ),
         ),
-        body: RefreshIndicator(
+        body: Column(
+          children: [
+            const Care360ServiceIntro(
+              title: 'Providers',
+              titleKey: 'care360_service_providers',
+              description: 'Video and home-care services',
+              descriptionKey: 'care360_dir_providers_description',
+              icon: Icons.health_and_safety_outlined,
+            ),
+            Expanded(child: RefreshIndicator(
           onRefresh: callApiProviders,
           child: ModalProgressHUD(
             child: visibleProviders.isNotEmpty
@@ -237,6 +247,9 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
             opacity: 0.5,
             progressIndicator: ShimmerIndicator(size: 56),
           ),
+        ),
+            ),
+          ],
         ),
       ),
     );

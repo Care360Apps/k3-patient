@@ -1,3 +1,4 @@
+import '../../brand/care360_discovery.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -14,6 +15,10 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import '../../brand/care360_partner_showcase.dart';
+import '../../brand/care360_nearby_care_hero.dart';
+import '../../brand/care360_patient_service_grid.dart';
+import '../../workforce/workforce_landing.dart';
+import '../../brand/care360_guide_shortcut.dart';
 import '../../brand/care360_horizontal_cards.dart';
 import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -23,7 +28,6 @@ import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:doctro_patient/Screen/MedicineAndPharmacy/PharamacyDetail.dart';
 import '../../VideoCall/PhoneScreen.dart';
@@ -91,7 +95,6 @@ class _HomeState extends State<Home> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   int current = 0;
-  List<String?> imgList = [];
 
   // Search //
   TextEditingController _search = TextEditingController();
@@ -105,14 +108,26 @@ class _HomeState extends State<Home> {
   Location location = new Location();
 
   late HomeProvider homeProvider;
+  Timer? _appointmentRefreshTimer;
+  bool _appointmentsInFlight = false;
+
+  @override
+  void dispose() {
+    // A screen that is no longer visible must not continue polling the
+    // patient's appointment API or retain its search controller.
+    _appointmentRefreshTimer?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     dbService = DBService();
     _loadCachedUserDetails();
+    // Only one location initialization. The location-dependent screens can
+    // request permission later; Home should paint without waiting for GPS.
     getLocation();
-    getLiveLocation();
     homeProvider = context.read<HomeProvider>();
     final isLoggedIn = SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true;
     final hasToken = _hasAuthToken();
@@ -129,12 +144,12 @@ class _HomeState extends State<Home> {
       Future.delayed(
         const Duration(seconds: 5),
         () {
+          if (!mounted || !_hasAuthToken()) return;
           final currentUser = FirebaseAuth.instance.currentUser;
           final pushToken = SharedPreferenceHelper.getString(Preferences.device_token);
           if (currentUser == null || pushToken == null || pushToken == "N_A") {
             return;
           }
-          print("UID ${currentUser.uid}");
           homeProvider.updateDataFirestore(
             FirestoreConstants.pathUserCollection,
             currentUser.uid,
@@ -143,7 +158,13 @@ class _HomeState extends State<Home> {
           // Never log notification tokens.
         },
       );
-      Timer.periodic(Duration(minutes: 10), (Timer t) => callApiAppointment());
+      _appointmentRefreshTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
+        if (!mounted || !_hasAuthToken()) {
+          timer.cancel();
+          return;
+        }
+        callApiAppointment();
+      });
     } else {
       callApiSetting();
     }
@@ -151,6 +172,7 @@ class _HomeState extends State<Home> {
       getOneSingleToken();
     }
     callApiBanner();
+    callApIDisplayOffer();
     callApiPharmacy();
     _loadCartCount();
   }
@@ -197,47 +219,58 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> getLocation() async {
-    await Permission.location.request();
-    await Permission.storage.request();
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    // If user has set a default address, activate it when app starts
-    final defaultId = prefs.getInt(Preferences.default_address_id);
-    if (defaultId != null && defaultId != 0) {
-      final defaultLat = prefs.getString(Preferences.default_lat);
-      final defaultLang = prefs.getString(Preferences.default_lang);
-      final defaultAddress = prefs.getString(Preferences.default_Address);
-      if (defaultLat != null && defaultLat.isNotEmpty &&
-          defaultLang != null && defaultLang.isNotEmpty &&
-          defaultAddress != null && defaultAddress.isNotEmpty) {
-        await prefs.setString('lat', defaultLat);
-        await prefs.setString('lang', defaultLang);
-        await prefs.setString('Address', defaultAddress);
-        await prefs.setInt('addressId', defaultId);
-        _getAddress();
-        return;
+    // Home must never demand storage/GPS permission before its first frame.
+    // Use a selected/default location first, and query GPS only when permission
+    // has already been granted for a location-dependent feature.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final defaultId = prefs.getInt(Preferences.default_address_id);
+      if (defaultId != null && defaultId != 0) {
+        final lat = prefs.getString(Preferences.default_lat);
+        final lng = prefs.getString(Preferences.default_lang);
+        final address = prefs.getString(Preferences.default_Address);
+        if (lat != null && lat.isNotEmpty && lng != null &&
+            lng.isNotEmpty && address != null && address.isNotEmpty) {
+          await prefs.setString('lat', lat);
+          await prefs.setString('lang', lng);
+          await prefs.setString('Address', address);
+          await prefs.setInt('addressId', defaultId);
+          if (mounted) await _getAddress();
+          return;
+        }
       }
-    }
-    String? checkLat = prefs.getString('lat');
-    if (checkLat != "" && checkLat != null) {
-      _getAddress();
-    } else {
-      _locationData = await location.getLocation();
-      setState(
-        () {
-          prefs.setString('lat', _locationData.latitude.toString());
-          prefs.setString('lang', _locationData.longitude.toString());
-          print("${_locationData.latitude.toString()}  ${_locationData.longitude.toString()}");
-        },
-      );
-      _getAddress();
-    }
-    // First time or no default address: show prompt once for logged-in users
-    if (mounted &&
-        SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) &&
-        !SharedPreferenceHelper.getBoolean(Preferences.default_address_modal_seen)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showDefaultAddressModal(context);
-      });
+
+      final cachedLat = prefs.getString('lat');
+      final cachedLng = prefs.getString('lang');
+      if ((cachedLat == null || cachedLat.isEmpty ||
+           cachedLng == null || cachedLng.isEmpty) &&
+          (await Permission.location.status).isGranted) {
+        try {
+          final current = await location.getLocation().timeout(
+              const Duration(seconds: 7));
+          if (current.latitude != null && current.longitude != null) {
+            await prefs.setString('lat', current.latitude.toString());
+            await prefs.setString('lang', current.longitude.toString());
+            await prefs.setString('latLive', current.latitude.toString());
+            await prefs.setString('langLive', current.longitude.toString());
+          }
+        } catch (_) {
+          // No coordinates is a valid state when GPS is slow or unavailable.
+          // Continue to the address selector, not a spinner or red screen.
+        }
+      }
+      if (mounted) await _getAddress();
+
+      if (mounted &&
+          SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) &&
+          !SharedPreferenceHelper.getBoolean(
+              Preferences.default_address_modal_seen)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showDefaultAddressModal(context);
+        });
+      }
+    } catch (_) {
+      if (mounted) await _getAddress();
     }
   }
 
@@ -306,27 +339,39 @@ class _HomeState extends State<Home> {
     );
   }
 
-  getLiveLocation() async {
-    _locationData = await location.getLocation();
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('latLive', _locationData.latitude.toString());
-    prefs.setString('langLive', _locationData.longitude.toString());
-    print("Live Location Lat & Long ==   ${_locationData.latitude.toString()}  ${_locationData.longitude.toString()}");
+  Future<void> getLiveLocation() async {
+    // Optional live location refresh, only when location access is already
+    // granted. No latitude/longitude, user IDs or tokens are logged.
+    if (!(await Permission.location.status).isGranted) return;
+    try {
+      final current = await location.getLocation().timeout(
+          const Duration(seconds: 7));
+      if (current.latitude == null || current.longitude == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('latLive', current.latitude.toString());
+      await prefs.setString('langLive', current.longitude.toString());
+    } catch (_) {
+      // A denied/timed-out live refresh must not block Patient Home.
+    }
   }
 
-  _getAddress() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(
-      () {
-        _address = prefs.getString('Address');
-        _lat = prefs.getString('lat');
-        _lang = prefs.getString('lang');
-        callApiDoctorList();
-        callApiProviders();
-        callApiTreatment();
-        callApIDisplayOffer();
-      },
-    );
+  Future<void> _getAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final latitude = prefs.getString('lat');
+    final longitude = prefs.getString('lang');
+    setState(() {
+      _address = prefs.getString('Address');
+      _lat = latitude;
+      _lang = longitude;
+    });
+    // Avoid requesting a nearby-provider lookup with empty coordinates.
+    if (latitude != null && latitude.isNotEmpty &&
+        longitude != null && longitude.isNotEmpty) {
+      callApiDoctorList();
+      callApiProviders();
+    }
+    callApiTreatment();
   }
 
   _passDetail() async {
@@ -769,6 +814,30 @@ class _HomeState extends State<Home> {
                             ),
                             SizedBox(height: 8),
                             _buildChatDrawerTile(context),
+                            SizedBox(height: 8),
+                            ListTile(
+                              key: const Key('drawer-workforce'),
+                              leading: Icon(Icons.work_outline_rounded, color: Palette.blue),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              tileColor: Palette.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                              title: const Text(
+                                'Workforce — jobs and hiring',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Palette.dark_blue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(context, MaterialPageRoute<void>(
+                                  builder: (_) => const Care360WorkforceLanding(),
+                                ));
+                              },
+                            ),
                             SizedBox(height: 8),
                             ListTile(
                               leading: Icon(Icons.local_pharmacy_outlined, color: Palette.blue),
@@ -1316,7 +1385,52 @@ class _HomeState extends State<Home> {
                     children: [
                         if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
                             SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null)
-                          const Care360PartnerShowcase(),
+                          Care360PartnerShowcase(
+                            slides: _partnerSlides(),
+                            showGuideButton: false,
+                          ),
+                        Care360NearbyCareHero(
+                          onExplore: () => Navigator.pushNamed(context, 'MapView'),
+                        ),
+                        Care360PatientServiceGrid(
+                          onOpen: (destination) {
+                            switch (destination) {
+                              case Care360ServiceDestination.hospitals:
+                                Navigator.pushNamed(context, 'Hospitals');
+                                break;
+                              case Care360ServiceDestination.doctors:
+                                Navigator.pushNamed(context, 'Treatment');
+                                break;
+                              case Care360ServiceDestination.providers:
+                                Navigator.pushNamed(context, 'FindProviders');
+                                break;
+                              case Care360ServiceDestination.pharmacies:
+                                Navigator.pushNamed(context, 'AllPharamacy');
+                                break;
+                              case Care360ServiceDestination.laboratories:
+                                Navigator.pushNamed(context, 'Laboratory');
+                                break;
+                              case Care360ServiceDestination.appointments:
+                                Navigator.pushNamed(
+                                  context, _hasAuthToken() ? 'Appointment' : 'SignIn');
+                                break;
+                            }
+                          },
+                        ),
+                        Care360WorkforceHomeTile(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const Care360WorkforceLanding(),
+                            ),
+                          ),
+                        ),
+                        if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true &&
+                            SharedPreferenceHelper.peekSecureString(Preferences.auth_token) != null) ...[
+                          const Care360GuideShortcut(),
+
+                        ],
+                        const Care360Discovery(),
                         /// Upcoming Appointment ///
                         upcomingAppointment.length != 0
                             ? Column(
@@ -1642,92 +1756,9 @@ class _HomeState extends State<Home> {
                           height: 4,
                         ),
 
-                        /// looking For ///
-                        Column(
-                          children: [
-                            Container(
-                              alignment: AlignmentDirectional.topStart,
-                              margin: EdgeInsets.only(
-                                left: 20,
-                                right: 20,
-                              ),
-                              // child: Column(
-                              //   children: [
-                              //     Text(
-                              //       getTranslated(context, AppString.home_lookingFor).toString(),
-                              //       style: TextStyle(
-                              //         fontSize: 16,
-                              //         color: Palette.dark_blue,
-                              //         fontWeight: FontWeight.bold,
-                              //       ),
-                              //     ),
-                              //   ],
-                              // ),
-                            ),
-                            //banners
-                            Container(
-                              height: 210,
-                              margin: EdgeInsets.only(top: 10, bottom: 10, left: 0, right: 0),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(15),
-                                ),
-                                child: Stack(
-                                  children: <Widget>[
-                                    CarouselSlider(
-                                      options: CarouselOptions(
-                                        height: 200,
-                                        viewportFraction: 1.0,
-                                        autoPlay: true,
-                                        onPageChanged: (index, index1) {
-                                          setState(
-                                            () {
-                                              current = index;
-                                            },
-                                          );
-                                        },
-                                      ),
-                                      items: banner.map((bannerData) {
-                                        return Builder(
-                                          builder: (BuildContext context) {
-                                            return InkWell(
-                                              onTap: () async {
-                                                // await launch(bannerData.link!);
-                                                Uri _url = Uri.parse(bannerData.link!);
-                                                launchUrl(_url);
-                                              },
-                                              child: Container(
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.all(
-                                                    Radius.circular(15),
-                                                  ),
-                                                  child: CachedNetworkImage(
-                                                    imageUrl: bannerData.fullImage!,
-                                                    fit: BoxFit.fitHeight,
-                                                    placeholder: (context, url) => SpinKitFadingCircle(color: Palette.blue),
-                                                    errorWidget: (context, url, error) => Image.asset(
-                                                      "assets/images/no_image.jpg",
-                                                      width: width,
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(
-                          height: 10,
-                        ),
+                        // Single patient-only placement above; no duplicate
+                        // autoplay banner below the appointment summary.
+                        const SizedBox(height: 10),
 
                         /// Treatments (Categories) ///
                         Column(
@@ -2190,148 +2221,7 @@ class _HomeState extends State<Home> {
                           height: 10,
                         ),
 
-                        /// Offer ///
-                        offerList.length != 0
-                            ? Column(
-                                children: [
-                                  Container(
-                                    alignment: AlignmentDirectional.topStart,
-                                    margin: EdgeInsets.only(left: width * 0.05, right: width * 0.05),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          getTranslated(context, AppString.home_offers).toString(),
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            color: Palette.dark_blue,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    height: 200,
-                                    width: width * 1,
-                                    child: ListView.builder(
-                                      itemCount: offerList.length,
-                                      physics: BouncingScrollPhysics(),
-                                      scrollDirection: Axis.horizontal,
-                                      itemBuilder: (context, index) {
-                                        return Container(
-                                          margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                          child: Container(
-                                            height: 160,
-                                            width: 175,
-                                            child: Card(
-                                              color: index % 2 == 0 ? Palette.light_blue.withOpacity(0.9) : Palette.offer_card.withOpacity(0.9),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(10.0),
-                                              ),
-                                              child: Column(
-                                                children: [
-                                                  ClipRRect(
-                                                    borderRadius: BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
-                                                    child: Container(
-                                                      height: 40,
-                                                      margin: EdgeInsets.symmetric(vertical: 5),
-                                                      child: Center(
-                                                        child: Text(
-                                                          offerList[index].name!,
-                                                          style: TextStyle(fontSize: 16, color: Palette.dark_blue, fontWeight: FontWeight.bold),
-                                                          textAlign: TextAlign.center,
-                                                          overflow: TextOverflow.ellipsis,
-                                                          maxLines: 1,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    margin: EdgeInsets.symmetric(vertical: 0, horizontal: 0),
-                                                    child: Column(
-                                                      children: [
-                                                        DottedLine(
-                                                          direction: Axis.horizontal,
-                                                          lineLength: double.infinity,
-                                                          lineThickness: 1.0,
-                                                          dashLength: 3.0,
-                                                          dashColor: index % 2 == 0 ? Palette.light_blue.withOpacity(0.9) : Palette.offer_card.withOpacity(0.9),
-                                                          dashRadius: 0.0,
-                                                          dashGapLength: 1.0,
-                                                          dashGapColor: Palette.transparent,
-                                                          dashGapRadius: 0.0,
-                                                        )
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  if (offerList[index].discountType == "amount" && offerList[index].isFlat == 0)
-                                                    Container(
-                                                      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                                      child: Text(
-                                                        getTranslated(context, AppString.home_flat).toString() + ' ' + SharedPreferenceHelper.getString(Preferences.currency_symbol).toString() + offerList[index].discount.toString(),
-                                                        style: TextStyle(
-                                                          fontSize: 20,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Palette.dark_blue,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  if (offerList[index].discountType == "percentage" && offerList[index].isFlat == 0)
-                                                    Container(
-                                                      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                                      // alignment: Alignment.topLeft,
-                                                      child: Text(
-                                                        offerList[index].discount.toString() + getTranslated(context, AppString.home_discount).toString(),
-                                                        textAlign: TextAlign.center,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        maxLines: 2,
-                                                        style: TextStyle(
-                                                          fontSize: 20,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Palette.dark_blue,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  if (offerList[index].discountType == "amount" && offerList[index].isFlat == 1)
-                                                    Container(
-                                                      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                                                      child: Text(
-                                                        getTranslated(context, AppString.home_flat).toString() + SharedPreferenceHelper.getString(Preferences.currency_symbol).toString() + offerList[index].flatDiscount.toString(),
-                                                        textAlign: TextAlign.center,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        maxLines: 2,
-                                                        style: TextStyle(
-                                                          fontSize: 20,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Palette.dark_blue,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  Container(
-                                                    margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                                    decoration: BoxDecoration(color: Palette.white, borderRadius: BorderRadius.circular(10)),
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.all(8),
-                                                      child: SelectableText(
-                                                        offerList[index].offerCode!,
-                                                        style: TextStyle(
-                                                          fontSize: 16,
-                                                          // fontWeight: FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  )
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Container(),
+
                       ],
                     ),
                   ),
@@ -2358,11 +2248,11 @@ class _HomeState extends State<Home> {
           });
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2388,11 +2278,11 @@ class _HomeState extends State<Home> {
           pharmacyList.addAll(list);
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2439,11 +2329,11 @@ class _HomeState extends State<Home> {
         });
         doctorList.addAll(list);
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2827,8 +2717,8 @@ class _HomeState extends State<Home> {
         });
         providerList.addAll(list);
       });
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+    } catch (error) {
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -2884,41 +2774,52 @@ class _HomeState extends State<Home> {
         image = response.fullImage;
         _passDetail();
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
   }
 
+  /// Only approved external HTTPS destinations enter the public carousel.
+  /// No patient, appointment or location context is sent to partners.
+  List<Care360PartnerSlide> _partnerSlides() {
+    final slides = <Care360PartnerSlide>[];
+    for (final item in banner) {
+      if (item.status == 0) continue;
+      final url = Care360PartnerSlide.safeDestination(item.link);
+      if (url == null) continue;
+      final title = (item.name ?? '').trim();
+      slides.add(Care360PartnerSlide(
+        title: title.isEmpty ? 'Featured service' : title,
+        subtitle: (item.desc ?? '').trim().isEmpty
+            ? 'Explore this featured partner' : item.desc!.trim(),
+        url: url,
+        imageUrl: item.fullImage,
+        sponsored: item.isSponsored,
+      ));
+    }
+    return slides;
+  }
+
   Future<BaseModel<Banners>> callApiBanner() async {
-    Banners response;
-    setState(() {
-      loading = true;
-    });
     try {
-      response = await RestClient(RetroApi2().dioData2()).bannerRequest();
-      setState(() {
-        loading = false;
-        if (response.data!.length != 0) {
-          imgList.clear();
-          for (int i = 0; i < response.data!.length; i++) {
-            imgList.add(response.data![i].fullImage);
-          }
-        }
-        banner.addAll(response.data!);
-      });
-    } catch (error, stacktrace) {
-      setState(() {
-        loading = false;
-      });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      final response = await RestClient(RetroApi2().dioData2()).bannerRequest();
+      if (mounted) {
+        setState(() {
+          // Refresh replaces old campaigns; it never duplicates stale slides.
+          banner = response.data ?? <Add>[];
+        });
+      }
+      return BaseModel()..data = response;
+    } catch (error) {
+      // Preserve the existing valid banners on a temporary network failure.
+      // Never log full error bodies containing private URLs or credentials.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
-    return BaseModel()..data = response;
   }
 
   Future<BaseModel<FavoriteDoctor>> callApiFavoriteDoctor() async {
@@ -2940,59 +2841,55 @@ class _HomeState extends State<Home> {
         doctorList.clear();
         callApiDoctorList();
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
   }
 
   Future<BaseModel<DisplayOffer>> callApIDisplayOffer() async {
-    DisplayOffer response;
-    setState(() {
-      loading = true;
-    });
     try {
-      response = await RestClient(RetroApi2().dioData2()).displayOfferRequest();
-      setState(() {
-        loading = false;
-        offerList.addAll(response.data!);
-      });
-    } catch (error, stacktrace) {
-      setState(() {
-        loading = false;
-      });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      final response = await RestClient(RetroApi2().dioData2()).displayOfferRequest();
+      if (mounted) setState(() => offerList = response.data ?? <OfferModel>[]);
+      return BaseModel()..data = response;
+    } catch (error) {
       return BaseModel()..setException(ServerError.withError(error: error));
     }
-    return BaseModel()..data = response;
   }
 
   Future<BaseModel<Appointments>> callApiAppointment() async {
-    Appointments response;
-    if (!_hasAuthToken()) {
-      return BaseModel();
+    if (!mounted || !_hasAuthToken() || _appointmentsInFlight) {
+      return BaseModel<Appointments>();
     }
-    setState(() {
-      loading = true;
-    });
+    _appointmentsInFlight = true;
     try {
-      response = await RestClient(RetroApi().dioData()).appointmentsRequest();
-      setState(() {
-        loading = false;
-        upcomingAppointment.addAll(response.data!.upcomingAppointment!);
-      });
-    } catch (error, stacktrace) {
-      setState(() {
-        loading = false;
-      });
-      print("Exception occur: $error stackTrace: $stacktrace");
-      return BaseModel()..setException(ServerError.withError(error: error));
+      final response = await RestClient(RetroApi().dioData())
+          .appointmentsRequest();
+      if (!mounted || !_hasAuthToken()) {
+        return BaseModel<Appointments>()..data = response;
+      }
+      if (response.success == true) {
+        setState(() {
+          // Periodic refresh replaces existing items. Appending here used
+          // to duplicate the same appointment every 10 minutes.
+          upcomingAppointment
+            ..clear()
+            ..addAll(response.data?.upcomingAppointment ??
+                <UpcomingAppointment>[]);
+        });
+      }
+      return BaseModel<Appointments>()..data = response;
+    } catch (error) {
+      // A failed refresh retains already loaded appointments.
+      return BaseModel<Appointments>()
+        ..setException(ServerError.withError(error: error));
+    } finally {
+      _appointmentsInFlight = false;
     }
-    return BaseModel()..data = response;
   }
 
   onSearchTextChanged(String text) async {
@@ -3082,20 +2979,22 @@ class _HomeState extends State<Home> {
           }
         }
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         loading = false;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Never log exception bodies containing patient data, query URLs or tokens.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
   }
 
   Future<void> refresh() async {
-    setState(() {
-      callApiDoctorList();
-    });
+    await Future.wait([
+      callApiBanner(), callApIDisplayOffer(), callApiAppointment(),
+      if (_lat != null && _lat!.isNotEmpty && _lang != null && _lang!.isNotEmpty)
+        callApiDoctorList(),
+    ]);
   }
 
   Future<void> getOneSingleToken() async {

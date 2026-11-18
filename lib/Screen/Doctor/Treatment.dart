@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/base_model.dart';
 import '../../api/server_error.dart';
 import '../../const/Palette.dart';
+import '../../brand/care360_service_intro.dart';
 import '../../const/app_string.dart';
 import '../../localization/localization_constant.dart';
 import 'TreatmentSpecialist.dart';
@@ -181,7 +182,16 @@ class _TreatmentState extends State<Treatment> {
             ),
           ),
         ),
-        body: GestureDetector(
+        body: Column(
+          children: [
+            const Care360ServiceIntro(
+              title: 'Doctors',
+              titleKey: 'care360_service_doctors',
+              description: 'Browse specialties and find care',
+              descriptionKey: 'care360_dir_doctors_description',
+              icon: Icons.medical_services_outlined,
+            ),
+            Expanded(child: GestureDetector(
           onTap: () {
             FocusScope.of(context).requestFocus(new FocusNode());
           },
@@ -350,6 +360,9 @@ class _TreatmentState extends State<Treatment> {
                         style: TextStyle(fontSize: width * 0.04, color: Palette.dark_blue),
                       ),
                     ),
+        ),
+            ),
+          ],
         ),
       ),
     );

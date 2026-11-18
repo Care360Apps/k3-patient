@@ -627,9 +627,8 @@ class _RestClient implements RestClient {
   @override
   Future<pharmacyModel> pharmacyRequest(String? lat, String? lang) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    if (lat != null) queryParameters['lat'] = lat;
-    if (lang != null) queryParameters['lang'] = lang;
+    final queryParameters = <String, dynamic>{r'lat': lat, r'lang': lang};
+    queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _options = _setStreamType<pharmacyModel>(
@@ -1483,7 +1482,7 @@ class _RestClient implements RestClient {
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _options = _setStreamType<AccountDeleteModel>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
+      Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
             'delete-account',

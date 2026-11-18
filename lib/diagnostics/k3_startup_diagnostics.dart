@@ -1,10 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Debug-only, opt-in UI diagnostics for the private LAN test APK.
+/// Privacy-safe diagnostics in every debug APK, including offline test builds.
 /// No exception values, app state, credentials, or patient details are logged.
-const bool k3StartupDiagnosticsEnabled =
-    kDebugMode && bool.fromEnvironment('K3_STARTUP_DIAGNOSTICS');
+/// Release builds remain unaffected.
+const bool k3StartupDiagnosticsEnabled = kDebugMode;
+
+/// Set only by the isolated sandbox APK fixture. Never routes to real services.
+const bool k3OfflineSynthetic =
+    kDebugMode && bool.fromEnvironment('K3_OFFLINE_TEST');
 
 /// Return only a local source path and line number from application stack frames.
 /// The full exception and stack can contain sensitive runtime values.

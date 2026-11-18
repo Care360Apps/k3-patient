@@ -3,6 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:doctro_patient/diagnostics/k3_startup_diagnostics.dart';
 
 void main() {
+  test('privacy-safe UI diagnostics are enabled in debug builds', () {
+    expect(k3StartupDiagnosticsEnabled, isTrue);
+  });
+
+  test('normal builds never enter the synthetic-only offline mode', () {
+    expect(k3OfflineSynthetic, isFalse);
+  });
+
   test('debug source extraction keeps only local Dart path and line number', () {
     final trace = StackTrace.fromString(
       '#0 PatientShell.build (package:doctro_patient/Screen/Patient.dart:74:7)\n'

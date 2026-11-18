@@ -13,6 +13,9 @@ import '../../const/Palette.dart';
 import '../../const/app_string.dart';
 import '../../const/prefConstatnt.dart';
 import '../../localization/localization_constant.dart';
+import '../../localization/care360_language_picker.dart';
+import '../../main.dart';
+import '../../brand/care360_entry.dart';
 import '../../model/register_model.dart';
 
 class SignUp extends StatefulWidget {
@@ -33,7 +36,6 @@ class _SignUpState extends State<SignUp> {
   bool _isHidden = true;
 
   DateTime? _selectedDate;
-  List<String> gender = [];
   String? _selectGender;
   int? id;
   int? verify;
@@ -42,22 +44,14 @@ class _SignUpState extends State<SignUp> {
   var temp;
 
   @override
-  void initState() {
-    super.initState();
-    Future.delayed(Duration.zero, () {
-      setState(() {
-        gender = [getTranslated(context, AppString.signUp_male).toString(), getTranslated(context, AppString.signUp_female).toString()];
-      });
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     double width;
     double height;
     width = MediaQuery.of(context).size.width;
     height = MediaQuery.of(context).size.height;
+    final formWidth = width > 520 ? 520.0 : width;
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F8F7),
       appBar: PreferredSize(
         preferredSize: Size(width, height * 0.05),
         child: SafeArea(
@@ -87,10 +81,24 @@ class _SignUpState extends State<SignUp> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Care360LanguagePicker(
+                        languageCode: Localizations.localeOf(context).languageCode,
+                        onSelected: (language) async {
+                          final selected = await setLocale(language);
+                          if (!mounted) return;
+                          MyApp.setLocale(context, selected);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Care360Brand(professional: false),
+                    const SizedBox(height: 12),
                     Text(
                       getTranslated(context, AppString.signUp_title).toString(),
                       style: TextStyle(
-                        fontSize: width * 0.07,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
                         color: Palette.dark_blue,
                       ),
@@ -108,7 +116,7 @@ class _SignUpState extends State<SignUp> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Palette.dark_white,
+                            color: const Color(0xFFEAF1F0),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: TextFormField(
@@ -149,7 +157,7 @@ class _SignUpState extends State<SignUp> {
                         /// Email ///
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 15, vertical: 2),
-                          decoration: BoxDecoration(color: Palette.dark_white, borderRadius: BorderRadius.circular(10)),
+                          decoration: BoxDecoration(color: const Color(0xFFEAF1F0), borderRadius: BorderRadius.circular(10)),
                           child: TextFormField(
                             controller: _email,
                             keyboardType: TextInputType.text,
@@ -184,10 +192,10 @@ class _SignUpState extends State<SignUp> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Container(
-                              width: width * 0.2,
+                              width: formWidth * 0.2,
                               padding: EdgeInsets.symmetric(horizontal: 9, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Palette.dark_white,
+                                color: const Color(0xFFEAF1F0),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: TextFormField(
@@ -200,7 +208,7 @@ class _SignUpState extends State<SignUp> {
                                 ),
                                 controller: _phoneCode,
                                 decoration: InputDecoration(
-                                  hintText: '+91',
+                                  hintText: '+234',
                                   border: InputBorder.none,
                                   hintStyle: TextStyle(fontSize: width * 0.04, color: Palette.dark_grey, fontWeight: FontWeight.bold),
                                 ),
@@ -233,9 +241,9 @@ class _SignUpState extends State<SignUp> {
                               ),
                             ),
                             Container(
-                              width: width * 0.65,
+                              width: formWidth * 0.65,
                               padding: EdgeInsets.symmetric(horizontal: 15, vertical: 2),
-                              decoration: BoxDecoration(color: Palette.dark_white, borderRadius: BorderRadius.circular(10)),
+                              decoration: BoxDecoration(color: const Color(0xFFEAF1F0), borderRadius: BorderRadius.circular(10)),
                               child: TextFormField(
                                 controller: _phone,
                                 keyboardType: TextInputType.number,
@@ -276,7 +284,7 @@ class _SignUpState extends State<SignUp> {
                         /// Birth Date ///
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 15, vertical: 2),
-                          decoration: BoxDecoration(color: Palette.dark_white, borderRadius: BorderRadius.circular(10)),
+                          decoration: BoxDecoration(color: const Color(0xFFEAF1F0), borderRadius: BorderRadius.circular(10)),
                           child: TextFormField(
                             textCapitalization: TextCapitalization.words,
                             textAlignVertical: TextAlignVertical.center,
@@ -309,7 +317,7 @@ class _SignUpState extends State<SignUp> {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 15, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Palette.dark_white,
+                            color: const Color(0xFFEAF1F0),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: DropdownButtonFormField(
@@ -335,17 +343,21 @@ class _SignUpState extends State<SignUp> {
                               );
                             },
                             validator: (dynamic value) => value == null ? getTranslated(context, AppString.signUp_selectGender_validator).toString() : null,
-                            items: gender.map(
-                              (location) {
+                            // Keep backend field values stable in every language.
+                            // Only the visible label is translated.
+                            items: const ['Male', 'Female'].map(
+                              (code) {
                                 return DropdownMenuItem<String>(
-                                  child: new Text(
-                                    location,
+                                  value: code,
+                                  child: Text(
+                                    code == 'Male'
+                                        ? getTranslated(context, AppString.signUp_male).toString()
+                                        : getTranslated(context, AppString.signUp_female).toString(),
                                     style: TextStyle(
                                       fontSize: width * 0.04,
                                       color: Palette.dark_blue,
                                     ),
                                   ),
-                                  value: location,
                                 );
                               },
                             ).toList(),
@@ -358,7 +370,7 @@ class _SignUpState extends State<SignUp> {
                         /// Password ///
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 15, vertical: 2),
-                          decoration: BoxDecoration(color: Palette.dark_white, borderRadius: BorderRadius.circular(10)),
+                          decoration: BoxDecoration(color: const Color(0xFFEAF1F0), borderRadius: BorderRadius.circular(10)),
                           child: TextFormField(
                             controller: _password,
                             keyboardType: TextInputType.text,
@@ -413,6 +425,13 @@ class _SignUpState extends State<SignUp> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: ElevatedButton(
+                        key: const Key('care360-signup-submit'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF087D76),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           child: Text(
@@ -425,7 +444,7 @@ class _SignUpState extends State<SignUp> {
                           if (formKey.currentState!.validate()) {
                             callApiRegister();
                           } else {
-                            print("Unsuccessful");
+                            // The form displays field validation messages.
                           }
                         },
                       ),
@@ -458,7 +477,8 @@ class _SignUpState extends State<SignUp> {
                           ),
                         ),
                       ],
-                    )
+                    ),
+                    const CnuAttribution(),
                   ],
                 ),
               ),
@@ -510,11 +530,11 @@ class _SignUpState extends State<SignUp> {
       setState(() {
         Preferences.hideDialog(context);
       });
-    } catch (error, stacktrace) {
+    } catch (error) {
       setState(() {
         Preferences.hideDialog(context);
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      // Registration failures must not expose personal data in logs.
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
