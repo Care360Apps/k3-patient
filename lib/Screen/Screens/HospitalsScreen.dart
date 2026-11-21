@@ -17,24 +17,33 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
   bool _loading = false;
   String? _error;
   List<DirectoryFacility> _facilities = [];
-  int _requestId = 0;\n  int _page = 0;\n  bool _hasMore = true;
+  int _requestId = 0;
+  int _page = 0;
+  bool _hasMore = true;
 
   @override
   void initState() { super.initState(); _load(); }
   @override
   void dispose() { _requestId++; _search.dispose(); super.dispose(); }
 
-  Future<void> _load({bool append = false}) async {\n    if (append && (_loading || !_hasMore)) return;\n    final nextPage = append ? _page + 1 : 1;
+  Future<void> _load({bool append = false}) async {
+    if (append && (_loading || !_hasMore)) return;
+    final nextPage = append ? _page + 1 : 1;
     final request = ++_requestId;
     setState(() { _loading = true; _error = null; });
     try {
       final data = await _gateway.search(state: _state, type: _type, query: _search.text, page: nextPage);
       if (!mounted || request != _requestId) return;
-      setState(() {\n        _facilities = append ? [..._facilities, ...data] : data;\n        _page = nextPage;\n        _hasMore = data.length == 50;\n        _loading = false;\n      });
+      setState(() {
+        _facilities = append ? [..._facilities, ...data] : data;
+        _page = nextPage;
+        _hasMore = data.length == 50;
+        _loading = false;
+      });
     } catch (_) {
       if (!mounted || request != _requestId) return;
       setState(() { _error = 'Unable to load verified facilities. Please retry.';
-        _loading = false; _facilities = []; });
+        _loading = false; if (!append) _facilities = []; });
     }
   }
 
@@ -74,7 +83,7 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
         ])),
         if (_loading) const LinearProgressIndicator(),
         if (_error != null) Padding(padding: const EdgeInsets.all(12),
-          child: Column(children: [Text(_error!), TextButton(onPressed: _load,
+          child: Column(children: [Text(_error!), TextButton(onPressed: () => _load(append: _page > 0 && _facilities.isNotEmpty),
             child: const Text('Retry'))])),
         if (!_loading && _error == null && _facilities.isEmpty)
           const Padding(padding: EdgeInsets.all(16),
@@ -89,7 +98,11 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
         )),
         Expanded(child: ListView.builder(itemCount: _facilities.length + (_hasMore && _facilities.isNotEmpty ? 1 : 0),
           itemBuilder: (context, index) {
-            if (index == _facilities.length) {\n              return TextButton(onPressed: _loading ? null : () => _load(append: true),\n                child: const Text('Load more facilities'));\n            }\n            final f = _facilities[index];
+            if (index == _facilities.length) {
+              return TextButton(onPressed: _loading ? null : () => _load(append: true),
+                child: const Text('Load more facilities'));
+            }
+            final f = _facilities[index];
             return ListTile(title: Text(f.name),
               subtitle: Text('${f.state} • ${f.address ?? 'Address unavailable'}'),
               trailing: f.latitude != null && f.longitude != null
