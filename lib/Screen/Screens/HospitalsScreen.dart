@@ -17,20 +17,20 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
   bool _loading = false;
   String? _error;
   List<DirectoryFacility> _facilities = [];
-  int _requestId = 0;
+  int _requestId = 0;\n  int _page = 0;\n  bool _hasMore = true;
 
   @override
   void initState() { super.initState(); _load(); }
   @override
   void dispose() { _requestId++; _search.dispose(); super.dispose(); }
 
-  Future<void> _load() async {
+  Future<void> _load({bool append = false}) async {\n    if (append && (_loading || !_hasMore)) return;\n    final nextPage = append ? _page + 1 : 1;
     final request = ++_requestId;
     setState(() { _loading = true; _error = null; });
     try {
-      final data = await _gateway.search(state: _state, type: _type, query: _search.text);
+      final data = await _gateway.search(state: _state, type: _type, query: _search.text, page: nextPage);
       if (!mounted || request != _requestId) return;
-      setState(() { _facilities = data; _loading = false; });
+      setState(() {\n        _facilities = append ? [..._facilities, ...data] : data;\n        _page = nextPage;\n        _hasMore = data.length == 50;\n        _loading = false;\n      });
     } catch (_) {
       if (!mounted || request != _requestId) return;
       setState(() { _error = 'Unable to load verified facilities. Please retry.';
@@ -87,9 +87,9 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
             position: LatLng(f.latitude!, f.longitude!),
             infoWindow: InfoWindow(title: f.name, snippet: f.address ?? f.state))).toSet(),
         )),
-        Expanded(child: ListView.builder(itemCount: _facilities.length,
+        Expanded(child: ListView.builder(itemCount: _facilities.length + (_hasMore && _facilities.isNotEmpty ? 1 : 0),
           itemBuilder: (context, index) {
-            final f = _facilities[index];
+            if (index == _facilities.length) {\n              return TextButton(onPressed: _loading ? null : () => _load(append: true),\n                child: const Text('Load more facilities'));\n            }\n            final f = _facilities[index];
             return ListTile(title: Text(f.name),
               subtitle: Text('${f.state} • ${f.address ?? 'Address unavailable'}'),
               trailing: f.latitude != null && f.longitude != null
