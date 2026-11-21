@@ -1,20 +1,102 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../nearby/facility_directory_gateway.dart';
 
 class HospitalsScreen extends StatefulWidget {
+  const HospitalsScreen({super.key});
   @override
-  _HospitalsScreenState createState() => _HospitalsScreenState();
+  State<HospitalsScreen> createState() => _HospitalsScreenState();
 }
 
 class _HospitalsScreenState extends State<HospitalsScreen> {
+  final _gateway = FacilityDirectoryGateway();
+  final _search = TextEditingController();
+  String _state = 'FCT';
+  String _type = 'hospital';
+  bool _loading = false;
+  String? _error;
+  List<DirectoryFacility> _facilities = [];
+  int _requestId = 0;
+
+  @override
+  void initState() { super.initState(); _load(); }
+  @override
+  void dispose() { _requestId++; _search.dispose(); super.dispose(); }
+
+  Future<void> _load() async {
+    final request = ++_requestId;
+    setState(() { _loading = true; _error = null; });
+    try {
+      final data = await _gateway.search(state: _state, type: _type, query: _search.text);
+      if (!mounted || request != _requestId) return;
+      setState(() { _facilities = data; _loading = false; });
+    } catch (_) {
+      if (!mounted || request != _requestId) return;
+      setState(() { _error = 'Unable to load verified facilities. Please retry.';
+        _loading = false; _facilities = []; });
+    }
+  }
+
+  Future<void> _directions(DirectoryFacility f) async {
+    if (f.latitude == null || f.longitude == null) return;
+    final url = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1', 'destination': '${f.latitude},${f.longitude}',
+    });
+    if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final mapped = _facilities.where((f) => f.latitude != null && f.longitude != null
+      && f.latitude!.abs() <= 90 && f.longitude!.abs() <= 180).toList();
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Find Hospitals'),
-      ),
-      body: Center(
-        child: Text('Find Hospitals'),
-      ),
+      appBar: AppBar(title: const Text('Find verified facilities')),
+      body: Column(children: [
+        Padding(padding: const EdgeInsets.all(12), child: Column(children: [
+          TextField(controller: _search, textInputAction: TextInputAction.search,
+            onSubmitted: (_) => _load(),
+            decoration: InputDecoration(labelText: 'Search facility name',
+              suffixIcon: IconButton(icon: const Icon(Icons.search), onPressed: _load))),
+          Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(value: _state,
+              decoration: const InputDecoration(labelText: 'State'),
+              items: ['FCT','Nasarawa','Plateau'].map((s) =>
+                DropdownMenuItem(value: s, child: Text(s))).toList(),
+              onChanged: (s) { if (s != null) { setState(() => _state = s); _load(); } })),
+            const SizedBox(width: 12),
+            Expanded(child: DropdownButtonFormField<String>(value: _type,
+              decoration: const InputDecoration(labelText: 'Facility'),
+              items: const [DropdownMenuItem(value: 'hospital', child: Text('Hospitals')),
+                DropdownMenuItem(value: 'pharmacy', child: Text('Pharmacies'))],
+              onChanged: (s) { if (s != null) { setState(() => _type = s); _load(); } })),
+          ]),
+        ])),
+        if (_loading) const LinearProgressIndicator(),
+        if (_error != null) Padding(padding: const EdgeInsets.all(12),
+          child: Column(children: [Text(_error!), TextButton(onPressed: _load,
+            child: const Text('Retry'))])),
+        if (!_loading && _error == null && _facilities.isEmpty)
+          const Padding(padding: EdgeInsets.all(16),
+            child: Text('No reviewed facilities found for these filters.')),
+        if (mapped.isNotEmpty) SizedBox(height: 220, child: GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: LatLng(mapped.first.latitude!, mapped.first.longitude!), zoom: 10),
+          myLocationEnabled: false, myLocationButtonEnabled: false,
+          markers: mapped.map((f) => Marker(markerId: MarkerId('${f.id}'),
+            position: LatLng(f.latitude!, f.longitude!),
+            infoWindow: InfoWindow(title: f.name, snippet: f.address ?? f.state))).toSet(),
+        )),
+        Expanded(child: ListView.builder(itemCount: _facilities.length,
+          itemBuilder: (context, index) {
+            final f = _facilities[index];
+            return ListTile(title: Text(f.name),
+              subtitle: Text('${f.state} • ${f.address ?? 'Address unavailable'}'),
+              trailing: f.latitude != null && f.longitude != null
+                ? IconButton(tooltip: 'Directions', icon: const Icon(Icons.directions),
+                    onPressed: () => _directions(f)) : null);
+          })),
+      ]),
     );
   }
 }
