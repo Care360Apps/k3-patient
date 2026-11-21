@@ -30,14 +30,14 @@ class FacilityDirectoryGateway {
   final Dio _dio;
 
   Future<List<DirectoryFacility>> search({String? state, String? type,
-    String? query}) async {
+    String? query, int page = 1}) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '${Apis.baseUrl}directory/v1/facilities',
       queryParameters: {
         if (state != null && state.isNotEmpty) 'state': state,
         if (type != null && type.isNotEmpty) 'type': type,
         if (query != null && query.trim().isNotEmpty) 'search': query.trim(),
-        'per_page': 50,
+        'per_page': 50,\n        'page': page,
       },
       options: Options(sendTimeout: const Duration(seconds: 8),
         receiveTimeout: const Duration(seconds: 8)),
