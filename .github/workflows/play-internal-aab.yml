@@ -1,0 +1,113 @@
+name: Care360 Patient signed AAB (manual, upload-only)
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Approved Play version name (for example 7.3.1)'
+        required: true
+        type: string
+      version_code:
+        description: 'New integer versionCode, greater than every Play track'
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  build-aab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    environment: play-internal-build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release version and source
+        env:
+          VERSION_NAME: ${{ inputs.version_name }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          python3 tools/k3_preflight.py
+          python3 tools/k3_notification_preflight.py
+          python3 - <<'PY'
+          import os,re
+          assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',os.environ['VERSION_NAME']), 'Invalid version name'
+          assert re.fullmatch(r'[1-9][0-9]*',os.environ['VERSION_CODE']), 'Invalid version code'
+          assert int(os.environ['VERSION_CODE']) <= 2100000000, 'Version code exceeds Android limit'
+          PY
+      - uses: gradle/actions/wrapper-validation@v6
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.3'
+          channel: stable
+          cache: true
+      - name: Install production identity and signing material (never print secrets)
+        env:
+          FIREBASE_B64: ${{ secrets.K3_PROD_ANDROID_FIREBASE_JSON_B64 }}
+          KEYSTORE_B64: ${{ secrets.K3_PLAY_UPLOAD_KEYSTORE_B64 }}
+          KEY_ALIAS: ${{ secrets.K3_PLAY_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.K3_PLAY_UPLOAD_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.K3_PLAY_UPLOAD_STORE_PASSWORD }}
+          MAPS_KEY: ${{ secrets.K3_ANDROID_MAPS_API_KEY }}
+          API_URL: ${{ secrets.K3_PROD_API_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          for v in FIREBASE_B64 KEYSTORE_B64 KEY_ALIAS KEY_PASSWORD STORE_PASSWORD MAPS_KEY API_URL; do
+            test -n "${!v}" || { echo "Required release secret missing: $v"; exit 1; }
+          done
+          printf '%s' "$FIREBASE_B64" | base64 --decode > android/app/google-services.json
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/upload-keystore.jks
+          python3 - <<'PY'
+          import json,os,pathlib
+          from urllib.parse import urlsplit
+          data=json.loads(pathlib.Path('android/app/google-services.json').read_text())
+          matches=[c for c in data.get('client',[]) if c.get('client_info',{}).get('android_client_info',{}).get('package_name')=='com.cnu.patient']
+          assert len(matches)==1, 'Production Firebase config must have exactly one com.cnu.patient client'
+          p=urlsplit(os.environ['API_URL'])
+          assert p.scheme=='https' and p.hostname and p.path=='/api/' and not (p.query or p.fragment or p.username or p.password), 'Production API must be HTTPS ending /api/'
+          c=matches[0]; project=data['project_info']
+          vals={
+            'K3_API_BASE_URL':os.environ['API_URL'],
+            'K3_FIREBASE_API_KEY':c['api_key'][0]['current_key'],
+            'K3_FIREBASE_APP_ID':c['client_info']['mobilesdk_app_id'],
+            'K3_FIREBASE_SENDER_ID':project['project_number'],
+            'K3_FIREBASE_PROJECT_ID':project['project_id'],
+            'K3_FIREBASE_STORAGE_BUCKET':project.get('storage_bucket','')
+          }
+          assert all(vals[k] for k in vals if k!='K3_FIREBASE_STORAGE_BUCKET'), 'Incomplete Firebase config'
+          pathlib.Path('android/app/release-defines.json').write_text(json.dumps(vals))
+          pathlib.Path('android/key.properties').write_text(
+            'storeFile=upload-keystore.jks\n'+
+            'storePassword='+os.environ['STORE_PASSWORD']+'\n'+
+            'keyAlias='+os.environ['KEY_ALIAS']+'\n'+
+            'keyPassword='+os.environ['KEY_PASSWORD']+'\n'
+          )
+          PY
+      - name: Generate and compile signed Play bundle
+        env:
+          VERSION_NAME: ${{ inputs.version_name }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          K3_ANDROID_MAPS_API_KEY: ${{ secrets.K3_ANDROID_MAPS_API_KEY }}
+        run: |
+          set -euo pipefail
+          flutter config --enable-swift-package-manager
+          flutter pub get --enforce-lockfile
+          dart run build_runner build --delete-conflicting-outputs
+          python3 tools/k3_rewrite_generated_url.py
+          flutter build appbundle --release --build-name="$VERSION_NAME" --build-number="$VERSION_CODE" --dart-define=K3_BUILD_ENV=production --dart-define-from-file=android/app/release-defines.json
+          test -s build/app/outputs/bundle/release/app-release.aab
+          sha256sum build/app/outputs/bundle/release/app-release.aab
+      - name: Store AAB for manual Play Console upload (no automatic publishing)
+        uses: actions/upload-artifact@v4
+        with:
+          name: care360-patient-play-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 3
+          if-no-files-found: error
+      - name: Remove temporary signing and service configuration
+        if: always()
+        run: |
+          rm -f android/key.properties android/app/upload-keystore.jks android/app/google-services.json android/app/release-defines.json
