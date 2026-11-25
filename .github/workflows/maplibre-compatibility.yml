@@ -20,6 +20,13 @@ jobs:
         with:
           flutter-version: '3.38.4'
           channel: stable
+      - run: flutter config --enable-swift-package-manager
+      - run: python3 tools/k3_offline_build_fixture.py
       - run: flutter pub add maplibre_gl:0.27.1
+      - run: python3 tools/k3_agora_ci_patch.py
+      - run: python3 tools/k3_google_api_headers_ci_patch.py
+      - run: python3 tools/k3_iris_ci_patch.py
+      - run: python3 tools/k3_v1_embedding_scan.py
       - run: dart run build_runner build --delete-conflicting-outputs
-      - run: flutter build apk --debug
+      - run: python3 tools/k3_rewrite_generated_url.py
+      - run: flutter build apk --debug --target-platform=android-arm64 --dart-define=K3_BUILD_ENV=staging --dart-define-from-file="$RUNNER_TEMP/k3_offline_dart_defines.json"
