@@ -77,9 +77,6 @@ class Care360PartnerShowcase extends StatefulWidget {
   final Duration interval;
   final bool showGuideButton;
 
-  static final Uri mindCheckUrl =
-      Uri.https('mindcheck.speakoutmentalhealth.org', '/');
-
   @override
   State<Care360PartnerShowcase> createState() => _Care360PartnerShowcaseState();
 }
@@ -93,15 +90,8 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
   bool _foreground = true;
   bool _reducedMotion = false;
 
-  List<Care360PartnerSlide> get _slides => [
-        Care360PartnerSlide(
-          title: 'MindCheck',
-          subtitle: 'Everyday mental wellbeing by SpeakOut Mental Health Outreach',
-          url: Care360PartnerShowcase.mindCheckUrl,
-        ),
-        ...widget.slides.where((slide) =>
-            Care360PartnerSlide.safeDestination(slide.url.toString()) != null),
-      ];
+  List<Care360PartnerSlide> get _slides => widget.slides.where((slide) =>
+      Care360PartnerSlide.safeDestination(slide.url.toString()) != null).toList();
 
   @override
   void initState() {
@@ -229,9 +219,19 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
               ),
-              padding: const EdgeInsets.all(16),
-              child: Row(children: [
-                Expanded(child: Column(
+              clipBehavior: Clip.antiAlias,
+              child: Stack(fit: StackFit.expand, children: [
+                if (img != null) Align(alignment: Alignment.centerRight,
+                  child: FractionallySizedBox(widthFactor: .60, heightFactor: 1,
+                    child: Image.network(img.toString(), fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink()))),
+                if (img != null) const Positioned.fill(child: DecoratedBox(
+                  decoration: BoxDecoration(gradient: LinearGradient(
+                    colors: [Color(0xFFF7FBFA), Color(0xFFF7FBFA), Color(0x00F7FBFA)],
+                    stops: [0, .40, .68])))),
+                Align(alignment: Alignment.centerLeft, child: FractionallySizedBox(
+                  widthFactor: img == null ? 1 : .53,
+                  child: Padding(padding: const EdgeInsets.all(14), child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -268,24 +268,7 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
                       Icon(Icons.open_in_new, size: 14, color: accent),
                     ]),
                   ],
-                )),
-                const SizedBox(width: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: SizedBox(
-                    width: 88, height: 126,
-                    child: img == null
-                        ? ColoredBox(
-                            color: accent,
-                            child: const Icon(Icons.health_and_safety_outlined,
-                              color: Colors.white, size: 38))
-                        : Image.network(img.toString(), fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => ColoredBox(
-                              color: accent,
-                              child: const Icon(Icons.public,
-                                color: Colors.white, size: 34))),
-                  ),
-                ),
+                )))),
               ]),
             ),
           ),
@@ -305,6 +288,10 @@ class _Care360PartnerShowcaseState extends State<Care360PartnerShowcase>
       _ => 'Explore partner services',
     };
     final slides = _slides;
+    if (slides.isEmpty) {
+      return widget.showGuideButton ? TextButton.icon(onPressed: _openLocalGuide,
+        icon: const Icon(Icons.help_outline), label: const Text('Care360 Help')) : const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
