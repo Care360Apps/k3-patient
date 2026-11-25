@@ -95,6 +95,9 @@ class WorkforceApi {
         'Local testing requires a fictional @care360.example.test email.',
       );
     }
+    if (!adultAttestation || !acceptedTerms || !['candidate', 'employer'].contains(accountType)) {
+      throw const WorkforceApiException('Confirm eligibility and accept the recruitment notice.');
+    }
     final notice = await _registrationNotice();
     await _request(
       'post',
@@ -161,7 +164,9 @@ class WorkforceApi {
       },
     );
     final data = result['data'];
-    if (data is! List) return const [];
+    if (data is! List || data.any((row) => row is! Map)) {
+      throw const WorkforceApiException('Invalid candidate search response. Please retry.');
+    }
     return data
         .whereType<Map>()
         .map((row) => Map<String, dynamic>.from(row))
