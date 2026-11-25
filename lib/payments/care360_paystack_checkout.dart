@@ -143,6 +143,10 @@ class _PaystackPageState extends State<_PaystackPage> {
           if (_progress < 100) LinearProgressIndicator(value: _progress / 100),
           if (_error != null)
             Padding(padding: const EdgeInsets.all(16), child: Text(_error!)),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text('Choose card or bank transfer if offered by Paystack. Wait for payment confirmation before leaving checkout.'),
+          ),
           Expanded(child: WebViewWidget(controller: _controller)),
         ],
       ),
