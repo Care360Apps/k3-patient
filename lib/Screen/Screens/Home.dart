@@ -998,7 +998,7 @@ class _HomeState extends State<Home> {
                                 Navigator.popAndPushNamed(context, 'Courses');
                               },
                               title: Text(
-                                getTranslated(context, AppString.home_courses).toString(),
+                                'Trains',
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Palette.dark_blue,
