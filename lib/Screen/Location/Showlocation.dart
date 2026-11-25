@@ -32,6 +32,8 @@ class _ShowLocationState extends State<ShowLocation> {
   List<ShowAddressData> showAddress = [];
 
   bool loading = false;
+  bool _selectingAddress = false;
+  bool _addingAddress = false;
 
   int id = 0;
 
@@ -206,8 +208,17 @@ class _ShowLocationState extends State<ShowLocation> {
             style: TextStyle(fontSize: width * 0.045, fontWeight: FontWeight.bold, color: Palette.dark_blue),
           ),
           actions: [
-            if (!widget.discoveryMode) InkWell(
-              onTap: () {
+            InkWell(
+              onTap: () async {
+                if (widget.discoveryMode) {
+                  if (loading || _addingAddress || _selectingAddress) return;
+                  _addingAddress = true;
+                  try {
+                    final added = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => AddLocation(returnToPicker: true, currentLong: currentLong, currentLat: currentLat)));
+                    if (mounted && added == true) await _loadAddresses();
+                  } finally { _addingAddress = false; }
+                  return;
+                }
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -257,14 +268,18 @@ class _ShowLocationState extends State<ShowLocation> {
                           return InkWell(
                             onTap: () async {
                               if (widget.discoveryMode) {
+                                if (_selectingAddress || _addingAddress || loading) return;
                                 final selected = showAddress[index];
                                 if (selected.id == null || selected.address == null || selected.lat == null || selected.lang == null) return;
+                                _selectingAddress = true;
+                                try {
                                 final prefs = await SharedPreferences.getInstance();
                                 await prefs.setString('Address', selected.address!);
                                 await prefs.setString('lat', selected.lat!);
                                 await prefs.setString('lang', selected.lang!);
                                 await prefs.setInt('addressId', selected.id!);
                                 if (mounted) Navigator.pop(context, true);
+                                } finally { _selectingAddress = false; }
                                 return;
                               }
                               setState(
