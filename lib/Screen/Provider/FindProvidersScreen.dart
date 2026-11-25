@@ -34,6 +34,7 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
   String? _lang = "";
   String? _liveLat = "";
   String? _liveLang = "";
+  int _discoveryRequest = 0;
   bool useLiveLocation = false;
 
   List<ProviderModel> providerList = [];
@@ -464,6 +465,8 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
   }
 
   Future<BaseModel<Providers>> callApiProviders() async {
+    if (!mounted) return BaseModel();
+    final request = ++_discoveryRequest;
     // When Live is selected but live coords are missing, fall back to saved address so list still loads
     final latToUse = useLiveLocation
         ? (_resolveCoordinate(_liveLat) ?? _resolveCoordinate(_lat))
@@ -472,6 +475,7 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
         ? (_resolveCoordinate(_liveLang) ?? _resolveCoordinate(_lang))
         : _resolveCoordinate(_lang);
     if (latToUse == null || langToUse == null) {
+      setState(() => loading = false);
       Fluttertoast.showToast(
         msg: getTranslated(context, AppString.home_selectAddress).toString(),
         toastLength: Toast.LENGTH_SHORT,
@@ -483,7 +487,7 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
     setState(() => loading = true);
     try {
       final response = await RestClient(RetroApi2().dioData2()).providersRequest(body);
-      if (!mounted) return BaseModel()..data = response;
+      if (!mounted || request != _discoveryRequest) return BaseModel()..data = response;
       setState(() {
         loading = false;
         providerList.clear();
@@ -497,7 +501,7 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
       });
       return BaseModel()..data = response;
     } catch (error, stacktrace) {
-      if (!mounted) return BaseModel()..setException(ServerError.withError(error: error));
+      if (!mounted || request != _discoveryRequest) return BaseModel()..setException(ServerError.withError(error: error));
       setState(() => loading = false);
       print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
