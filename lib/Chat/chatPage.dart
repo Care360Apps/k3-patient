@@ -99,10 +99,6 @@ class ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
     if (uid != null && uid.isNotEmpty) {
       currentUserId = uid;
     }
-    if (kDebugMode) {
-      print(
-          'ChatPage readLocal -> currentUserId=$currentUserId, peerId=${widget.peerId}');
-    }
 
     if (currentUserId.isEmpty) return;
 
@@ -112,9 +108,6 @@ class ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
       groupChatId = '${widget.peerId}-$currentUserId';
     }
 
-    if (kDebugMode) {
-      print('ChatPage readLocal -> groupChatId=$groupChatId');
-    }
 
     chatProvider.updateDataFirestore(
       FirestoreConstants.pathUserCollection,
@@ -128,7 +121,7 @@ class ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
   Future getImageFromGallery() async {
     final pickedFile =
         await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
+    if (mounted && pickedFile != null) {
       imageFileGallery = File(pickedFile.path);
       setState(() => isLoading = true);
       uploadFileGallery();
@@ -138,7 +131,7 @@ class ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
   Future getImageFromCamera() async {
     final pickedFile =
         await ImagePicker().pickImage(source: ImageSource.camera);
-    if (pickedFile != null) {
+    if (mounted && pickedFile != null) {
       imageFileCamera = File(pickedFile.path);
       setState(() => isLoading = true);
       uploadFileCamera();
@@ -151,13 +144,15 @@ class ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
     try {
       TaskSnapshot snapshot = await uploadTask;
       imageUrlCamera = await snapshot.ref.getDownloadURL();
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         onSendMessage(imageUrlCamera, TypeMessage.image);
       });
-    } on FirebaseException catch (e) {
+    } catch (_) {
+      if (!mounted) return;
       setState(() => isLoading = false);
-      Fluttertoast.showToast(msg: e.message ?? e.toString());
+      Fluttertoast.showToast(msg: 'Image upload failed. Please try again.');
     }
   }
 
@@ -168,36 +163,58 @@ class ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
     try {
       TaskSnapshot snapshot = await uploadTask;
       imageUrlGallery = await snapshot.ref.getDownloadURL();
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         onSendMessage(imageUrlGallery, TypeMessage.image);
       });
-    } on FirebaseException catch (e) {
+    } catch (_) {
+      if (!mounted) return;
       setState(() => isLoading = false);
-      Fluttertoast.showToast(msg: e.message ?? e.toString());
+      Fluttertoast.showToast(msg: 'Image upload failed. Please try again.');
     }
   }
 
-  void onSendMessage(String content, int type) {
-    if (content.trim().isNotEmpty) {
-      textEditingController.clear();
-      chatProvider.sendMessage(
+  bool _sending = false;
+
+  Future<void> onSendMessage(String content, int type) async {
+    if (!mounted || _sending || !_authReady || groupChatId.isEmpty ||
+        currentUserId.isEmpty || widget.peerId.isEmpty ||
+        content.trim().isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      await chatProvider.sendMessage(
           content, type, groupChatId, currentUserId, widget.peerId);
+      if (!mounted) return;
+      if (type == TypeMessage.text && textEditingController.text == content) {
+        textEditingController.clear();
+      }
       chatProvider.sendNotification(
-        content,
-        widget.doctorToken,
-        SharedPreferenceHelper.getString(Preferences.name)!,
-        currentUserId,
-        type,
-        widget.peerNickname,
-        widget.peerAvatar,
+        content, widget.doctorToken,
+        SharedPreferenceHelper.getString(Preferences.name) ?? '',
+        currentUserId, type, widget.peerNickname, widget.peerAvatar,
       );
       if (listScrollController.hasClients) {
         listScrollController.animateTo(0,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut);
       }
+    } catch (_) {
+      if (mounted) {
+        Fluttertoast.showToast(msg: 'Message not confirmed. Please check your connection.');
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
+  }
+
+  @override
+  void dispose() {
+    listScrollController.removeListener(_scrollListener);
+    listScrollController.dispose();
+    textEditingController.dispose();
+    focusNode.dispose();
+    super.dispose();
   }
 
   bool isLastMessageLeft(int index) {
