@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -14,12 +15,14 @@ class Care360MedicalPdfClient {
     required this.readToken,
     http.Client? httpClient,
     this.allowLoopbackHttp = false,
+    this.networkTimeout = const Duration(seconds: 30),
   })  : _client = httpClient ?? http.Client(),
         _ownsClient = httpClient == null;
 
   final Uri apiBase;
   final Future<String?> Function() readToken;
   final bool allowLoopbackHttp;
+  final Duration networkTimeout;
   final http.Client _client;
   final bool _ownsClient;
 
@@ -71,7 +74,7 @@ class Care360MedicalPdfClient {
       }
     }
 
-    final token = isPrivate ? (await readToken())?.trim() : null;
+    final token = isPrivate ? (await readToken().timeout(networkTimeout))?.trim() : null;
     if (isPrivate && (token == null ||
         token.isEmpty ||
         token == 'N_A' ||
@@ -87,36 +90,48 @@ class Care360MedicalPdfClient {
       request.headers['Authorization'] = 'Bearer $token';
     }
 
-    final response = await _client.send(request);
-    if (response.statusCode != 200) {
-      throw const MedicalPdfException(
-          'Prescription unavailable. Please refresh or contact support.');
-    }
-    final type = response.headers['content-type']?.toLowerCase() ?? '';
-    if (!(type.startsWith('application/pdf') ||
-        type.startsWith('application/octet-stream'))) {
-      throw const MedicalPdfException('Unexpected document response.');
-    }
-
-    final bytes = BytesBuilder(copy: false);
-    var total = 0;
-    await for (final part in response.stream) {
-      total += part.length;
-      if (total > maxPdfBytes) {
-        throw const MedicalPdfException('Prescription exceeds the file limit.');
+    final response = await _client.send(request).timeout(networkTimeout);
+    final iterator = StreamIterator<List<int>>(response.stream);
+    final deadline = Stopwatch()..start();
+    try {
+      if (response.statusCode != 200) {
+        throw const MedicalPdfException(
+            'Prescription unavailable. Please refresh or contact support.');
       }
-      bytes.add(part);
+      final type = response.headers['content-type']?.toLowerCase() ?? '';
+      if (!(type.startsWith('application/pdf') ||
+          type.startsWith('application/octet-stream'))) {
+        throw const MedicalPdfException('Unexpected document response.');
+      }
+
+      final bytes = BytesBuilder(copy: false);
+      var total = 0;
+      while (true) {
+        final remaining = networkTimeout - deadline.elapsed;
+        if (remaining <= Duration.zero) throw TimeoutException('Prescription download');
+        if (!await iterator.moveNext().timeout(remaining)) break;
+        final part = iterator.current;
+        total += part.length;
+        if (total > maxPdfBytes) {
+          throw const MedicalPdfException('Prescription exceeds the file limit.');
+        }
+        bytes.add(part);
+      }
+      final pdf = bytes.takeBytes();
+      if (pdf.length < 5 ||
+          pdf[0] != 0x25 ||
+          pdf[1] != 0x50 ||
+          pdf[2] != 0x44 ||
+          pdf[3] != 0x46 ||
+          pdf[4] != 0x2D) {
+        throw const MedicalPdfException('Invalid prescription PDF.');
+      }
+      return pdf;
+    } on TimeoutException {
+      throw const MedicalPdfException('Prescription download timed out. Please retry.');
+    } finally {
+      await iterator.cancel();
     }
-    final pdf = bytes.takeBytes();
-    if (pdf.length < 5 ||
-        pdf[0] != 0x25 ||
-        pdf[1] != 0x50 ||
-        pdf[2] != 0x44 ||
-        pdf[3] != 0x46 ||
-        pdf[4] != 0x2D) {
-      throw const MedicalPdfException('Invalid prescription PDF.');
-    }
-    return pdf;
   }
 
   void close() {
@@ -124,7 +139,8 @@ class Care360MedicalPdfClient {
   }
 
   void _validateApiBase() {
-    if (apiBase.path.isEmpty ||
+    if (networkTimeout <= Duration.zero || apiBase.host.isEmpty ||
+        apiBase.path.isEmpty ||
         !apiBase.path.endsWith('/api/') ||
         apiBase.hasQuery ||
         apiBase.hasFragment ||
