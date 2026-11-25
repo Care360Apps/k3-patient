@@ -5,10 +5,16 @@ import '../lib/brand/care360_partner_showcase.dart';
 import '../lib/localization/language_localization.dart';
 
 void main() {
+  testWidgets('Empty backend feed has no default advert', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: Care360PartnerShowcase(showGuideButton: false))));
+    expect(find.text('MindCheck'), findsNothing);
+    expect(find.byKey(const ValueKey('care360-partner-carousel')), findsNothing);
+  });
   testWidgets('MindCheck opens only a clean external HTTPS destination', (tester) async {
     Uri? opened;
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(body: Care360PartnerShowcase(
+        slides: [Care360PartnerSlide(title: 'MindCheck', subtitle: 'SpeakOut Mental Health Outreach', url: Uri.parse('https://mindcheck.speakoutmentalhealth.org/'))],
         openExternal: (url) async { opened = url; return true; },
       )),
     ));
@@ -48,16 +54,13 @@ void main() {
         openExternal: (uri) async { opened = uri; return true; },
       )),
     )));
-    expect(find.text('1/3'), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget);
     await tester.pump(const Duration(seconds: 9));
-    expect(find.text('1/3'), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(milliseconds: 450));
-    expect(find.text('2/3'), findsOneWidget);
+    expect(find.text('2/2'), findsOneWidget);
     expect(find.text('Sponsored'), findsWidgets);
-    await tester.tap(find.byKey(const ValueKey('care360-slide-dot-2')));
-    await tester.pumpAndSettle();
-    expect(find.text('3/3'), findsOneWidget);
     expect(find.text('Sponsor Two'), findsOneWidget);
     await tester.tap(find.text('Sponsor Two'));
     await tester.pump();
@@ -74,7 +77,7 @@ void main() {
           subtitle: 'Test placement only',
           url: Uri.parse('https://example.org/'),
           sponsored: true,
-        )],
+        ), Care360PartnerSlide(title: 'Second Sponsor', subtitle: 'Test', url: Uri.parse('https://example.org/second'))],
       )),
     )));
     expect(find.text('1/2'), findsOneWidget);
