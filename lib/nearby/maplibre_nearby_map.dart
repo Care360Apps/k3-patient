@@ -43,7 +43,7 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
           final circle = await controller.addCircle(ml.CircleOptions(
             geometry: ml.LatLng(pin.latitude, pin.longitude),
             circleRadius: 9,
-            circleColor: '#1769AA',
+            circleColor: _pinColor(pin.id),
             circleStrokeColor: '#FFFFFF',
             circleStrokeWidth: 2,
           ));
@@ -55,6 +55,13 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
     } finally {
       _busy = false;
     }
+  }
+
+  String _pinColor(String id) {
+    if (id.startsWith('provider_')) return '#FF8C00';
+    if (id.startsWith('hospital_')) return '#E91E63';
+    if (id.startsWith('lab_')) return '#16834A';
+    return '#1769AA';
   }
 
   void _tap(ml.Circle circle) {
