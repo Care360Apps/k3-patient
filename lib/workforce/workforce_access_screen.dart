@@ -49,7 +49,7 @@ class _WorkforceAccessScreenState extends State<WorkforceAccessScreen> {
   }
 
   Future<void> _submit() async {
-    if (_busy || !_form.currentState!.validate()) return;
+    if (_busy || _form.currentState?.validate() != true) return;
     if (_registering && !WorkforceNoticeGate.configured) {
       setState(
         () => _message =
@@ -81,6 +81,9 @@ class _WorkforceAccessScreenState extends State<WorkforceAccessScreen> {
         if (!mounted) return;
         setState(() {
           _registering = false;
+          _password.clear();
+          _adult = false;
+          _terms = false;
           _message =
               'Account created. Sign in to complete your profile. '
               'All qualifications remain unverified until reviewed.';
