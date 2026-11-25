@@ -51,6 +51,7 @@ class _SpecialistState extends State<Specialist> {
 
   _getAddress() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final resolvedLat = _resolveCoordinate(prefs.getString('lat')) ?? _resolveCoordinate(prefs.getString('latLive'));
     final resolvedLang = _resolveCoordinate(prefs.getString('lang')) ?? _resolveCoordinate(prefs.getString('langLive'));
     setState(
@@ -115,11 +116,14 @@ class _SpecialistState extends State<Specialist> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(18),
-                    onTap: () {
-                      Navigator.pushReplacement(
+                    onTap: () async {
+                      final changed = await Navigator.push<bool>(
                         context,
-                        MaterialPageRoute(builder: (context) => ShowLocation()),
+                        MaterialPageRoute(builder: (_) => const ShowLocation(discoveryMode: true)),
                       );
+                      if (!mounted || changed != true) return;
+                      setState(() => useLiveLocation = false);
+                      await _getAddress();
                     },
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -547,7 +551,9 @@ class _SpecialistState extends State<Specialist> {
     });
     try {
       SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true ? response = await RestClient(RetroApi().dioData()).doctorList(body) : response = await RestClient(RetroApi2().dioData2()).doctorList(body);
+      if (!mounted) return BaseModel()..data = response;
       setState(() {
+        loading = false;
         if (response.success == true) {
           setState(() {
             doctorList.clear();
@@ -559,10 +565,12 @@ class _SpecialistState extends State<Specialist> {
               return da.compareTo(db);
             });
             doctorList.addAll(list);
+            _searchResult = doctorList.where((item) => (item.name ?? '').toLowerCase().contains(_search.text.toLowerCase())).toList();
           });
         }
       });
     } catch (error, stacktrace) {
+      if (!mounted) return BaseModel()..setException(ServerError.withError(error: error));
       setState(() {
         loading = false;
       });
@@ -667,6 +675,7 @@ class _SpecialistState extends State<Specialist> {
         }
       });
     } catch (error, stacktrace) {
+      if (!mounted) return BaseModel()..setException(ServerError.withError(error: error));
       setState(() {
         loading = false;
       });
@@ -684,7 +693,7 @@ class _SpecialistState extends State<Specialist> {
     }
 
     doctorList.forEach((appointmentData) {
-      if (appointmentData.name!.toLowerCase().contains(text.toLowerCase())) _searchResult.add(appointmentData);
+      if ((appointmentData.name ?? '').toLowerCase().contains(text.toLowerCase())) _searchResult.add(appointmentData);
     });
 
     setState(() {});
