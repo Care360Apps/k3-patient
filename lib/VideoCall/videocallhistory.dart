@@ -23,7 +23,7 @@ class VideoCallHistory extends StatefulWidget {
 class _VideoCallHistoryState extends State<VideoCallHistory> {
   bool loading = false;
   List<Data> callHistory = [];
-  String duration = "";
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -64,39 +64,25 @@ class _VideoCallHistoryState extends State<VideoCallHistory> {
             style: TextStyle(fontSize: 18, color: Palette.dark_blue, fontWeight: FontWeight.bold),
           ),
         ),
-        body: callHistory.length != 0
+        body: loading && callHistory.isEmpty
+            ? const SizedBox.shrink()
+            : _loadFailed
+                ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Text('Unable to load call history.'),
+                    TextButton(onPressed: callApiShowVideoCallHistory, child: const Text('Retry')),
+                  ]))
+                : callHistory.isNotEmpty
             ? ListView.builder(
                 itemCount: callHistory.length,
                 scrollDirection: Axis.vertical,
                 itemBuilder: (context, index) {
-                  final now = Duration(seconds: int.parse(callHistory[index].duration!));
-                  String _printDuration(Duration duration) {
-                    String twoDigits(int n) => n.toString().padLeft(2, "0");
-                    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-                    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-                    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
-                  }
-                  String str;
-                  List<String> parts;
-                  String minuteType;
-                  String secondType;
-                  String hourPart;
-                  str = _printDuration(now);
-                  parts = str.split(":");
-                  hourPart = parts[0].trim();
-                  minuteType = parts[1].trim();
-                  secondType = parts[2].trim();
-
-                  if (hourPart != "00" && minuteType != "00") {
-                    duration = "${hourPart + "h " + minuteType + "m " + secondType + "s "}";
-                    print("Time3 $duration");
-                  } else if (hourPart == "00" && minuteType != "00") {
-                    duration = "${minuteType + "m " + secondType + "s "}";
-                    print("Time2 $duration ");
-                  } else {
-                    duration = "${secondType + "s "}";
-                    print("Time1 $duration ");
-                  }
+                  final entry = callHistory[index];
+                  final seconds = int.tryParse(entry.duration ?? '');
+                  final elapsed = Duration(seconds: seconds != null && seconds >= 0 ? seconds : 0);
+                  final duration = seconds == null || seconds < 0
+                      ? '—'
+                      : '${elapsed.inHours}h ${elapsed.inMinutes.remainder(60)}m ${elapsed.inSeconds.remainder(60)}s';
+                  final date = DateTime.tryParse(entry.date ?? '');
                   return Column(
                     children: [
                       Container(
@@ -116,7 +102,7 @@ class _VideoCallHistoryState extends State<VideoCallHistory> {
                                       borderRadius: BorderRadius.circular(10),
                                       child: CachedNetworkImage(
                                         alignment: Alignment.center,
-                                        imageUrl: callHistory[index].doctor!.fullImage!,
+                                        imageUrl: entry.doctor?.fullImage ?? '',
                                         fit: BoxFit.fitHeight,
                                         placeholder: (context, url) => const SpinKitFadingCircle(color: Palette.blue),
                                         errorWidget: (context, url, error) => ClipRRect(
@@ -143,11 +129,11 @@ class _VideoCallHistoryState extends State<VideoCallHistory> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            callHistory[index].doctor!.name!,
+                                            entry.doctor?.name ?? '—',
                                             style: TextStyle(fontSize: width * 0.04, color: Palette.dark_blue, fontWeight: FontWeight.bold),
                                           ),
                                           Text(
-                                            callHistory[index].startTime!.toLowerCase(),
+                                            entry.startTime?.toLowerCase() ?? '—',
                                             style: TextStyle(
                                               fontSize: width * 0.03,
                                               color: Palette.dark_blue,
@@ -169,7 +155,7 @@ class _VideoCallHistoryState extends State<VideoCallHistory> {
                                             ),
                                           ),
                                           Text(
-                                            DateUtil().formattedDate(DateTime.parse(callHistory[index].date!)),
+                                            date == null ? '—' : DateUtil().formattedDate(date),
                                             style: TextStyle(
                                               fontSize: width * 0.035,
                                               color: Palette.dark_blue,
@@ -224,25 +210,27 @@ class _VideoCallHistoryState extends State<VideoCallHistory> {
   }
 
   Future<BaseModel<ShowVideoCallHistoryModel>> callApiShowVideoCallHistory() async {
-    ShowVideoCallHistoryModel response;
+    if (!mounted || loading) return BaseModel();
     setState(() {
       loading = true;
+      _loadFailed = false;
     });
     try {
-      response = await RestClient(RetroApi().dioData()).showVideoCallHistoryRequest();
-      setState(() {
-        loading = false;
-        if (response.success == true) {
-          callHistory.addAll(response.data!.reversed);
-        }
-      });
-    } catch (error, stacktrace) {
-      setState(() {
-        loading = false;
-      });
-      print("Exception occur: $error stackTrace: $stacktrace");
+      final response = await RestClient(RetroApi().dioData()).showVideoCallHistoryRequest();
+      if (mounted) {
+        setState(() {
+          _loadFailed = response.success != true || response.data == null;
+          if (!_loadFailed) {
+            callHistory = response.data!.reversed.toList();
+          }
+        });
+      }
+      return BaseModel()..data = response;
+    } catch (error) {
+      if (mounted) setState(() => _loadFailed = true);
       return BaseModel()..setException(ServerError.withError(error: error));
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-    return BaseModel()..data = response;
   }
 }
