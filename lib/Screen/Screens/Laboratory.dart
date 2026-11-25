@@ -47,6 +47,7 @@ class Laboratory extends StatefulWidget {
 
 class _LaboratoryState extends State<Laboratory> {
   bool loading = false;
+  bool _loadFailed = false;
   List<LabData> labs = [];
   List<LabData> filteredLabs = [];
   final TextEditingController _searchController = TextEditingController();
@@ -63,6 +64,12 @@ class _LaboratoryState extends State<Laboratory> {
     callApiLabs();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _loadLocation() {
     userLat = SharedPreferenceHelper.getString('lat');
     userLng = SharedPreferenceHelper.getString('lang');
@@ -73,7 +80,8 @@ class _LaboratoryState extends State<Laboratory> {
     if (value == null || value.isEmpty || value == "N_A") {
       return null;
     }
-    return double.tryParse(value);
+    final coordinate = double.tryParse(value);
+    return coordinate != null && coordinate.isFinite ? coordinate : null;
   }
 
   double? _distanceKm(LabData lab) {
@@ -173,20 +181,24 @@ class _LaboratoryState extends State<Laboratory> {
     LabsModel response;
     setState(() {
       loading = true;
+      _loadFailed = false;
     });
     try {
       response = await RestClient(RetroApi2().dioData2()).labsRequest();
+      if (!mounted) return BaseModel()..data = response;
       setState(() {
+        loading = false;
+        _loadFailed = response.success != true;
         if (response.success == true) {
-          loading = false;
           labs.clear();
           labs.addAll(response.data ?? []);
         }
       });
       _applyFilters();
     } catch (error) {
-      setState(() {
+      if (mounted) setState(() {
         loading = false;
+        _loadFailed = true;
       });
       return BaseModel()..setException(ServerError.withError(error: error));
     }
@@ -324,7 +336,12 @@ class _LaboratoryState extends State<Laboratory> {
                 ),
                 SizedBox(height: 12),
                 Expanded(
-                  child: displayLabs.isEmpty
+                  child: _loadFailed
+                      ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          const Text('Unable to load laboratories.'),
+                          TextButton(onPressed: callApiLabs, child: const Text('Retry')),
+                        ]))
+                      : displayLabs.isEmpty
                       ? Center(
                           child: Text(
                             'No Data Found',
