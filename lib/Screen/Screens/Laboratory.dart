@@ -1643,6 +1643,7 @@ class HospitalScreen extends StatefulWidget {
 
 class _HospitalScreenState extends State<HospitalScreen> {
   bool loading = false;
+  bool _loadFailed = false;
   List<HospitalData> hospitals = [];
   List<HospitalData> filteredHospitals = [];
   final TextEditingController _searchController = TextEditingController();
@@ -1659,6 +1660,12 @@ class _HospitalScreenState extends State<HospitalScreen> {
     callApiHospitals();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _loadLocation() {
     userLat = SharedPreferenceHelper.getString('lat');
     userLng = SharedPreferenceHelper.getString('lang');
@@ -1669,7 +1676,8 @@ class _HospitalScreenState extends State<HospitalScreen> {
     if (value == null || value.isEmpty || value == "N_A") {
       return null;
     }
-    return double.tryParse(value);
+    final coordinate = double.tryParse(value);
+    return coordinate != null && coordinate.isFinite ? coordinate : null;
   }
 
   double? _distanceKm(HospitalData hospital) {
@@ -1769,20 +1777,24 @@ class _HospitalScreenState extends State<HospitalScreen> {
     HospitalsModel response;
     setState(() {
       loading = true;
+      _loadFailed = false;
     });
     try {
       response = await RestClient(RetroApi2().dioData2()).hospitalsRequest();
+      if (!mounted) return BaseModel()..data = response;
       setState(() {
+        loading = false;
+        _loadFailed = response.success != true;
         if (response.success == true) {
-          loading = false;
           hospitals.clear();
           hospitals.addAll(response.data ?? []);
         }
       });
       _applyFilters();
     } catch (error) {
-      setState(() {
+      if (mounted) setState(() {
         loading = false;
+        _loadFailed = true;
       });
       return BaseModel()..setException(ServerError.withError(error: error));
     }
@@ -1907,8 +1919,11 @@ class _HospitalScreenState extends State<HospitalScreen> {
                               icon: Icons.near_me,
                               onTap: () {
                                 setState(() {
-                                  nearMeOnly = true;
+                                  nearMeOnly = _parseCoordinate(userLat) != null && _parseCoordinate(userLng) != null;
                                 });
+                                if (!nearMeOnly) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select a location to find nearby hospitals.')));
+                                }
                                 _applyFilters();
                               },
                             ),
@@ -1920,7 +1935,12 @@ class _HospitalScreenState extends State<HospitalScreen> {
                 ),
                 SizedBox(height: 12),
                 Expanded(
-                  child: displayHospitals.isEmpty
+                  child: _loadFailed
+                      ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          const Text('Unable to load hospitals.'),
+                          TextButton(onPressed: callApiHospitals, child: const Text('Retry')),
+                        ]))
+                      : displayHospitals.isEmpty
                       ? Center(
                           child: Text(
                             'No Data Found',
