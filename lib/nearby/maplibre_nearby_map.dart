@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as ml;
 import 'maplibre_marker_adapter.dart';
@@ -19,11 +20,52 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
   bool _busy = false;
   bool _dirty = false;
   bool _failed = false;
+  Timer? _loadTimeout;
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimeout();
+  }
+
+  void _startTimeout() {
+    _loadTimeout?.cancel();
+    _loadTimeout = Timer(const Duration(seconds: 25), () {
+      if (mounted && !_ready) setState(() => _failed = true);
+    });
+  }
+
+  void _retry() {
+    _controller?.onCircleTapped.remove(_tap);
+    _controller = null;
+    _callbacks.clear();
+    setState(() {
+      _generation++;
+      _ready = false;
+      _failed = false;
+    });
+    _startTimeout();
+  }
+
+  Future<void> _recenter() async {
+    try {
+      await _controller?.animateCamera(ml.CameraUpdate.newLatLng(
+        ml.LatLng(widget.latitude, widget.longitude)));
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
   final _callbacks = <String, NearbyMapPin>{};
 
   @override
   void didUpdateWidget(covariant MapLibreNearbyMap oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.latitude != widget.latitude ||
+        oldWidget.longitude != widget.longitude) {
+      if (_ready) _recenter();
+    }
     _sync();
   }
 
@@ -58,6 +100,7 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
   }
 
   String _pinColor(String id) {
+    if (id.startsWith('on-duty-')) return '#087F8C';
     if (id.startsWith('provider_')) return '#FF8C00';
     if (id.startsWith('hospital_')) return '#E91E63';
     if (id.startsWith('lab_')) return '#16834A';
@@ -75,13 +118,20 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
         trailing: pin.onTap == null ? null : const Icon(Icons.chevron_right),
         onTap: pin.onTap == null ? null : () {
           Navigator.pop(sheet);
-          if (mounted && widget.pins.any((p) => p.id == pin.id)) pin.onTap!();
+          if (!mounted) return;
+          for (final current in widget.pins) {
+            if (current.id == pin.id) {
+              current.onTap?.call();
+              break;
+            }
+          }
         },
       )));
   }
 
   @override
   void dispose() {
+    _loadTimeout?.cancel();
     _ready = false;
     _controller?.onCircleTapped.remove(_tap);
     super.dispose();
@@ -89,20 +139,38 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
 
   @override
   Widget build(BuildContext context) {
-    if (_failed) return const Center(child: Text(
-      'Map unavailable. Nearby care listings remain accessible.'));
-    return ml.MapLibreMap(
+    if (_failed) return Center(child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('Map unavailable. Nearby care listings remain accessible.',
+          textAlign: TextAlign.center),
+        TextButton(onPressed: _busy ? null : _retry, child: const Text('Retry map')),
+      ],
+    ));
+    final generation = _generation;
+    return Stack(children: [
+      ml.MapLibreMap(
+      key: ValueKey(generation),
       styleString: widget.style,
       initialCameraPosition: ml.CameraPosition(
         target: ml.LatLng(widget.latitude, widget.longitude), zoom: 12),
       onMapCreated: (controller) {
+        if (!mounted || generation != _generation || _failed) return;
         _controller = controller;
         controller.onCircleTapped.add(_tap);
       },
       onStyleLoadedCallback: () {
-        _ready = true;
+        if (!mounted || generation != _generation || _failed) return;
+        _loadTimeout?.cancel();
+        setState(() => _ready = true);
         _sync();
       },
-    );
+      ),
+      if (!_ready) const Center(child: CircularProgressIndicator()),
+      if (_ready) Positioned(top: 72, right: 12,
+        child: FloatingActionButton.small(
+          heroTag: null, tooltip: 'Centre on selected location',
+          onPressed: _recenter, child: const Icon(Icons.my_location))),
+    ]);
   }
 }
