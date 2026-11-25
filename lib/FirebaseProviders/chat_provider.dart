@@ -32,13 +32,13 @@ class ChatProvider {
     return firebaseFirestore.collection(FirestoreConstants.pathMessageCollection).doc(groupChatId).collection(groupChatId).orderBy(FirestoreConstants.timestamp, descending: true).limit(limit).snapshots();
   }
 
-  void sendMessage(String content, int type, String groupChatId, String currentUserId, String peerId) {
+  Future<void> sendMessage(String content, int type, String groupChatId, String currentUserId, String peerId) async {
     final now = DateTime.now().millisecondsSinceEpoch.toString();
     DocumentReference documentReference = firebaseFirestore
         .collection(FirestoreConstants.pathMessageCollection)
         .doc(groupChatId)
         .collection(groupChatId)
-        .doc(now);
+        .doc();
 
     MessageChat messageChat = MessageChat(
       idFrom: currentUserId,
@@ -48,24 +48,20 @@ class ChatProvider {
       type: type,
     );
 
-    FirebaseFirestore.instance.runTransaction((transaction) async {
-      transaction.set(documentReference, messageChat.toJson());
-    });
-
-    firebaseFirestore
+    final batch = firebaseFirestore.batch();
+    batch.set(documentReference, messageChat.toJson());
+    batch.set(firebaseFirestore
         .collection(FirestoreConstants.pathMessageCollection)
-        .doc(groupChatId)
-        .set({
+        .doc(groupChatId), {
       'lastMessage': type == TypeMessage.image ? '📷 Photo' : content,
       'lastTimestamp': now,
       'lastBy': currentUserId,
       'unread_$peerId': FieldValue.increment(1),
     }, SetOptions(merge: true));
-
-    firebaseFirestore
+    batch.set(firebaseFirestore
         .collection(FirestoreConstants.pathUserCollection)
-        .doc(peerId)
-        .set({'totalUnread': FieldValue.increment(1)}, SetOptions(merge: true));
+        .doc(peerId), {'totalUnread': FieldValue.increment(1)}, SetOptions(merge: true));
+    await batch.commit();
   }
 
   void markAsRead(String groupChatId, String currentUserId) {
