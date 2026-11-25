@@ -105,7 +105,10 @@ class _BookAppointmentState extends State<BookAppointment> {
   String? name = "";
   String? expertise = "";
   String? appointmentFees = "";
-  dynamic newAppointmentFees = 0.0;
+  dynamic newAppointmentFees;
+  num? get _checkoutAmount => num.tryParse((newAppointmentFees ?? appointmentFees).toString());
+  bool get _freeCheckout => _checkoutAmount == 0;
+  bool _freeSubmitting = false;
   String? appliedOfferCode;
   num? hourlyRate;
   int? selectedDurationMinutes;
@@ -1779,7 +1782,8 @@ class _BookAppointmentState extends State<BookAppointment> {
                                                       selectedDurationMinutes = mins;
                                                       timeIndex = null;
                                                       selectTime = null;
-                                                      newAppointmentFees = hourlyRate != null ? (mins / 60) * hourlyRate! : 0.0;
+                                                      newAppointmentFees = hourlyRate != null ? (mins / 60) * hourlyRate! : null;
+                                                      appliedOfferCode = null;
                                                       if (newDate.isNotEmpty) timeSlot();
                                                     });
                                                   },
@@ -1843,6 +1847,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                                                                   selectedDurationMinutes != null &&
                                                                   selectedDurationMinutes! > 0) {
                                                                 newAppointmentFees = (selectedDurationMinutes! / 60) * hourlyRate!;
+                                                                appliedOfferCode = null;
                                                               }
                                                             });
                                                           },
@@ -1995,7 +2000,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                                           ),
                                         ),
                                         SizedBox(height: width * 0.03),
-                                        if (hourlyRate != null && selectedDurationMinutes != null && selectedDurationMinutes! > 0 && newAppointmentFees != 0.0)
+                                        if (hourlyRate != null && selectedDurationMinutes != null && selectedDurationMinutes! > 0 && newAppointmentFees != null)
                                           Padding(
                                             padding: EdgeInsets.only(bottom: width * 0.03),
                                             child: _sectionCard(
@@ -2015,7 +2020,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                                               ),
                                             ),
                                           ),
-                                        if (hourlyRate != null && selectedDurationMinutes != null && selectedDurationMinutes! > 0 && newAppointmentFees != 0.0)
+                                        if (hourlyRate != null && selectedDurationMinutes != null && selectedDurationMinutes! > 0 && newAppointmentFees != null)
                                           SizedBox(height: width * 0.02),
                                         _sectionCard(
                                           width,
@@ -2654,7 +2659,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                         ),
                       ),
                     if (_currentStep == 2)
-                      '$newAppointmentFees' == "0.0"
+                      _freeCheckout ? const Text('Book Free Appointment', style: TextStyle(color: Palette.white)) : newAppointmentFees == null
                           ? Text(
                               getTranslated(
                                     context,
@@ -2706,6 +2711,22 @@ class _BookAppointmentState extends State<BookAppointment> {
                         );
                       }
                     } else if (_currentStep == 2) {
+                      if (_checkoutAmount == null || !_checkoutAmount!.isFinite || _checkoutAmount! < 0) {
+                        Fluttertoast.showToast(msg: 'Consultation price unavailable.');
+                        return;
+                      }
+                      if (_freeCheckout) {
+                        if (_freeSubmitting) return;
+                        _freeSubmitting = true;
+                        paymentType = 'COD';
+                        _paymentToken = '';
+                        callApiBook().whenComplete(() { _freeSubmitting = false; });
+                        return;
+                      }
+                      if (_character == null) {
+                        Fluttertoast.showToast(msg: 'Select a payment method.');
+                        return;
+                      }
                       str = "$_character";
                       parts = str.split(".");
                       startPart = parts[0].trim();
@@ -2716,7 +2737,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (BuildContext context) => PaypalPayment(
-                                total: "$newAppointmentFees" != "0.0"
+                                total: newAppointmentFees != null
                                     ? '$newAppointmentFees'
                                     : '$appointmentFees',
                                 onFinish: (number) async {
@@ -2751,7 +2772,7 @@ class _BookAppointmentState extends State<BookAppointment> {
                           note: note.text,
                           newDate: newDate,
                           selectTime: selectTime,
-                          appointmentFees: "$newAppointmentFees" != "0.0"
+                          appointmentFees: newAppointmentFees != null
                               ? '$newAppointmentFees'
                               : '$appointmentFees',
                           doctorId: id,
@@ -2789,7 +2810,7 @@ class _BookAppointmentState extends State<BookAppointment> {
     if (_paystackSubmitting) return;
     _paystackSubmitting = true;
     try {
-      final amount = newAppointmentFees != 0.0
+      final amount = newAppointmentFees != null
           ? num.tryParse(newAppointmentFees.toString())
           : num.tryParse(appointmentFees.toString());
       if (amount == null) return;
@@ -2850,9 +2871,9 @@ class _BookAppointmentState extends State<BookAppointment> {
       "date": newDate,
       "time": selectTime,
       "payment_type": paymentType,
-      "payment_status": _character!.index == 5 ? 0 : 1,
-      "payment_token": _character!.index == 5 ? "" : _paymentToken,
-      "amount": newAppointmentFees != 0.0
+      "payment_status": (_freeCheckout || _character == SingingCharacter.COD) ? 0 : 1,
+      "payment_token": (_freeCheckout || _character == SingingCharacter.COD) ? "" : _paymentToken,
+      "amount": newAppointmentFees != null
           ? newAppointmentFees.toString()
           : appointmentFees,
       "doctor_id": id,
@@ -2915,7 +2936,7 @@ class _BookAppointmentState extends State<BookAppointment> {
   void openCheckoutRazorPay() async {
     var map = {
       'key': SharedPreferenceHelper.getString(Preferences.razor_key),
-      'amount': "$newAppointmentFees" != "0.0"
+      'amount': newAppointmentFees != null
           ? num.parse('$newAppointmentFees') * 100
           : num.parse('$appointmentFees') * 100,
       'name': '$businessName',
@@ -3342,13 +3363,13 @@ class _BookAppointmentState extends State<BookAppointment> {
           discount = response.data!.discount;
 
           if (discountType == "AMOUNT" && isFlat == 1) {
-            if (int.parse('$appointmentFees') > flatDiscount!) {
+            if (double.parse('$appointmentFees') > flatDiscount!) {
               if (flatDiscount! < minDiscount!) {
                 newAppointmentFees =
-                    int.parse('$appointmentFees') - int.parse('$flatDiscount');
+                    double.parse('$appointmentFees') - int.parse('$flatDiscount');
               } else {
                 newAppointmentFees =
-                    int.parse('$appointmentFees') - int.parse('$minDiscount');
+                    double.parse('$appointmentFees') - int.parse('$minDiscount');
               }
               Fluttertoast.showToast(
                 msg: getTranslated(
@@ -3374,13 +3395,13 @@ class _BookAppointmentState extends State<BookAppointment> {
               );
             }
           } else if (discountType == "AMOUNT" && isFlat == 0) {
-            if (int.parse('$appointmentFees') > discount!) {
+            if (double.parse('$appointmentFees') > discount!) {
               if (discount! < minDiscount!) {
                 newAppointmentFees =
-                    int.parse('$appointmentFees') - int.parse('$discount');
+                    double.parse('$appointmentFees') - int.parse('$discount');
               } else {
                 newAppointmentFees =
-                    int.parse('$appointmentFees') - int.parse('$minDiscount');
+                    double.parse('$appointmentFees') - int.parse('$minDiscount');
               }
               Fluttertoast.showToast(
                 msg: getTranslated(
@@ -3408,7 +3429,7 @@ class _BookAppointmentState extends State<BookAppointment> {
           } else if (discountType == "PERCENTAGE") {
             setState(() {
               prAmount =
-                  (int.parse('$appointmentFees') * int.parse('$discount')) /
+                  (double.parse('$appointmentFees') * int.parse('$discount')) /
                   100;
               if (prAmount <= minDiscount!) {
                 newAppointmentFees =
@@ -3422,8 +3443,8 @@ class _BookAppointmentState extends State<BookAppointment> {
             });
             Fluttertoast.showToast(
               msg:
-                  int.parse('$appointmentFees') >= prAmount ||
-                      int.parse('$appointmentFees') >= minDiscount!
+                  double.parse('$appointmentFees') >= prAmount ||
+                      double.parse('$appointmentFees') >= minDiscount!
                   ? getTranslated(
                       context,
                       AppString.bookAppointment_offerApply_toast,
@@ -3441,8 +3462,8 @@ class _BookAppointmentState extends State<BookAppointment> {
               gravity: ToastGravity.CENTER,
             );
             newAppointmentFees =
-                int.parse('$appointmentFees') >= prAmount ||
-                    int.parse('$appointmentFees') >= minDiscount!
+                double.parse('$appointmentFees') >= prAmount ||
+                    double.parse('$appointmentFees') >= minDiscount!
                 ? newAppointmentFees
                 : appointmentFees;
           }
