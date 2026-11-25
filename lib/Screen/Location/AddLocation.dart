@@ -21,10 +21,12 @@ import '../../localization/localization_constant.dart';
 import '../../model/common_response.dart';
 
 class AddLocation extends StatefulWidget {
+  final bool returnToPicker;
   final double? currentLat;
   final double? currentLong;
 
   AddLocation({
+    this.returnToPicker = false,
     this.currentLat,
     this.currentLong,
   });
@@ -121,6 +123,7 @@ class _AddLocationState extends State<AddLocation> {
   }
 
   Future<bool> onWillPop() {
+    if (widget.returnToPicker) return Future.value(!loading);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -162,6 +165,7 @@ class _AddLocationState extends State<AddLocation> {
                         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                         child: GestureDetector(
                           onTap: () {
+                            if (widget.returnToPicker) { if (!loading) Navigator.pop(context, false); return; }
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -383,13 +387,14 @@ class _AddLocationState extends State<AddLocation> {
 
   Future<BaseModel<CommonResponse>> callApiAddAddress() async {
     CommonResponse response;
+    if (!mounted || loading) return BaseModel();
     if (!_hasAuthToken()) {
       Fluttertoast.showToast(
         msg: "Please login again",
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
-      Navigator.pushReplacementNamed(context, "SignIn");
+      if (widget.returnToPicker) { Navigator.pop(context, false); } else { Navigator.pushReplacementNamed(context, "SignIn"); }
       return BaseModel();
     }
     Map<String, dynamic> body = {
@@ -398,8 +403,10 @@ class _AddLocationState extends State<AddLocation> {
       "lat": '$selectLat',
       "lang": '$selectLang',
     };
+    setState(() => loading = true);
     try {
       response = await RestClient(RetroApi().dioData()).addAddressRequest(body);
+      if (!mounted) return BaseModel()..data = response;
       if (response.success == true) {
         setState(
           () {
@@ -410,13 +417,15 @@ class _AddLocationState extends State<AddLocation> {
               backgroundColor: Palette.blue,
               textColor: Palette.white,
             );
-            Navigator.pushReplacementNamed(context, "ShowLocation");
+            if (widget.returnToPicker) { Navigator.pop(context, true); } else { Navigator.pushReplacementNamed(context, "ShowLocation"); }
           },
         );
       }
     } catch (error, stacktrace) {
       print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
     return BaseModel()..data = response;
   }
