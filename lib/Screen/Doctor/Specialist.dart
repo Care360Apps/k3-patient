@@ -66,7 +66,6 @@ class _SpecialistState extends State<Specialist> {
   }
 
   Future<bool> onWillPop() {
-    Navigator.pushReplacementNamed(context, 'Home');
     return Future.value(true);
   }
 
@@ -99,7 +98,7 @@ class _SpecialistState extends State<Specialist> {
                           size: 22,
                         ),
                         onPressed: () {
-                          Navigator.pushReplacementNamed(context, 'Home');
+                          Navigator.maybePop(context);
                         },
                       ),
                       Expanded(
