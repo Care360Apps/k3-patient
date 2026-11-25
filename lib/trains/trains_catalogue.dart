@@ -44,14 +44,14 @@ class _TrainsCatalogueState extends State<TrainsCatalogue>
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     final request = ++_request;
     setState(() {
       _loading = true;
       _failed = false;
-      _courses = [];
     });
     try {
-      final rows = await (widget.loader ?? loadTrainsCourses)();
+      final rows = await (widget.loader ?? loadTrainsCourses)().timeout(const Duration(seconds: 30));
       if (!mounted || request != _request) return;
       setState(() {
         _courses = rows;
@@ -143,14 +143,21 @@ class _TrainsCatalogueState extends State<TrainsCatalogue>
               ],
             ),
             const SizedBox(height: 20),
-            if (_loading)
+            if (_loading && _courses.isNotEmpty)
+              const LinearProgressIndicator(),
+            if (_failed && _courses.isNotEmpty)
+              Column(children: [
+                const Text('Refresh failed. Previously loaded courses are shown.'),
+                TextButton(onPressed: _load, child: const Text('Retry')),
+              ]),
+            if (_loading && _courses.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(32),
                   child: CircularProgressIndicator(),
                 ),
               )
-            else if (_failed)
+            else if (_failed && _courses.isEmpty)
               Column(
                 children: [
                   const Text(
