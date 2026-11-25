@@ -65,7 +65,6 @@ import 'Screen/Screens/Setting.dart';
 import 'Screen/Screens/notifications.dart';
 import 'Screen/Screens/profile.dart';
 import 'Screen/Setting/AboutUs.dart';
-import 'Chat/chatPage.dart';
 import 'Screen/Setting/ChangePassword.dart';
 import 'Screen/Setting/PrivacyPolicy.dart';
 import 'VideoCall/overlay_handler.dart';
@@ -183,10 +182,9 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  String msgId = "";
-  String msgName = "";
-  String msgImage = "";
-  String doctorToken = "";
+  StreamSubscription<RemoteMessage>? _foregroundMessages;
+  StreamSubscription<RemoteMessage>? _openedMessages;
+  bool _openingChats = false;
 
   String token = "";
   bool? router;
@@ -199,52 +197,23 @@ class _MyAppState extends State<MyApp> {
       return;
     }
     callApiSetting();
-    Future.delayed(const Duration(seconds: 2), () {
-      FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
-        if (message != null) {
-          Map<String, dynamic> dataValue = message.data;
-          msgImage = dataValue['doctorImage'].toString();
-          msgName = dataValue['doctorName'].toString();
-          msgId = dataValue['doctorId'].toString();
-          doctorToken = dataValue['doctorToken'].toString();
-          print("message not null");
-          if (SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true) {
-            Navigator.of(navigatorKey.currentState!.context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => ChatPage(
-                  peerId: msgId,
-                  peerAvatar: msgImage,
-                  peerNickname: msgName,
-                  doctorToken: doctorToken,
-                  where: "",
-                ),
-              ),
-            );
-          } else {
-            Navigator.of(navigatorKey.currentState!.context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => SignIn(),
-              ),
-            );
-          }
-        }
-      });
+    Future.delayed(const Duration(seconds: 2), () async {
+      if (!mounted) return;
+      try {
+        final message = await FirebaseMessaging.instance.getInitialMessage();
+        if (message != null) await _openChatInbox(message.data['screen']);
+      } catch (_) {
+        debugPrint('Initial notification unavailable');
+      }
     });
     var initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    var initializationSettingsIOS = new DarwinInitializationSettings();
+    var initializationSettingsIOS = DarwinInitializationSettings();
     var initializationSettings = InitializationSettings(android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
     flutterLocalNotificationsPlugin.initialize(initializationSettings, onDidReceiveNotificationResponse: onSelectNotification);
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      RemoteNotification? notification = message.notification;
-      AndroidNotification? android = message.notification?.android;
-      Map<String, dynamic> dataValue = message.data;
-      String screen = dataValue['screen'].toString();
-      msgImage = dataValue['doctorImage'].toString();
-      msgName = dataValue['doctorName'].toString();
-      msgId = dataValue['doctorId'].toString();
-      doctorToken = dataValue['doctorToken'].toString();
-
-      print("Screen: " + screen);
+    _foregroundMessages = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (!mounted) return;
+      final notification = message.notification;
+      final android = notification?.android;
       if (notification != null && android != null) {
         flutterLocalNotificationsPlugin.show(
             notification.hashCode,
@@ -257,45 +226,47 @@ class _MyAppState extends State<MyApp> {
                 icon: "@mipmap/ic_launcher",
               ),
             ),
-            payload: screen);
+            payload: message.data['screen']?.toString());
       }
     });
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      RemoteNotification? notification = message.notification;
-      AndroidNotification? android = message.notification?.android;
-      if (notification != null && android != null) {
-        Navigator.of(navigatorKey.currentState!.context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => ChatPage(
-              peerId: msgId,
-              peerAvatar: msgImage,
-              peerNickname: msgName,
-              doctorToken: doctorToken,
-              where: "",
-            ),
-          ),
-        );
-      }
+    _openedMessages = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _openChatInbox(message.data['screen']);
     });
     getToken();
   }
 
-  onSelectNotification(payload) {
-    if (payload.payload == "screen") {
-      if (msgId.isNotEmpty && msgName.isNotEmpty && msgImage.isNotEmpty && SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true) {
-        Navigator.of(navigatorKey.currentState!.context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => ChatPage(
-              peerId: msgId,
-              peerAvatar: msgImage,
-              peerNickname: msgName,
-              doctorToken: doctorToken,
-              where: "",
-            ),
-          ),
-        );
-      }
+  void onSelectNotification(NotificationResponse response) {
+    _openChatInbox(response.payload);
+  }
+
+  Future<void> _openChatInbox(Object? destination) async {
+    // Push payloads are not authorization to open a particular conversation.
+    if (!mounted || _openingChats || destination != 'screen') return;
+    _openingChats = true;
+    try {
+      final authToken = await SharedPreferenceHelper.getSecureString(Preferences.auth_token);
+      if (!mounted ||
+          authToken == null ||
+          authToken.trim().isEmpty ||
+          authToken == 'N_A' ||
+          authToken == 'null' ||
+          SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) != true ||
+          FirebaseAuth.instance.currentUser == null) return;
+      final navigator = navigatorKey.currentState;
+      if (navigator == null || !navigator.mounted) return;
+      await navigator.push(MaterialPageRoute(builder: (_) => const ChatListScreen()));
+    } catch (_) {
+      debugPrint('Notification destination unavailable');
+    } finally {
+      _openingChats = false;
     }
+  }
+
+  @override
+  void dispose() {
+    _foregroundMessages?.cancel();
+    _openedMessages?.cancel();
+    super.dispose();
   }
 
   getToken() async {
