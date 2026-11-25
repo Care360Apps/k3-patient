@@ -52,6 +52,7 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
 
   _getAddress() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final resolvedLat = _resolveCoordinate(prefs.getString('lat')) ?? _resolveCoordinate(prefs.getString('latLive'));
     final resolvedLang = _resolveCoordinate(prefs.getString('lang')) ?? _resolveCoordinate(prefs.getString('langLive'));
     setState(() {
@@ -65,7 +66,6 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
   }
 
   Future<bool> onWillPop() {
-    Navigator.pushReplacementNamed(context, 'Home');
     return Future.value(true);
   }
 
@@ -93,7 +93,7 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
                     children: [
                       IconButton(
                         icon: Icon(Icons.arrow_back_ios, size: 22),
-                        onPressed: () => Navigator.pushReplacementNamed(context, 'Home'),
+                        onPressed: () => Navigator.maybePop(context),
                       ),
                       Expanded(
                         child: Text(
@@ -109,11 +109,14 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(18),
-                    onTap: () {
-                      Navigator.pushReplacement(
+                    onTap: () async {
+                      final changed = await Navigator.push<bool>(
                         context,
-                        MaterialPageRoute(builder: (context) => ShowLocation()),
+                        MaterialPageRoute(builder: (_) => const ShowLocation(discoveryMode: true)),
                       );
+                      if (!mounted || changed != true) return;
+                      setState(() => useLiveLocation = false);
+                      await _getAddress();
                     },
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -480,6 +483,7 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
     setState(() => loading = true);
     try {
       final response = await RestClient(RetroApi2().dioData2()).providersRequest(body);
+      if (!mounted) return BaseModel()..data = response;
       setState(() {
         loading = false;
         providerList.clear();
@@ -493,6 +497,7 @@ class _FindProvidersScreenState extends State<FindProvidersScreen> {
       });
       return BaseModel()..data = response;
     } catch (error, stacktrace) {
+      if (!mounted) return BaseModel()..setException(ServerError.withError(error: error));
       setState(() => loading = false);
       print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
