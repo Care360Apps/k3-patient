@@ -22,6 +22,8 @@ import '../../localization/localization_constant.dart';
 import '../Screens/Home.dart';
 
 class ShowLocation extends StatefulWidget {
+  final bool discoveryMode;
+  const ShowLocation({super.key, this.discoveryMode = false});
   @override
   _ShowLocationState createState() => _ShowLocationState();
 }
@@ -51,7 +53,7 @@ class _ShowLocationState extends State<ShowLocation> {
   void initState() {
     super.initState();
     _loadAddresses();
-    getIsWhere();
+    if (!widget.discoveryMode) getIsWhere();
   }
 
   Future<void> _loadAddresses() async {
@@ -63,6 +65,7 @@ class _ShowLocationState extends State<ShowLocation> {
         gravity: ToastGravity.BOTTOM,
       );
       if (mounted) {
+        if (widget.discoveryMode) { Navigator.pop(context, false); return; }
         Navigator.pushReplacementNamed(context, "SignIn");
       }
       return;
@@ -119,6 +122,7 @@ class _ShowLocationState extends State<ShowLocation> {
   }
 
   Future<bool> onWillPop() {
+    if (widget.discoveryMode) return Future.value(true);
     if (isWhere == "BookAppointment") {
       Navigator.pushReplacement(
         context,
@@ -162,6 +166,7 @@ class _ShowLocationState extends State<ShowLocation> {
           elevation: 2,
           leading: GestureDetector(
             onTap: () {
+              if (widget.discoveryMode) { Navigator.pop(context, false); return; }
               if (isWhere == "BookAppointment") {
                 Navigator.pushReplacement(
                   context,
@@ -201,7 +206,7 @@ class _ShowLocationState extends State<ShowLocation> {
             style: TextStyle(fontSize: width * 0.045, fontWeight: FontWeight.bold, color: Palette.dark_blue),
           ),
           actions: [
-            InkWell(
+            if (!widget.discoveryMode) InkWell(
               onTap: () {
                 Navigator.pushReplacement(
                   context,
@@ -250,7 +255,18 @@ class _ShowLocationState extends State<ShowLocation> {
                           addressId = showAddress[index].id;
                           final isDefault = SharedPreferenceHelper.getInt(Preferences.default_address_id) == showAddress[index].id;
                           return InkWell(
-                            onTap: () {
+                            onTap: () async {
+                              if (widget.discoveryMode) {
+                                final selected = showAddress[index];
+                                if (selected.id == null || selected.address == null || selected.lat == null || selected.lang == null) return;
+                                final prefs = await SharedPreferences.getInstance();
+                                await prefs.setString('Address', selected.address!);
+                                await prefs.setString('lat', selected.lat!);
+                                await prefs.setString('lang', selected.lang!);
+                                await prefs.setInt('addressId', selected.id!);
+                                if (mounted) Navigator.pop(context, true);
+                                return;
+                              }
                               setState(
                                 () {
                                   if (isWhere == "Home") {
