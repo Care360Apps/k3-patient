@@ -65,6 +65,12 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _results = const [];
+    });
     try {
       final details = await widget.api.me();
       if (!mounted) return;
@@ -134,10 +140,11 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
   }
 
   Future<void> _save() async {
-    if (_saving || !_form.currentState!.validate()) return;
+    if (_saving || _loading || _form.currentState?.validate() != true) return;
     setState(() {
       _saving = true;
       _message = null;
+      _results = const [];
     });
     try {
       if (widget.role == 'candidate') {
@@ -178,7 +185,9 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
   }
 
   Future<void> _search() async {
+    if (_saving || _loading || widget.role != 'employer' || _verification != 'verified') return;
     setState(() {
+      _results = const [];
       _saving = true;
       _message = null;
     });
@@ -276,7 +285,7 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.logout_outlined),
             tooltip: 'Sign out of Workforce',
-            onPressed: _signOut,
+            onPressed: _saving || _loading ? null : _signOut,
           ),
         ],
       ),
@@ -286,7 +295,10 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Text(_error!, key: const Key('workforce-profile-error')),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text(_error!, key: const Key('workforce-profile-error')),
+                  TextButton(onPressed: _load, child: const Text('Retry')),
+                ]),
               ),
             )
           : SafeArea(
