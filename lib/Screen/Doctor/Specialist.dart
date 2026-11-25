@@ -32,6 +32,7 @@ class _SpecialistState extends State<Specialist> {
   String? _lang = "";
   String? _liveLat = "";
   String? _liveLang = "";
+  int _discoveryRequest = 0;
   bool useLiveLocation = false;
 
   List<DoctorModel> doctorList = [];
@@ -526,6 +527,8 @@ class _SpecialistState extends State<Specialist> {
   }
 
   Future<BaseModel<Doctors>> callApiDoctorList() async {
+    if (!mounted) return BaseModel();
+    final request = ++_discoveryRequest;
     Doctors response;
     // When Live is selected but live coords are missing, fall back to saved address so list still loads
     final latToUse = useLiveLocation
@@ -535,6 +538,7 @@ class _SpecialistState extends State<Specialist> {
         ? (_resolveCoordinate(_liveLang) ?? _resolveCoordinate(_lang))
         : _resolveCoordinate(_lang);
     if (latToUse == null || langToUse == null) {
+      setState(() => loading = false);
       Fluttertoast.showToast(
         msg: getTranslated(context, AppString.home_selectAddress).toString(),
         toastLength: Toast.LENGTH_SHORT,
@@ -551,7 +555,7 @@ class _SpecialistState extends State<Specialist> {
     });
     try {
       SharedPreferenceHelper.getBoolean(Preferences.is_logged_in) == true ? response = await RestClient(RetroApi().dioData()).doctorList(body) : response = await RestClient(RetroApi2().dioData2()).doctorList(body);
-      if (!mounted) return BaseModel()..data = response;
+      if (!mounted || request != _discoveryRequest) return BaseModel()..data = response;
       setState(() {
         loading = false;
         if (response.success == true) {
@@ -570,7 +574,7 @@ class _SpecialistState extends State<Specialist> {
         }
       });
     } catch (error, stacktrace) {
-      if (!mounted) return BaseModel()..setException(ServerError.withError(error: error));
+      if (!mounted || request != _discoveryRequest) return BaseModel()..setException(ServerError.withError(error: error));
       setState(() {
         loading = false;
       });
@@ -656,6 +660,7 @@ class _SpecialistState extends State<Specialist> {
     });
     try {
       response = await RestClient(RetroApi().dioData()).favoriteDoctorRequest(doctorID);
+      if (!mounted) return BaseModel()..data = response;
       setState(() {
         loading = false;
         if (response.success == true) {
