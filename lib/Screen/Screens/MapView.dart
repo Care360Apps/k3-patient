@@ -22,6 +22,9 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../const/Palette.dart';
 import '../../nearby/nearby_on_duty_service.dart';
+import '../../nearby/maplibre_configuration.dart';
+import '../../nearby/maplibre_marker_adapter.dart';
+import '../../nearby/maplibre_nearby_map.dart';
 
 class MapView extends StatefulWidget {
   @override
@@ -520,7 +523,14 @@ class _MapViewState extends State<MapView> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                  child: _mapsConfigured != true
+                  child: MapLibreConfiguration.enabled && !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+                      ? MapLibreNearbyMap(
+                          style: MapLibreConfiguration.style,
+                          latitude: _getInitialPosition().latitude,
+                          longitude: _getInitialPosition().longitude,
+                          pins: NearbyMapPin.fromGoogle(_buildMarkers()),
+                        )
+                      : _mapsConfigured != true
                       ? Center(child: Padding(
                           padding: const EdgeInsets.fromLTRB(24, 160, 24, 270),
                           child: Text(_mapsConfigured == null
@@ -802,6 +812,8 @@ class _MapViewState extends State<MapView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (MapLibreConfiguration.enabled && !kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+              Text(MapLibreConfiguration.attribution, style: const TextStyle(fontSize: 12)),
             Center(child: Container(height: 4, width: 40,
               decoration: BoxDecoration(color: Palette.dash_line,
                   borderRadius: BorderRadius.circular(2)))),
