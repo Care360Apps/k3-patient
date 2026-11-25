@@ -22,7 +22,8 @@ class AllPharamacy extends StatefulWidget {
 }
 
 class _AllPharamacyState extends State<AllPharamacy> {
-  bool loading = false;
+  bool loading = true;
+  bool _loadFailed = false;
   String? address = "";
   String? _lat;
   String? _lang;
@@ -35,12 +36,27 @@ class _AllPharamacyState extends State<AllPharamacy> {
   @override
   void initState() {
     super.initState();
-    _getAddress();
-    callApiPharamacy();
+    _initialize();
   }
 
-  _getAddress() async {
+  Future<void> _initialize() async {
+    try {
+      await _getAddress();
+      if (mounted) await callApiPharamacy();
+    } catch (_) {
+      if (mounted) setState(() { loading = false; _loadFailed = true; });
+    }
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _getAddress() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(
       () {
         address = prefs.getString('Address');
@@ -51,7 +67,6 @@ class _AllPharamacyState extends State<AllPharamacy> {
   }
 
   Future<bool> onWillPop() {
-    Navigator.pushReplacementNamed(context, 'Home');
     return Future.value(true);
   }
 
@@ -136,7 +151,7 @@ class _AllPharamacyState extends State<AllPharamacy> {
                           size: 22,
                         ),
                         onPressed: () {
-                          Navigator.pushReplacementNamed(context, 'Home');
+                          Navigator.maybePop(context);
                         },
                       ),
                     ],
@@ -160,6 +175,7 @@ class _AllPharamacyState extends State<AllPharamacy> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: TextField(
+                        controller: _search,
                         textAlign: TextAlign.left,
                         textCapitalization: TextCapitalization.words,
                         textAlignVertical: TextAlignVertical.center,
@@ -206,9 +222,14 @@ class _AllPharamacyState extends State<AllPharamacy> {
           ),
           child: GestureDetector(
             onTap: () {
-              FocusScope.of(context).requestFocus(new FocusNode());
+              FocusScope.of(context).unfocus();
             },
-            child: _searchResult.length > 0 || _search.text.isNotEmpty
+            child: _loadFailed
+                ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Text('Unable to load pharmacies.'),
+                    TextButton(onPressed: loading ? null : _initialize, child: const Text('Retry')),
+                  ]))
+                : _search.text.trim().isNotEmpty
                 ? _searchResult.isNotEmpty
                     ? _buildPharmacyGrid(_searchResult, width)
                     : Center(
@@ -363,12 +384,15 @@ class _AllPharamacyState extends State<AllPharamacy> {
 
     setState(() {
       loading = true;
+      _loadFailed = false;
     });
     try {
       response = await RestClient(RetroApi2().dioData2()).pharmacyRequest(_lat, _lang);
+      if (!mounted) return BaseModel()..data = response;
       setState(() {
+        loading = false;
+        _loadFailed = response.success != true;
         if (response.success == true) {
-          loading = false;
           pharamacy.clear();
           final list = response.data ?? [];
           list.sort((a, b) {
@@ -377,13 +401,14 @@ class _AllPharamacyState extends State<AllPharamacy> {
             return da.compareTo(db);
           });
           pharamacy.addAll(list);
+          _searchResult = pharamacy.where((p) => '${p.name ?? ''} ${p.address ?? ''}'.toLowerCase().contains(_search.text.trim().toLowerCase())).toList();
         }
       });
-    } catch (error, stacktrace) {
-      setState(() {
+    } catch (error) {
+      if (mounted) setState(() {
         loading = false;
+        _loadFailed = true;
       });
-      print("Exception occur: $error stackTrace: $stacktrace");
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -413,7 +438,7 @@ class _AllPharamacyState extends State<AllPharamacy> {
     }
 
     pharamacy.forEach((appointmentData) {
-      if (appointmentData.name!.toLowerCase().contains(text.toLowerCase())) _searchResult.add(appointmentData);
+      if ('${appointmentData.name ?? ''} ${appointmentData.address ?? ''}'.toLowerCase().contains(text.trim().toLowerCase())) _searchResult.add(appointmentData);
     });
 
     setState(() {});
