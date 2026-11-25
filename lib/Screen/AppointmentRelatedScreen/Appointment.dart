@@ -27,6 +27,9 @@ class Appointment extends StatefulWidget {
 
 class _AppointmentState extends State<Appointment> with SingleTickerProviderStateMixin {
   bool loading = false;
+  bool _cancelling = false;
+  bool _loadFailed = false;
+  bool _hasLoaded = false;
 
   List<UpcomingAppointment> upcomingAppointment = [];
   List<PastAppointment> pastAppointment = [];
@@ -46,6 +49,16 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
     callApiAppointment();
     callApiSetting();
     _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
+  }
+
+  void _feedback(String message) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _safe(String? value, {String fallback = "-"}) {
@@ -258,6 +271,12 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
   }
 
   Widget _buildEmptyState() {
+    if (_loadFailed || !_hasLoaded) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(loading ? 'Loading appointments…' : 'Unable to load appointments.'),
+        if (!loading) TextButton(onPressed: callApiAppointment, child: const Text('Try again')),
+      ]));
+    }
     return Center(
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 60),
@@ -286,6 +305,9 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
   }
 
   void _showCancelDialog(int appointmentIndex, {required String tabType}) {
+    if (_cancelling) return;
+    final appointmentId = tabType == 'pending' ? pendingAppointment[appointmentIndex].id : upcomingAppointment[appointmentIndex].id;
+    value = 0;
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -369,11 +391,8 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             ),
                             onPressed: () {
-                              if (tabType == 'pending') {
-                                id = pendingAppointment[appointmentIndex].id;
-                              } else {
-                                id = upcomingAppointment[appointmentIndex].id;
-                              }
+                              if (_cancelling) return;
+                              id = appointmentId;
                               reason = cancelReason.isNotEmpty && value < cancelReason.length ? cancelReason[value] : "";
                               Navigator.pop(dialogContext);
                               callApiCancelAppointment();
@@ -599,7 +618,7 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
     double width = MediaQuery.of(context).size.width;
     double height = MediaQuery.of(context).size.height;
     return ModalProgressHUD(
-      inAsyncCall: loading,
+      inAsyncCall: loading || _cancelling,
       opacity: 0.5,
       progressIndicator: SpinKitFadingCircle(color: Palette.blue, size: 50.0),
       child: DefaultTabController(
@@ -658,14 +677,17 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
                   ),
                 ];
               },
-              body: TabBarView(
+              body: Column(children: [
+                if (_loadFailed && _hasLoaded) MaterialBanner(content: const Text('Could not refresh appointments. Previously loaded information may be outdated.'), actions: [TextButton(onPressed: callApiAppointment, child: const Text('Retry'))]),
+                Expanded(child: TabBarView(
                 controller: _tabController,
                 children: <Widget>[
                   _buildPendingTab(width, height),
                   _buildUpcomingTab(width, height),
                   _buildPastTab(width, height),
                 ],
-              ),
+              )),
+              ]),
             ),
           ),
         ),
@@ -674,75 +696,70 @@ class _AppointmentState extends State<Appointment> with SingleTickerProviderStat
   }
 
   Future<BaseModel<Appointments>> callApiAppointment() async {
-    Appointments response;
-    setState(() { loading = true; });
+    if (!mounted || loading) return BaseModel<Appointments>();
+    setState(() { loading = true; _loadFailed = false; });
     try {
-      response = await RestClient(RetroApi().dioData()).appointmentsRequest();
-      if (response.success == true) {
-        setState(() {
-          pendingAppointment.clear();
-          upcomingAppointment.clear();
-          pastAppointment.clear();
-          loading = false;
-          upcomingAppointment.addAll(response.data!.upcomingAppointment!);
-          pastAppointment.addAll(response.data!.pastAppointment!);
-          pendingAppointment.addAll(response.data!.pendingAppointment!);
-        });
+      final response = await RestClient(RetroApi().dioData()).appointmentsRequest();
+      if (!mounted) return BaseModel<Appointments>()..data = response;
+      final data = response.data;
+      if (response.success != true || data == null ||
+          data.upcomingAppointment == null || data.pastAppointment == null ||
+          data.pendingAppointment == null) {
+        setState(() => _loadFailed = true);
       } else {
-        setState(() { loading = false; });
+        setState(() {
+          upcomingAppointment = List.of(data.upcomingAppointment!);
+          pastAppointment = List.of(data.pastAppointment!);
+          pendingAppointment = List.of(data.pendingAppointment!);
+          _hasLoaded = true;
+        });
       }
-    } catch (error, stacktrace) {
-      setState(() { loading = false; });
-      print("Exception occur: $error stackTrace: $stacktrace");
-      return BaseModel()..setException(ServerError.withError(error: error));
+      return BaseModel<Appointments>()..data = response;
+    } catch (error) {
+      if (mounted) setState(() => _loadFailed = true);
+      return BaseModel<Appointments>()..setException(ServerError.withError(error: error));
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-    return BaseModel()..data = response;
   }
 
   Future<BaseModel<CommonResponse>> callApiCancelAppointment() async {
-    CommonResponse response;
-    Map<String, dynamic> body = {
-      "appointment_id": id,
-      "cancel_reason": reason,
-    };
+    if (!mounted || _cancelling || id == null) return BaseModel<CommonResponse>();
+    setState(() => _cancelling = true);
+    final body = <String, dynamic>{"appointment_id": id, "cancel_reason": reason};
     try {
-      response = await RestClient(RetroApi().dioData()).cancelAppointmentRequest(body);
+      final response = await RestClient(RetroApi().dioData()).cancelAppointmentRequest(body);
+      if (!mounted) return BaseModel<CommonResponse>()..data = response;
       if (response.success == true) {
-        setState(() {
-          Fluttertoast.showToast(msg: '${response.msg}', toastLength: Toast.LENGTH_SHORT, gravity: ToastGravity.BOTTOM);
-          pendingAppointment.clear();
-          upcomingAppointment.clear();
-          pastAppointment.clear();
-          callApiAppointment();
-        });
+        _feedback('Appointment cancelled.');
+        await callApiAppointment();
       } else {
-        Fluttertoast.showToast(msg: '${response.msg}', toastLength: Toast.LENGTH_SHORT, gravity: ToastGravity.BOTTOM);
+        _feedback('Cancellation was not confirmed. Refresh your appointments before trying again.');
       }
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
-      return BaseModel()..setException(ServerError.withError(error: error));
+      return BaseModel<CommonResponse>()..data = response;
+    } catch (error) {
+      _feedback('Cancellation could not be confirmed. Refresh your appointments before trying again.');
+      return BaseModel<CommonResponse>()..setException(ServerError.withError(error: error));
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
     }
-    return BaseModel()..data = response;
   }
 
   Future<BaseModel<DetailSetting>> callApiSetting() async {
-    DetailSetting response;
-    setState(() { loading = true; });
     try {
-      response = await RestClient(RetroApi().dioData()).settingRequest();
-      loading = false;
-      if (response.success == true) {
-        var convertCancelReason = json.decode(response.data!.cancelReason!);
-        cancelReason.clear();
-        for (int i = 0; i < convertCancelReason.length; i++) {
-          cancelReason.add(convertCancelReason[i]);
+      final response = await RestClient(RetroApi().dioData()).settingRequest();
+      final raw = response.data?.cancelReason;
+      if (mounted && response.success == true && raw != null) {
+        final decoded = json.decode(raw);
+        if (decoded is List) {
+          setState(() {
+            cancelReason = decoded.whereType<String>().toList();
+          });
         }
       }
-    } catch (error, stacktrace) {
-      setState(() { loading = false; });
-      print("Exception occur: $error stackTrace: $stacktrace");
-      return BaseModel()..setException(ServerError.withError(error: error));
+      return BaseModel<DetailSetting>()..data = response;
+    } catch (error) {
+      return BaseModel<DetailSetting>()..setException(ServerError.withError(error: error));
     }
-    return BaseModel()..data = response;
   }
 }
