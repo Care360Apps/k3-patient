@@ -76,18 +76,18 @@ class _LaboratoryState extends State<Laboratory> {
     userAddress = SharedPreferenceHelper.getString('Address');
   }
 
-  double? _parseCoordinate(String? value) {
+  double? _parseCoordinate(String? value, {double limit = 180}) {
     if (value == null || value.isEmpty || value == "N_A") {
       return null;
     }
     final coordinate = double.tryParse(value);
-    return coordinate != null && coordinate.isFinite ? coordinate : null;
+    return coordinate != null && coordinate.isFinite && coordinate.abs() <= limit ? coordinate : null;
   }
 
   double? _distanceKm(LabData lab) {
-    final lat1 = _parseCoordinate(userLat);
+    final lat1 = _parseCoordinate(userLat, limit: 90);
     final lng1 = _parseCoordinate(userLng);
-    final lat2 = _parseCoordinate(lab.lat);
+    final lat2 = _parseCoordinate(lab.lat, limit: 90);
     final lng2 = _parseCoordinate(lab.lng);
     if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) {
       return null;
@@ -96,7 +96,8 @@ class _LaboratoryState extends State<Laboratory> {
     final dLat = _toRadians(lat2 - lat1);
     final dLng = _toRadians(lng2 - lng1);
     final a = sin(dLat / 2) * sin(dLat / 2) + cos(_toRadians(lat1)) * cos(_toRadians(lat2)) * sin(dLng / 2) * sin(dLng / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    final bounded = a.clamp(0.0, 1.0);
+    final c = 2 * atan2(sqrt(bounded), sqrt(1 - bounded));
     return earthRadiusKm * c;
   }
 
@@ -121,7 +122,7 @@ class _LaboratoryState extends State<Laboratory> {
       return distance != null && distance <= nearMeRadiusKm;
     }).toList();
 
-    final userHasLocation = _parseCoordinate(userLat) != null && _parseCoordinate(userLng) != null;
+    final userHasLocation = _parseCoordinate(userLat, limit: 90) != null && _parseCoordinate(userLng) != null;
     if (userHasLocation) {
       results.sort((a, b) {
         final distanceA = _distanceKm(a) ?? double.infinity;
@@ -323,9 +324,12 @@ class _LaboratoryState extends State<Laboratory> {
                               icon: Icons.near_me,
                               onTap: () {
                                 setState(() {
-                                  nearMeOnly = true;
+                                  nearMeOnly = _parseCoordinate(userLat, limit: 90) != null && _parseCoordinate(userLng) != null;
                                 });
                                 _applyFilters();
+                                if (!nearMeOnly) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Choose a valid location to find nearby laboratories.')));
+                                }
                               },
                             ),
                           ],
@@ -1672,18 +1676,18 @@ class _HospitalScreenState extends State<HospitalScreen> {
     userAddress = SharedPreferenceHelper.getString('Address');
   }
 
-  double? _parseCoordinate(String? value) {
+  double? _parseCoordinate(String? value, {double limit = 180}) {
     if (value == null || value.isEmpty || value == "N_A") {
       return null;
     }
     final coordinate = double.tryParse(value);
-    return coordinate != null && coordinate.isFinite ? coordinate : null;
+    return coordinate != null && coordinate.isFinite && coordinate.abs() <= limit ? coordinate : null;
   }
 
   double? _distanceKm(HospitalData hospital) {
-    final lat1 = _parseCoordinate(userLat);
+    final lat1 = _parseCoordinate(userLat, limit: 90);
     final lng1 = _parseCoordinate(userLng);
-    final lat2 = _parseCoordinate(hospital.lat);
+    final lat2 = _parseCoordinate(hospital.lat, limit: 90);
     final lng2 = _parseCoordinate(hospital.lng);
     if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) {
       return null;
@@ -1692,7 +1696,8 @@ class _HospitalScreenState extends State<HospitalScreen> {
     final dLat = _toRadians(lat2 - lat1);
     final dLng = _toRadians(lng2 - lng1);
     final a = sin(dLat / 2) * sin(dLat / 2) + cos(_toRadians(lat1)) * cos(_toRadians(lat2)) * sin(dLng / 2) * sin(dLng / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    final bounded = a.clamp(0.0, 1.0);
+    final c = 2 * atan2(sqrt(bounded), sqrt(1 - bounded));
     return earthRadiusKm * c;
   }
 
@@ -1717,7 +1722,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
       return distance != null && distance <= nearMeRadiusKm;
     }).toList();
 
-    final userHasLocation = _parseCoordinate(userLat) != null && _parseCoordinate(userLng) != null;
+    final userHasLocation = _parseCoordinate(userLat, limit: 90) != null && _parseCoordinate(userLng) != null;
     if (userHasLocation) {
       results.sort((a, b) {
         final distanceA = _distanceKm(a) ?? double.infinity;
@@ -1919,7 +1924,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
                               icon: Icons.near_me,
                               onTap: () {
                                 setState(() {
-                                  nearMeOnly = _parseCoordinate(userLat) != null && _parseCoordinate(userLng) != null;
+                                  nearMeOnly = _parseCoordinate(userLat, limit: 90) != null && _parseCoordinate(userLng) != null;
                                 });
                                 if (!nearMeOnly) {
                                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select a location to find nearby hospitals.')));
@@ -2098,7 +2103,7 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen> {
     return BaseModel()..data = response;
   }
 
-  double? _parseCoordinate(String? value) {
+  double? _parseCoordinate(String? value, {double limit = 180}) {
     if (value == null || value.isEmpty || value == "N_A") {
       return null;
     }
