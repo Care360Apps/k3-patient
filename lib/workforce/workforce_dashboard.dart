@@ -49,6 +49,7 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
   bool _consentToList = false;
   bool _loading = true;
   bool _saving = false;
+  bool _signingOut = false;
   String? _error;
   String? _message;
   String _verification = 'pending';
@@ -140,7 +141,7 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
   }
 
   Future<void> _save() async {
-    if (_saving || _loading || _form.currentState?.validate() != true) return;
+    if (_signingOut || _saving || _loading || _form.currentState?.validate() != true) return;
     setState(() {
       _saving = true;
       _message = null;
@@ -167,11 +168,10 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
           'state': _stateName.text.trim(),
         });
       }
-      if (mounted)
-        setState(
-          () => _message =
-              'Saved. Your details remain under independent verification.',
-        );
+      if (mounted) {
+        await _load();
+        if (mounted) setState(() => _message = 'Saved. Your details remain under independent verification.');
+      }
     } catch (error) {
       if (mounted)
         setState(
@@ -213,6 +213,11 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
   }
 
   Future<void> _signOut() async {
+    if (_signingOut || _saving || _loading) return;
+    setState(() {
+      _signingOut = true;
+      _results = const [];
+    });
     try {
       await widget.api.logout();
     } catch (_) {}
@@ -229,6 +234,7 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: controller,
+        enabled: !_saving && !_signingOut,
         textCapitalization: TextCapitalization.words,
         decoration: InputDecoration(labelText: label),
         validator: (value) {
@@ -260,7 +266,7 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
               ),
             )
             .toList(),
-        onChanged: onChange,
+        onChanged: _saving || _signingOut ? null : onChange,
       ),
     );
   }
@@ -285,7 +291,7 @@ class _WorkforceDashboardScreenState extends State<WorkforceDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.logout_outlined),
             tooltip: 'Sign out of Workforce',
-            onPressed: _saving || _loading ? null : _signOut,
+            onPressed: _saving || _loading || _signingOut ? null : _signOut,
           ),
         ],
       ),
