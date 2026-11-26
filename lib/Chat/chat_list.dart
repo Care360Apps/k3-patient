@@ -25,6 +25,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
   late HomeProvider homeProvider;
   late ChatProvider chatProvider;
   String currentUserId = '';
+  bool _connecting = true;
+  Stream<QuerySnapshot>? _directory;
 
   @override
   void initState() {
@@ -33,8 +35,31 @@ class _ChatListScreenState extends State<ChatListScreen> {
     homeProvider = context.read<HomeProvider>();
     chatProvider = context.read<ChatProvider>();
 
-    final uid = authProvider.getUserFirebaseId();
-    if (uid != null && uid.isNotEmpty) currentUserId = uid;
+    _connect();
+  }
+
+  Future<void> _connect() async {
+    if (!mounted) return;
+    setState(() {
+      _connecting = true;
+      currentUserId = '';
+      _directory = null;
+    });
+    try {
+      final ok = await authProvider.ensureFirebaseUser().timeout(const Duration(seconds: 30));
+      final uid = authProvider.getUserFirebaseId();
+      if (!mounted) return;
+      if (ok && uid != null && uid.isNotEmpty) {
+        setState(() {
+          currentUserId = uid;
+          _directory = homeProvider.getDoctorsAndProviders(_limit);
+        });
+      }
+    } catch (_) {
+      // Show a retryable error without exposing authentication details.
+    } finally {
+      if (mounted) setState(() => _connecting = false);
+    }
   }
 
   String _computeGroupChatId(String peerId) {
@@ -46,7 +71,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   String _formatTime(BuildContext context, String? timestamp) {
     if (timestamp == null || timestamp.isEmpty) return '';
-    final dt = DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp));
+    final millis = int.tryParse(timestamp);
+    if (millis == null || millis < 0 || millis > 8640000000000000) return '';
+    final dt = DateTime.fromMillisecondsSinceEpoch(millis);
     final now = DateTime.now();
     final diff = now.difference(dt);
     if (diff.inDays == 0) return DateFormat('h:mm a').format(dt);
@@ -88,9 +115,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: homeProvider.getDoctorsAndProviders(_limit),
+      body: _connecting
+          ? const Center(child: CircularProgressIndicator(color: Palette.blue))
+          : currentUserId.isEmpty
+              ? _retryState()
+              : StreamBuilder<QuerySnapshot>(
+        stream: _directory,
         builder: (context, snapshot) {
+          if (snapshot.hasError) return _retryState();
           if (snapshot.hasData) {
             final docs = snapshot.data!.docs
                 .where((d) => d.id != currentUserId)
@@ -108,6 +140,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
         },
       ),
     );
+  }
+
+  Widget _retryState() {
+    return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Text('Unable to load chats.'),
+      TextButton(onPressed: _connect, child: const Text('Retry')),
+    ]));
   }
 
   Widget _buildEmptyState() {
@@ -159,6 +198,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
+            if (currentUserId.isEmpty || userChat.id.isEmpty || userChat.id == currentUserId) return;
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -183,11 +223,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 : StreamBuilder<DocumentSnapshot>(
                     stream: chatProvider.getConversationStream(groupChatId),
                     builder: (ctx, convSnap) {
-                      final data = convSnap.data?.data() as Map<String, dynamic>?;
-                      final lastMsg = data?['lastMessage'] as String? ?? '';
-                      final lastTime = data?['lastTimestamp'] as String? ?? '';
-                      final lastBy = data?['lastBy'] as String? ?? '';
-                      final unread = (data?['unread_$currentUserId'] ?? 0) as int;
+                      final raw = convSnap.data?.data();
+                      final data = raw is Map<String, dynamic> ? raw : null;
+                      final lastMsg = data?['lastMessage'] is String ? data!['lastMessage'] as String : '';
+                      final lastTime = data?['lastTimestamp']?.toString() ?? '';
+                      final lastBy = data?['lastBy']?.toString() ?? '';
+                      final unread = int.tryParse(data?['unread_$currentUserId']?.toString() ?? '') ?? 0;
 
                       return Row(
                         children: [
