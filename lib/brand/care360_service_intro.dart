@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'care360_navigation_copy.dart';
+
 /// Reusable visual heading for existing Care360 Patient service directories.
 /// The component is intentionally presentation-only; no network requests,
 /// geolocation permissions or private medical details are read here.
@@ -9,22 +11,29 @@ class Care360ServiceIntro extends StatelessWidget {
     required this.title,
     required this.description,
     required this.icon,
+    this.titleKey,
+    this.descriptionKey,
   });
 
   final String title;
   final String description;
   final IconData icon;
+  final String? titleKey;
+  final String? descriptionKey;
 
   static const navy = Color(0xFF123E4D);
   static const teal = Color(0xFF087D76);
 
   @override
   Widget build(BuildContext context) {
+    final localizedTitle = care360NavigationText(context, titleKey ?? '', title);
+    final localizedDescription = care360NavigationText(
+      context, descriptionKey ?? '', description);
     return Padding(
       padding: const EdgeInsets.fromLTRB(15, 10, 15, 7),
       child: Semantics(
         container: true,
-        label: '$title. $description',
+        label: '$localizedTitle. $localizedDescription',
         child: ExcludeSemantics(
           child: Container(
             key: const Key('care360-service-intro'),
@@ -48,7 +57,7 @@ class Care360ServiceIntro extends StatelessWidget {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
+                  Text(localizedTitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -58,7 +67,7 @@ class Care360ServiceIntro extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(description,
+                  Text(localizedDescription,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

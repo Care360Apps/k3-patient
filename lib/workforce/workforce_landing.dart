@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../brand/care360_navigation_copy.dart';
 
 import 'workforce_access_screen.dart';
 import 'workforce_api.dart';
@@ -28,25 +29,28 @@ class Care360WorkforceHomeTile extends StatelessWidget {
           key: const Key('home-workforce'),
           onTap: onTap,
           borderRadius: BorderRadius.circular(18),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
             child: Row(children: [
-              Icon(Icons.work_outline_rounded, color: workforceTeal, size: 30),
-              SizedBox(width: 12),
+              const Icon(Icons.work_outline_rounded, color: workforceTeal, size: 30),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Workforce',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800,
+                    Text(care360NavigationText(context,
+                        'care360_workforce_title', 'Workforce'),
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800,
                             color: workforceNavy)),
-                    SizedBox(height: 4),
-                    Text('Verified healthcare talent and job opportunities',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF46636A))),
+                    const SizedBox(height: 4),
+                    Text(care360NavigationText(context,
+                        'care360_workforce_subtitle',
+                        'Healthcare careers and hiring — pilot preview'),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF46636A))),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios_rounded,
+              const Icon(Icons.arrow_forward_ios_rounded,
                   color: workforceTeal, size: 17),
             ]),
           ),
