@@ -32,6 +32,7 @@ class AppointmentDetailScreen extends StatefulWidget {
 
 class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with SingleTickerProviderStateMixin {
   bool _loading = true;
+  bool _requestInFlight = false;
   AppointmentDetailData? _data;
   String? _error;
   late TabController _tabController;
@@ -50,12 +51,16 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
   }
 
   Future<void> _loadDetail() async {
+    if (!mounted || _requestInFlight) return;
+    _requestInFlight = true;
     setState(() {
       _loading = true;
       _error = null;
+      _data = null;
     });
     try {
-      final response = await RestClient(RetroApi().dioData()).appointmentDetailsRequest(widget.appointmentId);
+      final response = await RestClient(RetroApi().dioData()).appointmentDetailsRequest(widget.appointmentId).timeout(const Duration(seconds: 30));
+      if (!mounted) return;
       if (response.success == true && response.data != null) {
         setState(() {
           _data = response.data;
@@ -63,15 +68,18 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
         });
       } else {
         setState(() {
-          _error = response.msg ?? 'Failed to load';
+          _error = 'Appointment details unavailable. Please retry.';
           _loading = false;
         });
       }
-    } catch (e, st) {
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = 'Unable to load appointment details. Please retry.';
         _loading = false;
       });
+    } finally {
+      _requestInFlight = false;
     }
   }
 
@@ -190,7 +198,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
               Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Palette.dark_blue)),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _loadDetail,
+                onPressed: _loading ? null : _loadDetail,
                 style: ElevatedButton.styleFrom(backgroundColor: Palette.blue, foregroundColor: Palette.white),
                 child: const Text('Retry'),
               ),
@@ -236,8 +244,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
     final upper = (status ?? '').toUpperCase();
     if (upper == 'PENDING') return Palette.dark_blue.withOpacity(0.7);
     if (upper == 'CANCEL' || upper == 'CANCELED') return Palette.red;
-    if (upper == 'COMPLETE' || upper == 'COMPLETED') return Palette.green;
-    return Palette.green;
+    if (upper == 'COMPLETE' || upper == 'COMPLETED' || upper == 'APPROVE' || upper == 'APPROVED') return Palette.green;
+    return Palette.grey;
   }
 
   String _statusLabel(String? status) {
