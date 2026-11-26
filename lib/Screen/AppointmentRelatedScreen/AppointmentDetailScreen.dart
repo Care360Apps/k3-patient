@@ -1,3 +1,6 @@
+import 'package:doctro_patient/VideoCall/videocall.dart';
+import 'package:doctro_patient/security/consultation_session_client.dart';
+import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:doctro_patient/Chat/chat.dart';
 import 'package:doctro_patient/api/retrofit_Api.dart';
@@ -79,6 +82,29 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
       });
     } finally {
       _requestInFlight = false;
+    }
+  }
+
+  bool _openingConsultation = false;
+
+  Future<void> _openSecureConsultation() async {
+    final appointment = widget.appointmentId;
+    if (_openingConsultation || !mounted || appointment <= 0) return;
+    setState(() => _openingConsultation = true);
+    final transport = http.Client();
+    try {
+      final session = ConsultationSessionClient(
+        apiBase: Uri.parse(Apis.baseUrl),
+        readToken: () async => SharedPreferenceHelper.getSecureString(Preferences.auth_token),
+        client: transport,
+        expectedUid: 1,
+      );
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => VideoCall(doctorId: _data?.doctorId, flag: 'InComming', appointmentId: appointment, sessionClient: session),
+      ));
+    } finally {
+      transport.close();
+      if (mounted) setState(() => _openingConsultation = false);
     }
   }
 
@@ -212,6 +238,13 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
           _headerCard(doctor, canChat),
           const SizedBox(height: 14),
           _summaryCard(),
+          if (const bool.fromEnvironment('K3_SECURE_CONSULTATION_PILOT') &&
+              _data!.visitType == 'video_call' &&
+              ['approve', 'approved'].contains(_data!.appointmentStatus?.toLowerCase())) ...[
+            const SizedBox(height: 12),
+            ElevatedButton.icon(onPressed: _openingConsultation ? null : _openSecureConsultation,
+              icon: const Icon(Icons.videocam), label: const Text('Join secure consultation')),
+          ],
           const SizedBox(height: 18),
           _tabsBar(),
           const SizedBox(height: 16),
