@@ -14,7 +14,6 @@ import 'package:doctro_patient/const/prefConstatnt.dart';
 import 'package:doctro_patient/const/preference.dart';
 import 'package:doctro_patient/localization/localization_constant.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -53,6 +52,7 @@ class ChatState extends State<Chat> {
   int _limit = 20;
   final int _limitIncrement = 20;
   bool isLoading = false;
+  StreamSubscription<RemoteMessage>? _notificationSubscription;
   bool _authReady = false;
   bool _authFailed = false;
 
@@ -71,7 +71,6 @@ class ChatState extends State<Chat> {
   @override
   void initState() {
     super.initState();
-    print("doctor id: " + widget.doctorId.toString());
     homeProvider = Provider.of<HomeProvider>(context, listen: false);
     authProvider = Provider.of<AuthProvider>(context, listen: false);
     chatProvider = context.read<ChatProvider>();
@@ -82,19 +81,22 @@ class ChatState extends State<Chat> {
   }
 
   Future<void> _initFirebaseUser() async {
-    final success = await authProvider.ensureFirebaseUser();
-    final id = authProvider.getUserFirebaseId();
-    if (kDebugMode) {
-      print('Chat._initFirebaseUser: success=$success, uid=$id');
+    bool success = false;
+    String? id;
+    try {
+      success = await authProvider.ensureFirebaseUser().timeout(const Duration(seconds: 30));
+      id = authProvider.getUserFirebaseId();
+    } catch (_) {
+      success = false;
     }
-    if (mounted) {
-      setState(() {
-        if (id != null && id.isNotEmpty) {
-          currentUserId = id;
-        }
-        _authReady = true;
-        _authFailed = !success;
-      });
+    if (!mounted) return;
+    setState(() {
+      currentUserId = success ? (id ?? '') : '';
+      _authReady = true;
+      _authFailed = !success || currentUserId.isEmpty;
+    });
+    if (!_authFailed) {
+      unawaited(_getTokenSafely());
     }
   }
 
@@ -146,15 +148,18 @@ class ChatState extends State<Chat> {
 
   @override
   void dispose() {
-    super.dispose();
+    _notificationSubscription?.cancel();
+    listScrollController.dispose();
+    searchBarTec.dispose();
     btnClearController.close();
+    super.dispose();
   }
 
   void registerNotification() {
     firebaseMessaging.requestPermission();
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('onMessage: $message');
+    _notificationSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (!mounted || !_authReady || _authFailed) return;
       if (message.notification != null) {
         showNotification(message.notification!);
       }
@@ -205,7 +210,6 @@ class ChatState extends State<Chat> {
     DarwinNotificationDetails iOSPlatformChannelSpecifics = const DarwinNotificationDetails();
     NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics, iOS: iOSPlatformChannelSpecifics);
 
-    print(remoteNotification);
 
     await flutterLocalNotificationsPlugin.show(
       0,
@@ -218,27 +222,6 @@ class ChatState extends State<Chat> {
 
   @override
   Widget build(BuildContext context) {
-    // When we have a fallback peer (e.g. from appointment detail), open chat immediately
-    // so we don't wait on Firestore and get stuck loading.
-    final fallbackId = widget.peerIdFallback?.trim();
-    if (fallbackId != null && fallbackId.isNotEmpty) {
-      if (kDebugMode) {
-        print('Chat: using fallback peerId=$fallbackId for doctorId=${widget.doctorId}');
-      }
-      if (Utilities.isKeyboardShowing()) {
-        Utilities.closeKeyboard(context);
-      }
-      return Scaffold(
-        body: ChatPage(
-          peerId: fallbackId,
-          peerAvatar: widget.peerAvatarFallback ?? '',
-          peerNickname: widget.peerNicknameFallback ?? 'Provider',
-          doctorToken: '',
-          where: widget.where,
-        ),
-      );
-    }
-
     if (!_authReady) {
       return Scaffold(
         backgroundColor: const Color(0xFFF5F7FA),
@@ -309,21 +292,11 @@ class ChatState extends State<Chat> {
         stream: homeProvider.getStreamFireStore(FirestoreConstants.pathUserCollection, _limit, widget.doctorId.toString()),
         builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (snapshot.hasError) {
-            if (kDebugMode) {
-              print('Chat Firestore error for doctorId=${widget.doctorId}: ${snapshot.error}');
-            }
             return _buildErrorScreen(
               getTranslated(context, AppString.something_went_wrong_toast).toString(),
             );
           }
           if (snapshot.hasData) {
-            if (kDebugMode) {
-              final count = snapshot.data?.docs.length ?? 0;
-              print('Chat Firestore users for doctorId=${widget.doctorId}: $count docs');
-              for (final d in snapshot.data?.docs ?? []) {
-                print('  -> doc.id=${d.id}');
-              }
-            }
             if ((snapshot.data?.docs.length ?? 0) > 0) {
               final docs = snapshot.data!.docs;
               final did = widget.doctorId.toString();
@@ -346,9 +319,6 @@ class ChatState extends State<Chat> {
                 where: widget.where,
               );
             } else {
-              if (kDebugMode) {
-                print('Chat: no Firestore user found for doctorId=${widget.doctorId}');
-              }
               return _buildErrorScreen('Doctor not available for chat yet.');
             }
           }
