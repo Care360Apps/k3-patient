@@ -35,7 +35,9 @@ class _Care360GlobalLanguageSwitchState
     final navigator = widget.rootNavigatorKey?.currentState;
     // The MaterialApp builder context is a sibling of Navigator, not a
     // descendant of the overlay. Fail safely if Navigator isn't ready.
-    final overlayContext = navigator?.overlay?.context;
+    final overlayContext = Navigator.maybeOf(context) != null
+        ? context
+        : navigator?.overlay?.context;
     if (navigator == null || !navigator.mounted || overlayContext == null) {
       return;
     }
@@ -51,10 +53,11 @@ class _Care360GlobalLanguageSwitchState
       final selected = await showModalBottomSheet<String>(
         context: overlayContext,
         useRootNavigator: true,
-        isScrollControlled: false,
+        isScrollControlled: true,
         builder: (sheetContext) {
           sheetRoute = ModalRoute.of(sheetContext);
           return SafeArea(
+          child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -78,6 +81,7 @@ class _Care360GlobalLanguageSwitchState
                   onTap: () => Navigator.of(sheetContext).pop(entry.key),
                 ),
             ],
+          ),
           ),
         );
         },
