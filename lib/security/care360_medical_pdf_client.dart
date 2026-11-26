@@ -62,6 +62,13 @@ class Care360MedicalPdfClient {
       throw const FormatException('Invalid prescription link.');
     }
     _requireApprovedOrigin(uri);
+    if (isPrivate) {
+      final supplied = Uri.parse(source);
+      _requireApprovedOrigin(supplied);
+      if (supplied.path != uri.path || supplied.hasQuery || supplied.hasFragment) {
+        throw const FormatException('Prescription appointment mismatch.');
+      }
+    }
 
     if (!isPrivate) {
       // Temporary compatibility with records not yet migrated from legacy
@@ -74,7 +81,12 @@ class Care360MedicalPdfClient {
       }
     }
 
-    final token = isPrivate ? (await readToken().timeout(networkTimeout))?.trim() : null;
+    String? token;
+    try {
+      token = isPrivate ? (await readToken().timeout(networkTimeout))?.trim() : null;
+    } on TimeoutException {
+      throw const MedicalPdfException('Prescription access timed out. Please retry.');
+    }
     if (isPrivate && (token == null ||
         token.isEmpty ||
         token == 'N_A' ||
@@ -90,7 +102,12 @@ class Care360MedicalPdfClient {
       request.headers['Authorization'] = 'Bearer $token';
     }
 
-    final response = await _client.send(request).timeout(networkTimeout);
+    late final http.StreamedResponse response;
+    try {
+      response = await _client.send(request).timeout(networkTimeout);
+    } on TimeoutException {
+      throw const MedicalPdfException('Prescription connection timed out. Please retry.');
+    }
     final iterator = StreamIterator<List<int>>(response.stream);
     final deadline = Stopwatch()..start();
     try {
@@ -98,9 +115,12 @@ class Care360MedicalPdfClient {
         throw const MedicalPdfException(
             'Prescription unavailable. Please refresh or contact support.');
       }
-      final type = response.headers['content-type']?.toLowerCase() ?? '';
-      if (!(type.startsWith('application/pdf') ||
-          type.startsWith('application/octet-stream'))) {
+      final length = response.contentLength;
+      if (length != null && length > maxPdfBytes) {
+        throw const MedicalPdfException('Prescription exceeds the file limit.');
+      }
+      final type = (response.headers['content-type'] ?? '').split(';').first.trim().toLowerCase();
+      if (type != 'application/pdf' && type != 'application/octet-stream') {
         throw const MedicalPdfException('Unexpected document response.');
       }
 

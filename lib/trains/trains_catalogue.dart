@@ -318,7 +318,7 @@ class CourseCover extends StatelessWidget {
     final uri = Uri.tryParse(url ?? '');
     return AspectRatio(
       aspectRatio: 16 / 9,
-      child: uri?.scheme == 'https'
+      child: uri != null && uri.scheme == 'https' && uri.host.isNotEmpty && uri.userInfo.isEmpty
           ? CachedNetworkImage(
               imageUrl: url!,
               fit: BoxFit.cover,
@@ -330,21 +330,30 @@ class CourseCover extends StatelessWidget {
   }
 }
 
-class TrainsCourseDetail extends StatelessWidget {
+class TrainsCourseDetail extends StatefulWidget {
   const TrainsCourseDetail({super.key, required this.course, this.opener});
   final CourseData course;
   final CourseOpener? opener;
+  @override
+  State<TrainsCourseDetail> createState() => _TrainsCourseDetailState();
+}
+
+class _TrainsCourseDetailState extends State<TrainsCourseDetail> {
+  CourseData get course => widget.course;
+  bool _opening = false;
   Future<void> _open(BuildContext context) async {
     final uri = course.applicationUri;
-    if (uri == null) return;
+    if (uri == null || _opening) return;
+    setState(() => _opening = true);
     bool opened;
     try {
       opened =
-          await (opener?.call(uri) ??
+          await (widget.opener?.call(uri) ??
               launchUrl(uri, mode: LaunchMode.externalApplication));
     } catch (_) {
       opened = false;
     }
+    if (mounted) setState(() => _opening = false);
     if (!opened && context.mounted)
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -416,7 +425,7 @@ class TrainsCourseDetail extends StatelessWidget {
               const SizedBox(height: 20),
               FilledButton.icon(
                 key: const Key('trains-apply'),
-                onPressed: course.applicationUri == null
+                onPressed: _opening || course.applicationUri == null
                     ? null
                     : () => _open(context),
                 icon: const Icon(Icons.open_in_new),
