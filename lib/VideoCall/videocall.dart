@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:doctro_patient/security/consultation_session_client.dart';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +28,10 @@ class VideoCall extends StatefulWidget {
   final int? doctorId;
   final String? flag;
 
-  VideoCall({this.doctorId, this.flag});
+  final int? appointmentId;
+  final ConsultationSessionClient? sessionClient;
+
+  VideoCall({this.doctorId, this.flag, this.appointmentId, this.sessionClient});
 
   @override
   _VideoCallState createState() => _VideoCallState();
@@ -52,9 +56,10 @@ class _VideoCallState extends State<VideoCall> {
 
   @override
   void initState() {
-    debugPrint("Doctor ID : ${widget.doctorId}\tFlag : ${widget.flag}");
     super.initState();
-    if (widget.flag == "InComming") {
+    if (widget.appointmentId != null || widget.sessionClient != null) {
+      unawaited(_startAppointmentSession());
+    } else if (widget.flag == "InComming") {
       callApiUserProfile();
     } else if (widget.flag == "Cut") {
       callApiUserProfile();
@@ -133,6 +138,148 @@ class _VideoCallState extends State<VideoCall> {
   bool _released = false;
   bool _handledLeave = false;
   Timer? _leaveTimeoutTimer;
+  Timer? _renewalTimer;
+  ConsultationCredentials? _credentials;
+  bool _renewing = false;
+  Timer? _statusTimer;
+  bool _checkingStatus = false;
+  bool _statusWarningShown = false;
+
+  void _scheduleStatusCheck() {
+    _statusTimer?.cancel();
+    if (_isDisposed || _isEnding || _credentials == null) return;
+    _statusTimer = Timer(const Duration(seconds: 15), () {
+      unawaited(_checkSessionStatus());
+    });
+  }
+
+  Future<void> _checkSessionStatus() async {
+    final credentials = _credentials;
+    final client = widget.sessionClient;
+    final id = widget.appointmentId;
+    if (_checkingStatus || _isDisposed || _isEnding ||
+        credentials == null || client == null || id == null) return;
+    _checkingStatus = true;
+    try {
+      final state = await client.status(id, expectedSessionId: credentials.sessionId);
+      if (_isDisposed || _isEnding) return;
+      _statusWarningShown = false;
+      if (state != 'active') {
+        Fluttertoast.showToast(msg: 'Consultation has ended.');
+        _requestEndCall(reason: 'server_closed');
+      }
+    } on ConsultationAccessRevoked {
+      if (!_isDisposed && !_isEnding) {
+        Fluttertoast.showToast(msg: 'Consultation access ended.');
+        _requestEndCall(reason: 'access_revoked');
+      }
+    } on FormatException {
+      if (!_isDisposed && !_isEnding) {
+        _requestEndCall(reason: 'invalid_session');
+      }
+    } catch (_) {
+      if (!_isDisposed && !_isEnding && !_statusWarningShown) {
+        _statusWarningShown = true;
+        Fluttertoast.showToast(msg: 'Unable to verify consultation status. Retrying.');
+      }
+    } finally {
+      _checkingStatus = false;
+      _scheduleStatusCheck();
+    }
+  }
+
+  Future<void> _notifySessionEnd() async {
+    final client = widget.sessionClient;
+    final id = widget.appointmentId;
+    if (_credentials == null || client == null || id == null) return;
+    try {
+      await client.end(id);
+    } catch (_) {
+      if (mounted && !_isDisposed) {
+        Fluttertoast.showToast(msg: 'Call closed locally. Server confirmation unavailable.');
+      }
+    }
+  }
+
+  void _scheduleRenewal() {
+    _renewalTimer?.cancel();
+    final credentials = _credentials;
+    if (credentials == null || _isDisposed || _isEnding) return;
+    final remaining = credentials.expiresAt.difference(DateTime.now());
+    if (remaining <= Duration.zero) {
+      _requestEndCall(reason: 'credential_expiry');
+      return;
+    }
+    final delay = remaining - const Duration(seconds: 60);
+    final wait = delay > const Duration(seconds: 10) ? delay : const Duration(seconds: 10);
+    _renewalTimer = Timer(wait < remaining ? wait : remaining, () {
+      unawaited(_renewCredentials());
+    });
+  }
+
+  Future<void> _renewCredentials() async {
+    final client = widget.sessionClient;
+    final previous = _credentials;
+    final engine = _engine;
+    if (client == null || previous == null || engine == null || _renewing || _isDisposed || _isEnding) return;
+    if (!previous.expiresAt.isAfter(DateTime.now())) {
+      _requestEndCall(reason: 'credential_expiry');
+      return;
+    }
+    _renewing = true;
+    try {
+      final next = await client.credentials(widget.appointmentId!, previous: previous);
+      if (_isDisposed || _isEnding || _engine != engine) return;
+      if (!next.expiresAt.isAfter(previous.expiresAt)) {
+        _scheduleRenewal();
+        return;
+      }
+      await engine.renewToken(next.token).timeout(const Duration(seconds: 10));
+      if (_isDisposed || _isEnding) return;
+      _credentials = next;
+      _scheduleRenewal();
+    } on ConsultationAccessRevoked {
+      if (!_isDisposed && !_isEnding) _requestEndCall(reason: 'access_revoked');
+    } on FormatException {
+      if (!_isDisposed && !_isEnding) _requestEndCall(reason: 'invalid_session');
+    } catch (_) {
+      if (_isDisposed || _isEnding) return;
+      if (previous.expiresAt.difference(DateTime.now()).inSeconds <= 20) {
+        Fluttertoast.showToast(msg: 'Secure consultation expired.');
+        _requestEndCall(reason: 'credential_expiry');
+      } else {
+        _renewalTimer?.cancel();
+        _renewalTimer = Timer(const Duration(seconds: 10), () => unawaited(_renewCredentials()));
+      }
+    } finally {
+      _renewing = false;
+    }
+  }
+
+  Future<void> _startAppointmentSession() async {
+    try {
+      final id = widget.appointmentId;
+      if (id == null || id <= 0 || widget.sessionClient == null) throw StateError('Missing session configuration');
+      final credentials = await widget.sessionClient!.credentials(id);
+      if (!mounted || _isDisposed || _isEnding) return;
+      if (credentials.uid != 1) throw StateError('Invalid patient identity');
+      _credentials = credentials;
+      token = credentials.token;
+      channelName = credentials.channel;
+      appId = credentials.appId;
+      uid = credentials.uid;
+      await initAgora();
+      if (!_isDisposed && !_isEnding && _engine != null) {
+        _scheduleRenewal();
+        _scheduleStatusCheck();
+      }
+    } catch (_) {
+      if (mounted && !_isDisposed) Fluttertoast.showToast(msg: 'Secure consultation unavailable.');
+      await _releaseEngineOnce();
+    }
+  }
+
+
 
   void _safeSetState(VoidCallback fn) {
     if (!mounted || _isDisposed) return;
@@ -146,6 +293,10 @@ class _VideoCallState extends State<VideoCall> {
     final engine = _engine;
     if (engine == null) return;
 
+    _leaveTimeoutTimer?.cancel();
+    _leaveTimeoutTimer = Timer(const Duration(seconds: 10), () {
+      if (!_released) unawaited(_releaseEngineOnce());
+    });
     try {
       await engine.stopPreview();
     } catch (_) {}
@@ -174,6 +325,9 @@ class _VideoCallState extends State<VideoCall> {
   void _requestEndCall({String reason = 'user'}) {
     if (_isEnding) return;
     _isEnding = true;
+    _renewalTimer?.cancel();
+    _statusTimer?.cancel();
+    if (reason == 'user') unawaited(_notifySessionEnd());
 
     _safeSetState(() {
       _localUserJoined = false;
@@ -195,43 +349,56 @@ class _VideoCallState extends State<VideoCall> {
   }
 
   void _onSwitchCamera() {
-    _engine?.switchCamera();
+    if (!_isEnding && !_isDisposed && !mutedVideo) _engine?.switchCamera();
   }
 
   Future<void> initAgora() async {
-    await [Permission.microphone, Permission.camera].request();
+    final grants = await [Permission.microphone, Permission.camera].request();
+    if (!mounted || _isDisposed || _isEnding) return;
+    if (grants[Permission.microphone]?.isGranted != true) {
+      Fluttertoast.showToast(msg: 'Microphone permission is required.');
+      return;
+    }
+    final cameraGranted = grants[Permission.camera]?.isGranted == true;
 
     final resolvedAppId = (appId ?? '').trim();
-    if (resolvedAppId.isEmpty) {
+    if (resolvedAppId.isEmpty || (channelName ?? '').trim().isEmpty ||
+        (token ?? '').trim().isEmpty || token == 'null') {
       debugPrint('Agora init skipped: missing appId');
       return;
     }
 
     final engine = await createAgoraRtcEngine();
+    if (!mounted || _isDisposed || _isEnding) {
+      await engine.release();
+      return;
+    }
     _engine = engine;
     _leaveRequested = false;
     _released = false;
     _handledLeave = false;
     _leaveTimeoutTimer?.cancel();
-    _leaveTimeoutTimer = Timer(const Duration(seconds: 10), () {
-      if (_released) return;
-      debugPrint('Agora leave timeout reached (patient), forcing engine release.');
-      unawaited(_releaseEngineOnce());
-    });
+    _leaveTimeoutTimer = null;
 
     await engine.initialize(RtcEngineContext(appId: resolvedAppId));
+    if (_isDisposed || _isEnding || _engine != engine) return;
     await engine.enableVideo();
+    if (_isDisposed || _isEnding || _engine != engine) return;
+    if (!cameraGranted) {
+      await engine.enableLocalVideo(false);
+      mutedVideo = true;
+    }
 
     engine.registerEventHandler(
       RtcEngineEventHandler(
         onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
-          print("Local user uid:${connection.localUid} joined the channel");
+          if (_isDisposed || _isEnding) return;
           _safeSetState(() {
             _localUserJoined = true;
           });
         },
         onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
-          print("Remote user uid:$remoteUid joined the channel");
+          if (_isDisposed || _isEnding || (_credentials != null && remoteUid != 2)) return;
           DateTime now = DateTime.now();
           callTime = DateFormat('h:mm a').format(now);
           callDate = DateFormat('yyyy-MM-dd').format(now);
@@ -241,17 +408,22 @@ class _VideoCallState extends State<VideoCall> {
         },
         onUserOffline: (RtcConnection connection, int remoteUid,
             UserOfflineReasonType reason) {
-          print("Remote user uid:$remoteUid left the channel");
-          if (_isDisposed) return;
+          if (_isDisposed || _isEnding || remoteUid != _remoteUid) return;
           _safeSetState(() {
             _remoteUid = null;
           });
           Fluttertoast.showToast(msg: "Call Ended",toastLength: Toast.LENGTH_SHORT);
           _requestEndCall(reason: 'remote_offline');
         },
+        onTokenPrivilegeWillExpire: (connection, token) {
+          if (_credentials != null) unawaited(_renewCredentials());
+        },
         onLeaveChannel: (RtcConnection connection, RtcStats detail) {
           if (_handledLeave) return;
           _handledLeave = true;
+          _isEnding = true;
+          _renewalTimer?.cancel();
+          _statusTimer?.cancel();
 
           _leaveTimeoutTimer?.cancel();
           _leaveTimeoutTimer = null;
@@ -282,7 +454,8 @@ class _VideoCallState extends State<VideoCall> {
       ),
     );
 
-    await engine.startPreview();
+    if (cameraGranted) await engine.startPreview();
+    if (_isDisposed || _isEnding || _engine != engine) return;
 
     final joinChannelId = (channelName ?? '').trim();
     if (joinChannelId.isEmpty) {
@@ -293,7 +466,7 @@ class _VideoCallState extends State<VideoCall> {
 
     final joinToken = (token == null || token!.isEmpty || token!.toLowerCase() == 'null') ? '' : token!;
 
-    engine.joinChannel(
+    await engine.joinChannel(
       token: joinToken,
       channelId: joinChannelId,
       uid: uid,
@@ -306,10 +479,9 @@ class _VideoCallState extends State<VideoCall> {
     _isDisposed = true;
     _leaveTimeoutTimer?.cancel();
     _leaveTimeoutTimer = null;
-    if (!_isEnding) {
-      unawaited(_leaveChannelOnce());
-    }
-    unawaited(_releaseEngineOnce());
+    _renewalTimer?.cancel();
+    _statusTimer?.cancel();
+    unawaited(_leaveChannelOnce().whenComplete(_releaseEngineOnce));
     super.dispose();
   }
 
@@ -428,14 +600,13 @@ class _VideoCallState extends State<VideoCall> {
     };
     try {
       response = await RestClient(RetroApi().dioData()).videoCallRequest(body);
-      if (response.success == true) {
+      if (response.success == true && !_isDisposed && !_isEnding) {
         channelName = response.data!.cn;
         token = response.data!.token;
         await initAgora();
       }
-      setState(() {});
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+      _safeSetState(() {});
+    } catch (error) {
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
@@ -445,14 +616,13 @@ class _VideoCallState extends State<VideoCall> {
     UserDetail response;
     try {
       response = await RestClient(RetroApi().dioData()).userDetailRequest();
-      if(response.status == 1){
+      if(response.status == 1 && !_isDisposed && !_isEnding){
         channelName = response.channelName!;
         token = response.agoraToken;
         await initAgora();
       }
-      setState(() {});
-    } catch (error, stacktrace) {
-      print("Exception occur: $error stackTrace: $stacktrace");
+      _safeSetState(() {});
+    } catch (error) {
       return BaseModel()..setException(ServerError.withError(error: error));
     }
     return BaseModel()..data = response;
