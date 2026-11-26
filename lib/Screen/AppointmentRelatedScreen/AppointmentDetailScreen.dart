@@ -7,7 +7,6 @@ import 'package:doctro_patient/model/appointments_model.dart';
 import 'package:flutter/material.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../security/care360_medical_pdf_client.dart';
 import '../../api/apis.dart';
@@ -101,14 +100,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
     );
   }
 
-  Future<void> _openCall() async {
-    final phone = _data?.phoneNo?.trim();
-    if (phone == null || phone.isEmpty) return;
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
+
 
   String _formatDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return '-';
@@ -210,7 +202,6 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
     if (_data == null) return const SizedBox();
 
     final doctor = _data!.doctor;
-    final hasPhone = _data!.phoneNo != null && _data!.phoneNo!.trim().isNotEmpty;
     final canChat = (_data!.doctorId ?? _data!.doctor?.id) != null;
 
     return SingleChildScrollView(
@@ -218,7 +209,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _headerCard(doctor, hasPhone, canChat),
+          _headerCard(doctor, canChat),
           const SizedBox(height: 14),
           _summaryCard(),
           const SizedBox(height: 18),
@@ -256,7 +247,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
     return upper;
   }
 
-  Widget _headerCard(Doctor? doctor, bool hasPhone, bool canChat) {
+  Widget _headerCard(Doctor? doctor, bool canChat) {
     final statusUpper = (_data!.appointmentStatus ?? '').toUpperCase();
     final sColor = _statusColor(_data!.appointmentStatus);
     final sLabel = _statusLabel(_data!.appointmentStatus);
@@ -269,7 +260,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _circleButton(icon: Icons.phone_rounded, onTap: hasPhone ? _openCall : null),
+              const SizedBox(width: 44),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -364,13 +355,13 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  visitType == 'home_visit' ? Icons.home_rounded : Icons.videocam_rounded,
+                  visitType == 'home_visit' ? Icons.home_rounded : visitType == 'video_call' ? Icons.videocam_rounded : Icons.medical_services_outlined,
                   size: 16,
                   color: Palette.blue,
                 ),
                 SizedBox(width: 6),
                 Text(
-                  visitType == 'home_visit' ? 'Home Visit' : 'Video Call',
+                  visitType == 'home_visit' ? 'Home Visit' : visitType == 'video_call' ? 'Video Call' : visitType.replaceAll('_', ' '),
                   style: TextStyle(fontSize: 12, color: Palette.blue, fontWeight: FontWeight.w500),
                 ),
               ],
