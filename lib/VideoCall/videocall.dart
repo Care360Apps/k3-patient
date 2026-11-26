@@ -334,6 +334,10 @@ class _VideoCallState extends State<VideoCall> {
       _remoteUid = null;
     });
 
+    if (widget.appointmentId != null && _engine == null && mounted) {
+      Navigator.of(context).pop();
+      return;
+    }
     unawaited(_leaveChannelOnce());
   }
 
@@ -428,6 +432,13 @@ class _VideoCallState extends State<VideoCall> {
           _leaveTimeoutTimer?.cancel();
           _leaveTimeoutTimer = null;
 
+          if (widget.appointmentId != null) {
+            if (mounted && !_isDisposed && ModalRoute.of(context)?.isCurrent == true) {
+              Navigator.of(context).pop();
+            }
+            unawaited(_releaseEngineOnce());
+            return;
+          }
           if (widget.flag == "InComming") {
             callDuration = detail.duration;
             _safeSetState(() {});
