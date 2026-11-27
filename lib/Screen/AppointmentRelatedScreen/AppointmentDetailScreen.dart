@@ -1,3 +1,4 @@
+import 'package:doctro_patient/security/care360_report_image.dart';
 import 'package:doctro_patient/VideoCall/videocall.dart';
 import 'package:doctro_patient/security/consultation_session_client.dart';
 import 'package:http/http.dart' as http;
@@ -555,15 +556,18 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> with 
 
   Widget _illnessTab() {
     final text = _data!.illnessInformation?.trim();
-    return _card(
-      child: text != null && text.isNotEmpty
-          ? SingleChildScrollView(
-              child: Text(text, style: TextStyle(fontSize: 14, color: Palette.dark_blue, height: 1.5)),
-            )
-          : Center(
-              child: Text('No illness information', style: TextStyle(fontSize: 14, color: Palette.grey)),
-            ),
-    );
+    return _card(child: SingleChildScrollView(child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(text == null || text.isEmpty ? 'No illness information' : text),
+        for (final url in _data!.reportImage ?? <String>[])
+          SizedBox(height: 240, child: Care360ReportImage(
+            key: ValueKey(url), apiBase: Uri.parse(Apis.baseUrl),
+            appointmentId: widget.appointmentId, url: url,
+            readToken: () async => SharedPreferenceHelper.getSecureString(Preferences.auth_token),
+          )),
+      ],
+    )));
   }
 
   Future<void> _savePrescriptionPdf() async {
