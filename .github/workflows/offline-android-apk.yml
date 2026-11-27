@@ -77,7 +77,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         if: steps.scope.outputs.build == 'true'
         with:
-          flutter-version: '3.38.3'
+          flutter-version: '3.38.4'
           channel: stable
           cache: true
       - name: Enable Swift Package Manager (needed to resolve Paystack plugin metadata)
@@ -86,9 +86,6 @@ jobs:
       - name: Create synthetic offline-only Firebase/API config and unique debug app ID
         if: steps.scope.outputs.build == 'true'
         run: python3 tools/k3_offline_build_fixture.py
-      - name: Resolve Flutter packages
-        if: steps.scope.outputs.build == 'true'
-        run: flutter pub get
       - name: Ensure Flutter dependencies match the committed lockfile
         if: steps.scope.outputs.build == 'true'
         run: |

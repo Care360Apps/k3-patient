@@ -81,14 +81,13 @@ jobs:
       - name: Install Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.38.3'
+          flutter-version: '3.38.4'
           channel: stable
           cache: true
       - name: Enable Swift Package Manager for plugin resolution
         run: flutter config --enable-swift-package-manager
       - name: Resolve Flutter packages using committed lockfile
         run: |
-          flutter pub get
           flutter pub get --enforce-lockfile
           git diff --exit-code -- pubspec.lock
       - name: Apply existing Android compatibility patches in disposable CI cache
