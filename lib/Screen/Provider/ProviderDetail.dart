@@ -507,7 +507,7 @@ class _ProviderDetailState extends State<ProviderDetail> {
 
   Future<void> _openInMaps(String? address) async {
     if (address == null || address.isEmpty) return;
-    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}');
+    final uri = Uri.https('www.openstreetmap.org', '/search', {'query': address});
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

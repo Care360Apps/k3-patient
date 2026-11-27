@@ -93,7 +93,6 @@ jobs:
       - name: Apply existing Android compatibility patches in disposable CI cache
         run: |
           python3 tools/k3_agora_ci_patch.py
-          python3 tools/k3_google_api_headers_ci_patch.py
           python3 tools/k3_iris_ci_patch.py
           python3 tools/k3_v1_embedding_scan.py
       - name: Generate Retrofit client from source

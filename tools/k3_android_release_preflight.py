@@ -75,27 +75,12 @@ def validate_android_sdk(gradle_file: Path) -> None:
         raise ValueError("Android compileSdk must be pinned to API 36 or higher")
     if not re.search(r"(?m)^\s*targetSdk\s+36\s*$", gradle):
         raise ValueError("Android targetSdk must be pinned to API 36 or higher")
-    if "manifestPlaceholders[\"k3GoogleMapsApiKey\"]" not in gradle:
-        raise ValueError("Android Maps API key must be injected during build")
 
 
 def validate_android_manifest(manifest_file: Path) -> None:
     manifest = manifest_file.read_text(encoding="utf-8")
     if "android.permission.ACCESS_BACKGROUND_LOCATION" in manifest:
         raise ValueError("Background location must not be requested by Patient")
-    if 'android:value="${k3GoogleMapsApiKey}"' not in manifest:
-        raise ValueError("Missing injected Android Maps API key placeholder")
-    if "Enter_Your_google_map_key" in manifest:
-        raise ValueError("Placeholder Maps API key must not ship in release")
-
-
-def validate_maps_key(value: str) -> None:
-    if not value or value.lower().startswith(("enter_", "todo", "test", "placeholder")):
-        raise ValueError("A configured Android Maps API key is required for release")
-    if any(ch.isspace() for ch in value) or value.startswith("$("):
-        raise ValueError("Android Maps API key is invalid")
-    # This cannot verify the key's Android application and signing-fingerprint
-    # restriction at Google Cloud; that must be checked by the release owner.
 
 
 def main() -> int:
@@ -111,7 +96,6 @@ def main() -> int:
         validate_package(app_gradle)
         validate_android_sdk(app_gradle)
         validate_android_manifest(ROOT / "android" / "app" / "src" / "main" / "AndroidManifest.xml")
-        validate_maps_key(os.getenv("K3_ANDROID_MAPS_API_KEY", ""))
         validate_signing(ROOT / "android" / "key.properties")
     except (ValueError, OSError) as exc:
         print(f"Care360 Android release BLOCKED: {exc}", file=sys.stderr)

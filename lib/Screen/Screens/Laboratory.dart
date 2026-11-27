@@ -23,7 +23,8 @@ import 'package:flutterwave_standard/models/requests/customer.dart';
 import 'package:flutterwave_standard/models/requests/customizations.dart';
 import 'package:flutterwave_standard/models/responses/charge_response.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:doctro_patient/nearby/maplibre_marker_adapter.dart';
+import 'package:doctro_patient/nearby/maplibre_nearby_map.dart';
 import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../const/Palette.dart';
@@ -2355,20 +2356,14 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen> {
                             )
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: GoogleMap(
-                                initialCameraPosition: CameraPosition(
-                                  target: LatLng(lat, lng),
-                                  zoom: 13,
-                                ),
-                                markers: {
-                                  Marker(
-                                    markerId: MarkerId("hospital_${data.id ?? 0}"),
-                                    position: LatLng(lat, lng),
-                                  )
-                                },
-                                myLocationEnabled: false,
-                                zoomControlsEnabled: false,
-                                mapToolbarEnabled: false,
+                              child: MapLibreNearbyMap(
+                                latitude: lat,
+                                longitude: lng,
+                                zoom: 13,
+                                pins: [
+                                  NearbyMapPin(id: 'lab', latitude: lat,
+                                    longitude: lng, title: 'Laboratory'),
+                                ],
                               ),
                             ),
                     ),

@@ -44,7 +44,7 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
     
     target.build_configurations.each do |config|
-      # Several pods (google_maps_flutter_ios, razorpay-core-pod) exclude arm64
+      # Some pods (such as razorpay-core-pod) exclude arm64
       # from simulator builds via xcconfig. On Apple Silicon Macs the simulator
       # IS arm64, so this exclusion cascades into Pods-Runner and prevents the
       # entire umbrella framework from building. Override with empty string in
@@ -52,15 +52,10 @@ post_install do |installer|
       config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = ''
     end
 
-    if target.name == 'google_maps_flutter_ios'
-      target.build_configurations.each do |config|
-        config.build_settings['MODULEMAP_FILE'] = '$(PODS_ROOT)/../.symlinks/plugins/google_maps_flutter_ios/ios/Classes/google_maps_flutter_ios.modulemap'
-      end
-    end
   end
 
   # Ad-hoc sign all unsigned XCFramework simulator slices.
-  # Agora SDK 4.2.6, AgoraIrisRTC, and GoogleMaps ship their simulator
+  # Agora SDK 4.2.6 and AgoraIrisRTC ship their simulator
   # frameworks without code signatures. Xcode 16+ / iOS 26 simulators
   # reject unsigned dynamic frameworks at launch (DYLD "Library missing").
   Dir.glob("#{installer.sandbox.root}/**/*.xcframework/ios-*simulator*/*.framework").each do |fw|

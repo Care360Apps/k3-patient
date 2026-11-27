@@ -6,9 +6,9 @@ void main() {
   test('Add Address supports manual map selection without Places key', () {
     final add = File('lib/Screen/Location/AddLocation.dart').readAsStringSync();
 
-    // A valid Maps SDK map must remain useful when separate legacy
-    // Places REST search is disabled or lacks a key.
-    expect(add, contains('onTap: _selectPointOnMap'));
+    // A MapLibre map must remain useful when the separate
+    // Care360 address search is unavailable.
+    expect(add, contains('onMapTap: _selectPointOnMap'));
     expect(add, contains('void _selectPointOnMap(LatLng point)'));
     expect(add, contains('selectLat = point.latitude'));
     expect(add, contains('selectLang = point.longitude'));

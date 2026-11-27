@@ -94,9 +94,6 @@ jobs:
       - name: Patch Agora 6.2.6 minSdk only in temporary CI pub cache
         if: steps.scope.outputs.build == 'true'
         run: python3 tools/k3_agora_ci_patch.py
-      - name: Patch legacy Google API Headers namespace in temporary pub cache
-        if: steps.scope.outputs.build == 'true'
-        run: python3 tools/k3_google_api_headers_ci_patch.py
       - name: Patch Iris native minSdk in temporary CI pub cache
         if: steps.scope.outputs.build == 'true'
         run: python3 tools/k3_iris_ci_patch.py

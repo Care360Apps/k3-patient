@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'dart:math';
 import 'dart:ui';
 import 'package:doctro_patient/api/network_api.dart';
@@ -15,7 +13,7 @@ import 'package:doctro_patient/Screen/Doctor/doctordetail.dart';
 import 'package:doctro_patient/Screen/Provider/ProviderDetail.dart';
 import 'package:doctro_patient/Screen/Screens/Laboratory.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -37,7 +35,6 @@ class _MapViewState extends State<MapView> {
   List<LabData> labList = [];
   List<ProviderModel> providerList = [];
   bool loading = true;
-  bool? _mapsConfigured;
   bool _canShowUserLocation = false;
   bool _onDutyOnly = false;
   bool _onDutyLoading = false;
@@ -49,53 +46,19 @@ class _MapViewState extends State<MapView> {
   String _selectedType = 'All';
   String? _lat;
   String? _lang;
-  GoogleMapController? _mapController;
   // Nigeria fallback only; never presented as the patient's actual location.
   static const LatLng _defaultCenter = LatLng(9.0820, 8.6753);
-
-  // Custom marker hues: doctor = blue, provider = orange, hospital = red/rose, lab = green
-  static const double _hueDoctor = BitmapDescriptor.hueAzure;
-  static const double _hueProvider = BitmapDescriptor.hueOrange;
-  static const double _hueHospital = BitmapDescriptor.hueRose;
-  static const double _hueLab = BitmapDescriptor.hueGreen;
-  static const double _hueUser = BitmapDescriptor.hueViolet;
-
-  BitmapDescriptor? _markerDoctor;
-  BitmapDescriptor? _markerProvider;
-  BitmapDescriptor? _markerHospital;
-  BitmapDescriptor? _markerLab;
-  BitmapDescriptor? _markerUser;
 
   @override
   void initState() {
     super.initState();
-    _checkMapsConfiguration();
-    _createMarkerIcons();
     _loadLocationAndData();
-  }
-
-  Future<void> _checkMapsConfiguration() async {
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      if (mounted) setState(() => _mapsConfigured = true);
-      return;
-    }
-    bool ready = false;
-    try {
-      ready = await const MethodChannel('care360/maps_configuration')
-          .invokeMethod<bool>('isConfigured') ?? false;
-    } on PlatformException {
-      ready = false;
-    } on MissingPluginException {
-      ready = false;
-    }
-    if (mounted) setState(() => _mapsConfigured = ready);
   }
 
   @override
   void dispose() {
     _onDutyFetchId++;
     _presenceExpiryTimer?.cancel();
-    _mapController?.dispose();
     super.dispose();
   }
 
@@ -116,14 +79,6 @@ class _MapViewState extends State<MapView> {
       setState(() => _onDuty.removeWhere((p) => !p.isStillAccepting));
       _scheduleExpiry();
     });
-  }
-
-  void _createMarkerIcons() {
-    _markerDoctor = BitmapDescriptor.defaultMarkerWithHue(_hueDoctor);
-    _markerProvider = BitmapDescriptor.defaultMarkerWithHue(_hueProvider);
-    _markerHospital = BitmapDescriptor.defaultMarkerWithHue(_hueHospital);
-    _markerLab = BitmapDescriptor.defaultMarkerWithHue(_hueLab);
-    _markerUser = BitmapDescriptor.defaultMarkerWithHue(_hueUser);
   }
 
   Future<void> _loadLocationAndData() async {
@@ -350,22 +305,19 @@ class _MapViewState extends State<MapView> {
     return n != null && n.isFinite ? n : null;
   }
 
-  BitmapDescriptor _icon(BitmapDescriptor? custom) =>
-      custom ?? BitmapDescriptor.defaultMarker;
-
   bool _showType(String type) => _selectedType == 'All' || _selectedType == type;
 
-  Set<Marker> _buildMarkers() {
-    final Set<Marker> markers = {};
+  List<NearbyMapPin> _buildMarkers() {
+    final markers = <NearbyMapPin>[];
     final userLat = double.tryParse(_lat ?? '');
     final userLng = double.tryParse(_lang ?? '');
     if (userLat != null && userLng != null) {
       markers.add(
-        Marker(
-          markerId: MarkerId('user'),
-          position: LatLng(userLat, userLng),
-          icon: _icon(_markerUser),
-          infoWindow: InfoWindow(title: 'Your location'),
+        NearbyMapPin(
+          id: 'user',
+          latitude: userLat, longitude: userLng,
+
+          title: 'Your location',
         ),
       );
     }
@@ -373,16 +325,13 @@ class _MapViewState extends State<MapView> {
       for (final professional in _onDuty.where((p) => p.isStillAccepting)) {
         if (!_showType(professional.role == 'doctor'
             ? 'Doctors' : 'Providers')) continue;
-        markers.add(Marker(
-          markerId: MarkerId('on-duty-${professional.role}-${professional.id}'),
-          position: LatLng(professional.lat, professional.lng),
-          icon: _icon(professional.role == 'doctor'
-              ? _markerDoctor : _markerProvider),
-          infoWindow: InfoWindow(
+        markers.add(NearbyMapPin(
+          id: 'on-duty-${professional.role}-${professional.id}',
+          latitude: professional.lat, longitude: professional.lng,
+
             title: professional.name,
-            snippet: 'Accepting requests · about '
+            subtitle: 'Accepting requests · about '
                 '${professional.distanceKm.toStringAsFixed(1)} km',
-          ),
           onTap: () {
             Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (_) => professional.role == 'doctor'
@@ -397,14 +346,12 @@ class _MapViewState extends State<MapView> {
     if (_showType('Doctors')) for (final doctor in doctorList) {
       if (doctor.lat != null && doctor.lng != null) {
         markers.add(
-          Marker(
-            markerId: MarkerId('doctor_${doctor.id}'),
-            position: LatLng(doctor.lat!, doctor.lng!),
-            icon: _icon(_markerDoctor),
-            infoWindow: InfoWindow(
+          NearbyMapPin(
+            id: 'doctor_${doctor.id}',
+            latitude: doctor.lat!, longitude: doctor.lng!,
+
               title: doctor.name ?? 'Doctor',
-              snippet: doctor.treatment?.name,
-            ),
+              subtitle: doctor.treatment?.name,
             onTap: () {
               Navigator.push(
                 context,
@@ -422,14 +369,12 @@ class _MapViewState extends State<MapView> {
       final lng = _parseCoord(provider.lng);
       if (lat != null && lng != null) {
         markers.add(
-          Marker(
-            markerId: MarkerId('provider_${provider.id}'),
-            position: LatLng(lat, lng),
-            icon: _icon(_markerProvider),
-            infoWindow: InfoWindow(
+          NearbyMapPin(
+            id: 'provider_${provider.id}',
+            latitude: lat, longitude: lng,
+
               title: provider.name ?? 'Provider',
-              snippet: provider.providerType?.name,
-            ),
+              subtitle: provider.providerType?.name,
             onTap: () {
               Navigator.push(
                 context,
@@ -447,11 +392,11 @@ class _MapViewState extends State<MapView> {
       final lng = _parseCoord(hospital.lng);
       if (lat != null && lng != null) {
         markers.add(
-          Marker(
-            markerId: MarkerId('hospital_${hospital.id}'),
-            position: LatLng(lat, lng),
-            icon: _icon(_markerHospital),
-            infoWindow: InfoWindow(title: hospital.name ?? 'Hospital', snippet: hospital.address),
+          NearbyMapPin(
+            id: 'hospital_${hospital.id}',
+            latitude: lat, longitude: lng,
+
+            title: hospital.name ?? 'Hospital', subtitle: hospital.address,
             onTap: () {
               Navigator.push(
                 context,
@@ -469,11 +414,11 @@ class _MapViewState extends State<MapView> {
       final lng = _parseCoord(lab.lng);
       if (lat != null && lng != null) {
         markers.add(
-          Marker(
-            markerId: MarkerId('lab_${lab.id}'),
-            position: LatLng(lat, lng),
-            icon: _icon(_markerLab),
-            infoWindow: InfoWindow(title: lab.name ?? 'Lab', snippet: lab.address),
+          NearbyMapPin(
+            id: 'lab_${lab.id}',
+            latitude: lat, longitude: lng,
+
+            title: lab.name ?? 'Lab', subtitle: lab.address,
             onTap: () {
               Navigator.push(
                 context,
@@ -523,33 +468,12 @@ class _MapViewState extends State<MapView> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                  child: MapLibreConfiguration.enabled && !kIsWeb && defaultTargetPlatform == TargetPlatform.android
-                      ? MapLibreNearbyMap(
-                          style: MapLibreConfiguration.style,
-                          latitude: _getInitialPosition().latitude,
-                          longitude: _getInitialPosition().longitude,
-                          pins: NearbyMapPin.fromGoogle(_buildMarkers()),
-                        )
-                      : _mapsConfigured != true
-                      ? Center(child: Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 160, 24, 270),
-                          child: Text(_mapsConfigured == null
-                              ? 'Preparing map...'
-                              : 'Map unavailable in this version. You can still browse nearby care below.',
-                              textAlign: TextAlign.center),
-                        ))
-                      : GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: _getInitialPosition(),
-                      zoom: 12,
-                    ),
-                    markers: _buildMarkers(),
-                    myLocationEnabled: _canShowUserLocation,
-                    myLocationButtonEnabled: _canShowUserLocation,
-                    zoomControlsEnabled: false,
-                    mapToolbarEnabled: false,
-                    onMapCreated: (c) => _mapController = c,
-                    padding: const EdgeInsets.only(bottom: 255),
+                  child: MapLibreNearbyMap(
+                    latitude: _getInitialPosition().latitude,
+                    longitude: _getInitialPosition().longitude,
+                    pins: _buildMarkers(),
+                    showAttribution: false,
+                    showDeviceLocation: _canShowUserLocation,
                   ),
                 ),
                 Positioned(
@@ -812,7 +736,7 @@ class _MapViewState extends State<MapView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (MapLibreConfiguration.enabled && !kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+            if (MapLibreConfiguration.enabled)
               Text(MapLibreConfiguration.attribution, style: const TextStyle(fontSize: 12)),
             Center(child: Container(height: 4, width: 40,
               decoration: BoxDecoration(color: Palette.dash_line,

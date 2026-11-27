@@ -24,7 +24,6 @@ jobs:
       - run: python3 tools/k3_offline_build_fixture.py
       - run: flutter pub get --enforce-lockfile
       - run: python3 tools/k3_agora_ci_patch.py
-      - run: python3 tools/k3_google_api_headers_ci_patch.py
       - run: python3 tools/k3_iris_ci_patch.py
       - run: python3 tools/k3_v1_embedding_scan.py
       - run: dart run build_runner build --delete-conflicting-outputs

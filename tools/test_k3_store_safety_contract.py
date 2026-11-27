@@ -15,14 +15,14 @@ class PatientStoreSafetyContract(unittest.TestCase):
         self.assertIn('applicationId "com.cnu.patient"', gradle)
         self.assertIn("compileSdk 36", gradle)
         self.assertIn("targetSdk 36", gradle)
-        self.assertIn("K3_ANDROID_MAPS_API_KEY", gradle)
+        self.assertNotIn("K3_ANDROID_MAPS_API_KEY", gradle)
 
     def test_patient_does_not_request_background_location(self):
         manifest = self.read("android/app/src/main/AndroidManifest.xml")
         self.assertNotIn("ACCESS_BACKGROUND_LOCATION", manifest)
         self.assertIn('android:maxSdkVersion="32"', manifest)
         self.assertIn('android:maxSdkVersion="28"', manifest)
-        self.assertIn('android:value="${k3GoogleMapsApiKey}"', manifest)
+        self.assertNotIn("com.google.android.geo.API_KEY", manifest)
 
     def test_ios_permissions_are_contextual_and_native_tokens_not_logged(self):
         delegate = self.read("ios/Runner/AppDelegate.swift")
@@ -36,6 +36,25 @@ class PatientStoreSafetyContract(unittest.TestCase):
         self.assertNotIn("OneSignal.Notifications.requestPermission(true)", sign_in)
         self.assertIn("OneSignal.Notifications.requestPermission(true)", settings)
         self.assertIn("patient-enable-notifications", settings)
+
+    def test_patient_maps_do_not_require_google_maps(self):
+        for screen in (
+            "Screens/MapView.dart",
+            "Screens/HospitalsScreen.dart",
+            "Screens/Laboratory.dart",
+            "MedicineAndPharmacy/PharamacyDetail.dart",
+            "Location/AddLocation.dart",
+        ):
+            with self.subTest(screen=screen):
+                source = self.read(f"lib/Screen/{screen}")
+                self.assertIn("MapLibreNearbyMap(", source)
+                self.assertNotIn("GoogleMap(", source)
+        self.assertNotIn("google_maps", self.read("pubspec.lock"))
+        self.assertNotIn("GoogleMaps", self.read("ios/Podfile.lock"))
+        self.assertNotIn(
+            "K3_ANDROID_MAPS_API_KEY",
+            self.read(".github/workflows/play-internal-aab.yml"),
+        )
 
     def test_account_deletion_and_privacy_recovery_are_visible(self):
         settings = self.read("lib/Screen/Screens/Setting.dart")

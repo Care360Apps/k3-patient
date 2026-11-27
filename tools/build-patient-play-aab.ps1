@@ -23,7 +23,6 @@ if ($BuildNumber -le 0) { throw 'BuildNumber must exceed the last versionCode fr
 if ($env:K3_OFFLINE_TEST -eq 'true') { throw 'Synthetic offline build flag must never be enabled for Play.' }
 if (-not $env:K3_API_BASE_URL) { throw 'Set a verified production K3_API_BASE_URL first.' }
 if (-not $env:K3_PRODUCTION_FIREBASE_PROJECT_ID) { throw 'Verify production Firebase project ID.' }
-if (-not $env:K3_ANDROID_MAPS_API_KEY) { throw 'Set Android Maps key restricted to this package and signing certificate.' }
 if (-not $env:K3_PLAY_LATEST_VERSION_CODE) { throw 'Read current versionCode from Play Console; do not guess.' }
 
 $env:K3_BUILD_ENV = 'production'
