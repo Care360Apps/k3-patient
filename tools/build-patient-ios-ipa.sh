@@ -38,7 +38,7 @@ python3 tools/k3_production_config.py \
   --platform ios \
   --firebase "$K3_IOS_FIREBASE_PLIST_PATH" \
   --out "$private_json"
-flutter pub get
+flutter pub get --enforce-lockfile
 dart run build_runner build --delete-conflicting-outputs
 python3 tools/k3_rewrite_generated_url.py
 flutter test --no-pub test/k3_startup_gate_test.dart test/k3_startup_diagnostics_test.dart test/k3_entry_brand_test.dart

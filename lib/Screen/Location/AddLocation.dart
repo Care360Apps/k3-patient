@@ -45,8 +45,8 @@ class _AddLocationState extends State<AddLocation> {
   double selectLat = 0.0;
   double selectLang = 0.0;
 
-  double? liveLat = 0.0;
-  double? liveLang = 0.0;
+  bool _locating = false;
+  int _selectionRevision = 0;
 
   LatLng? _initialCameraPosition;
   GoogleMapController? _controller;
@@ -81,14 +81,45 @@ class _AddLocationState extends State<AddLocation> {
   @override
   void initState() {
     super.initState();
-    final initialLat = widget.currentLat ?? 0.0;
-    final initialLong = widget.currentLong ?? 0.0;
+    final initialLat = widget.currentLat ?? 9.082;
+    final initialLong = widget.currentLong ?? 8.6753;
     _initialCameraPosition = LatLng(initialLat, initialLong);
-    _determinePosition();
   }
 
   void _onMapCreated(GoogleMapController _cnTlr) {
     _controller = _cnTlr;
+  }
+
+  Future<void> _useCurrentLocation() async {
+    setState(() => _locating = true);
+    final revision = _selectionRevision;
+    try {
+      final position = await _determinePosition().timeout(
+        const Duration(seconds: 15),
+      );
+      if (!mounted || revision != _selectionRevision) return;
+      final point = LatLng(position.latitude, position.longitude);
+      _selectPointOnMap(point);
+      await _controller?.animateCamera(CameraUpdate.newLatLng(point));
+    } catch (_) {
+      if (!mounted || revision != _selectionRevision) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Current location is unavailable. Search for an address or select a point on the map.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _textFullAddress.dispose();
+    _textAddressLabel.dispose();
+    super.dispose();
   }
 
   /// Selecting a map point must work even when legacy Places search has
@@ -97,6 +128,7 @@ class _AddLocationState extends State<AddLocation> {
   void _selectPointOnMap(LatLng point) {
     if (!mounted) return;
     setState(() {
+      _selectionRevision++;
       selectLat = point.latitude;
       selectLang = point.longitude;
       _initialCameraPosition = point;
@@ -161,6 +193,21 @@ class _AddLocationState extends State<AddLocation> {
                         onMapCreated: _onMapCreated,
                         onTap: _selectPointOnMap,
                       ),
+                      Positioned(
+                        right: 12,
+                        top: 12,
+                        child: FloatingActionButton.small(
+                          heroTag: null,
+                          tooltip: 'Use current location',
+                          onPressed: _locating ? null : _useCurrentLocation,
+                          child: _locating
+                              ? const SizedBox.square(
+                                  dimension: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.my_location),
+                        ),
+                      ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                         child: GestureDetector(
@@ -188,7 +235,7 @@ class _AddLocationState extends State<AddLocation> {
                     resizeToAvoidBottomInset: false,
                     body: GestureDetector(
                       onTap: () {
-                        FocusScope.of(context).requestFocus(new FocusNode());
+                        FocusScope.of(context).unfocus();
                       },
                       child: Form(
                         key: formKey,
@@ -204,6 +251,7 @@ class _AddLocationState extends State<AddLocation> {
                                     final place = await showCare360PlaceSearch(context);
                                     if (!mounted || place == null) return;
                                     setState(() {
+                                      _selectionRevision++;
                                       address = place.address;
                                       _textFullAddress.text = place.address;
                                       selectLat = place.latitude;

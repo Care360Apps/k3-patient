@@ -28,7 +28,7 @@ jobs:
         uses: gradle/actions/wrapper-validation@v6
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.38.3'
+          flutter-version: '3.38.4'
           channel: stable
           cache: true
       - uses: actions/setup-java@v4
@@ -53,7 +53,7 @@ jobs:
         run: python3 tools/k3_staging_config.py --platform android --firebase android/app/google-services.json --out "$RUNNER_TEMP/k3_staging.json" --android-package com.cnu.patient.k3staging
       - name: Enable Swift Package Manager for iOS-only plugins
         run: flutter config --enable-swift-package-manager
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - run: dart run build_runner build --delete-conflicting-outputs
       - name: Enforce environment-defined API URL in Retrofit code
         run: python3 tools/k3_rewrite_generated_url.py
@@ -76,7 +76,7 @@ jobs:
           python3 tools/k3_notification_preflight.py
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.38.3'
+          flutter-version: '3.38.4'
           channel: stable
           cache: true
       - name: Install Firebase staging config
@@ -91,7 +91,7 @@ jobs:
         run: python3 tools/k3_staging_config.py --platform ios --firebase ios/Runner/GoogleService-Info.plist --out "$RUNNER_TEMP/k3_staging.json"
       - name: Enable Swift Package Manager for iOS-only plugins
         run: flutter config --enable-swift-package-manager
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - run: dart run build_runner build --delete-conflicting-outputs
       - name: Enforce environment-defined API URL in Retrofit code
         run: python3 tools/k3_rewrite_generated_url.py

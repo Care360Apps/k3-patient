@@ -22,7 +22,7 @@ jobs:
           channel: stable
       - run: flutter config --enable-swift-package-manager
       - run: python3 tools/k3_offline_build_fixture.py
-      - run: flutter pub add maplibre_gl:0.27.1
+      - run: flutter pub get --enforce-lockfile
       - run: python3 tools/k3_agora_ci_patch.py
       - run: python3 tools/k3_google_api_headers_ci_patch.py
       - run: python3 tools/k3_iris_ci_patch.py
