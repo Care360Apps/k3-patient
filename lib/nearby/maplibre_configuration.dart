@@ -1,8 +1,15 @@
+import 'package:flutter/foundation.dart';
+
 /// Public map style configuration only. Never use a server-side API key.
 class MapLibreConfiguration {
   static const style = String.fromEnvironment('CARE360_MAP_STYLE_URL');
   static const attribution = String.fromEnvironment('CARE360_MAP_ATTRIBUTION');
   static bool get enabled => isValid(style, attribution);
+  static bool get available =>
+      enabled &&
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   static bool isValid(String style, String attribution) {
     final uri = Uri.tryParse(style);

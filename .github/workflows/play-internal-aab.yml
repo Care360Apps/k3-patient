@@ -51,6 +51,8 @@ jobs:
           KEY_PASSWORD: ${{ secrets.K3_PLAY_UPLOAD_KEY_PASSWORD }}
           STORE_PASSWORD: ${{ secrets.K3_PLAY_UPLOAD_STORE_PASSWORD }}
           MAPS_KEY: ${{ secrets.K3_ANDROID_MAPS_API_KEY }}
+          CARE360_MAP_STYLE_URL: ${{ vars.CARE360_MAP_STYLE_URL }}
+          CARE360_MAP_ATTRIBUTION: ${{ vars.CARE360_MAP_ATTRIBUTION }}
           API_URL: ${{ secrets.K3_PROD_API_URL }}
         run: |
           set -euo pipefail
@@ -78,6 +80,8 @@ jobs:
             'K3_FIREBASE_STORAGE_BUCKET':project.get('storage_bucket','')
           }
           assert all(vals[k] for k in vals if k!='K3_FIREBASE_STORAGE_BUCKET'), 'Incomplete Firebase config'
+          vals['CARE360_MAP_STYLE_URL']=os.environ['CARE360_MAP_STYLE_URL']
+          vals['CARE360_MAP_ATTRIBUTION']=os.environ['CARE360_MAP_ATTRIBUTION']
           pathlib.Path('android/app/release-defines.json').write_text(json.dumps(vals))
           pathlib.Path('android/key.properties').write_text(
             'storeFile=upload-keystore.jks\n'+

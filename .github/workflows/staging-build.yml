@@ -58,7 +58,10 @@ jobs:
       - name: Enforce environment-defined API URL in Retrofit code
         run: python3 tools/k3_rewrite_generated_url.py
       - name: Android debug build (must use verified staging API config)
-        run: flutter build apk --debug --dart-define=K3_BUILD_ENV=staging --dart-define-from-file="$RUNNER_TEMP/k3_staging.json"
+        env:
+          CARE360_MAP_STYLE_URL: ${{ vars.CARE360_MAP_STYLE_URL }}
+          CARE360_MAP_ATTRIBUTION: ${{ vars.CARE360_MAP_ATTRIBUTION }}
+        run: flutter build apk --debug --dart-define=K3_BUILD_ENV=staging --dart-define-from-file="$RUNNER_TEMP/k3_staging.json" --dart-define=CARE360_MAP_STYLE_URL="$CARE360_MAP_STYLE_URL" --dart-define=CARE360_MAP_ATTRIBUTION="$CARE360_MAP_ATTRIBUTION"
       - uses: actions/upload-artifact@v4
         with:
           name: k3-staging-android-debug-apk
@@ -96,7 +99,10 @@ jobs:
       - name: Enforce environment-defined API URL in Retrofit code
         run: python3 tools/k3_rewrite_generated_url.py
       - name: iOS Simulator build (unsigned)
-        run: flutter build ios --simulator --dart-define=K3_BUILD_ENV=staging --dart-define-from-file="$RUNNER_TEMP/k3_staging.json"
+        env:
+          CARE360_MAP_STYLE_URL: ${{ vars.CARE360_MAP_STYLE_URL }}
+          CARE360_MAP_ATTRIBUTION: ${{ vars.CARE360_MAP_ATTRIBUTION }}
+        run: flutter build ios --simulator --dart-define=K3_BUILD_ENV=staging --dart-define-from-file="$RUNNER_TEMP/k3_staging.json" --dart-define=CARE360_MAP_STYLE_URL="$CARE360_MAP_STYLE_URL" --dart-define=CARE360_MAP_ATTRIBUTION="$CARE360_MAP_ATTRIBUTION"
       - name: Archive unsigned iOS Simulator app
         run: |
           test -d build/ios/iphonesimulator/Runner.app
