@@ -17,6 +17,7 @@ import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../const/Palette.dart';
 import '../../nearby/nearby_on_duty_service.dart';
 import '../../nearby/maplibre_configuration.dart';
@@ -34,6 +35,7 @@ class _MapViewState extends State<MapView> {
   List<LabData> labList = [];
   List<ProviderModel> providerList = [];
   bool loading = true;
+  bool _canShowUserLocation = false;
   bool _onDutyOnly = false;
   bool _onDutyLoading = false;
   bool _onDutyError = false;
@@ -81,10 +83,12 @@ class _MapViewState extends State<MapView> {
 
   Future<void> _loadLocationAndData() async {
     final prefs = await SharedPreferences.getInstance();
+    final permissionGranted = (await Permission.location.status).isGranted;
     if (!mounted) return;
     setState(() {
       _lat = prefs.getString('lat');
       _lang = prefs.getString('lang');
+      _canShowUserLocation = permissionGranted;
     });
     await _fetchAll();
   }
@@ -469,6 +473,7 @@ class _MapViewState extends State<MapView> {
                     longitude: _getInitialPosition().longitude,
                     pins: _buildMarkers(),
                     showAttribution: false,
+                    showDeviceLocation: _canShowUserLocation,
                   ),
                 ),
                 Positioned(

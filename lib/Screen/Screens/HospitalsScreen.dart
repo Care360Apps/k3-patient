@@ -48,12 +48,11 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
     }
   }
 
-  Future<void> _openOnMap(DirectoryFacility f) async {
+  Future<void> _directions(DirectoryFacility f) async {
     if (f.latitude == null || f.longitude == null) return;
-    final url = Uri.https('www.openstreetmap.org', '/', {
-      'mlat': '${f.latitude}',
-      'mlon': '${f.longitude}',
-    }).replace(fragment: 'map=16/${f.latitude}/${f.longitude}');
+    final url = Uri.https('www.openstreetmap.org', '/directions', {
+      'to': '${f.latitude},${f.longitude}',
+    });
     if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
@@ -108,8 +107,8 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
             return ListTile(title: Text(f.name),
               subtitle: Text('${f.state} • ${f.address ?? 'Address unavailable'}'),
               trailing: f.latitude != null && f.longitude != null
-                ? IconButton(tooltip: 'Open in maps', icon: const Icon(Icons.map_outlined),
-                    onPressed: () => _openOnMap(f)) : null);
+                ? IconButton(tooltip: 'Directions', icon: const Icon(Icons.directions),
+                    onPressed: () => _directions(f)) : null);
           })),
       ]),
     );

@@ -21,7 +21,7 @@ void main() {
     expect(source, contains("'limit': 50"));
     expect(source, isNot(contains("'limit': 100")));
     expect(source, contains("(await Permission.location.status).isGranted"));
-    expect(source, contains("myLocationEnabled: _canShowUserLocation"));
+    expect(source, contains("showDeviceLocation: _canShowUserLocation"));
     expect(source, contains("if (mounted) setState(() => providerList = list)"));
     expect(source, contains("result.take(8).toList()"));
   });

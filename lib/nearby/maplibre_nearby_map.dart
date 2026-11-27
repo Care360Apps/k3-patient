@@ -13,11 +13,13 @@ class MapLibreNearbyMap extends StatefulWidget {
     this.zoom = 12,
     this.showRecenter = true,
     this.showAttribution = true,
+    this.showDeviceLocation = false,
     this.onMapTap,
   });
   final double zoom;
   final bool showRecenter;
   final bool showAttribution;
+  final bool showDeviceLocation;
   final ValueChanged<ml.LatLng>? onMapTap;
   final double latitude, longitude;
   final List<NearbyMapPin> pins;
@@ -194,6 +196,7 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
         ml.MapLibreMap(
           key: ValueKey(generation),
           styleString: MapLibreConfiguration.style,
+          myLocationEnabled: widget.showDeviceLocation,
           onMapClick: (_, point) => widget.onMapTap?.call(point),
           initialCameraPosition: ml.CameraPosition(
             target: ml.LatLng(widget.latitude, widget.longitude),
