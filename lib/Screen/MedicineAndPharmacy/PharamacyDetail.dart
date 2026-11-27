@@ -7,7 +7,8 @@ import 'package:doctro_patient/model/pharmacys_details_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:doctro_patient/Chat/loading_view.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:doctro_patient/nearby/maplibre_marker_adapter.dart';
+import 'package:doctro_patient/nearby/maplibre_nearby_map.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -429,22 +430,14 @@ class _PharamacyDetailState extends State<PharamacyDetail> with TickerProviderSt
                                         child: AbsorbPointer(
                                           child: SizedBox(
                                             height: 160,
-                                            child: GoogleMap(
-                                              initialCameraPosition: CameraPosition(
-                                                target: LatLng(parsedLat ?? 0, parsedLng ?? 0),
-                                                zoom: 14,
-                                              ),
-                                              markers: {
-                                                Marker(
-                                                  markerId: MarkerId('pharmacy_location'),
-                                                  position: LatLng(parsedLat ?? 0, parsedLng ?? 0),
-                                                ),
-                                              },
-                                              zoomControlsEnabled: false,
-                                              myLocationButtonEnabled: false,
-                                              mapToolbarEnabled: false,
-                                              compassEnabled: false,
-                                              tiltGesturesEnabled: false,
+                                            child: MapLibreNearbyMap(
+                                              latitude: parsedLat ?? 0,
+                                              longitude: parsedLng ?? 0,
+                                              zoom: 14,
+                                              pins: [
+                                                NearbyMapPin(id: 'pharmacy', latitude: parsedLat ?? 0,
+                                                  longitude: parsedLng ?? 0, title: 'Pharmacy'),
+                                              ],
                                             ),
                                           ),
                                         ),

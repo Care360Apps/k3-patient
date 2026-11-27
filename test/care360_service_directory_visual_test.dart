@@ -45,7 +45,7 @@ void main() {
         .readAsStringSync();
     expect(routes, contains("'Hospitals': (context) => HospitalScreen()"));
     expect(routes, isNot(contains("'Hospitals': (context) => HospitalsScreen()")));
-    // The former placeholder is now a real reviewed-facility directory.\n    expect(hospitalStub, contains('class HospitalsScreen extends StatefulWidget'));\n    expect(hospitalStub, contains('FacilityDirectoryGateway()'));\n    expect(hospitalStub, contains("title: const Text('Find verified facilities')"));\n    expect(hospitalStub, contains('GoogleMap('));\n    expect(hospitalStub, contains("'hospital'"));\n    expect(hospitalStub, contains("'pharmacy'"));
+    // The former placeholder is now a real reviewed-facility directory.\n    expect(hospitalStub, contains('class HospitalsScreen extends StatefulWidget'));\n    expect(hospitalStub, contains('FacilityDirectoryGateway()'));\n    expect(hospitalStub, contains("title: const Text('Find verified facilities')"));\n    expect(hospitalStub, contains('MapLibreNearbyMap('));\n    expect(hospitalStub, contains("'hospital'"));\n    expect(hospitalStub, contains("'pharmacy'"));
     expect(realDirectory, contains('class HospitalScreen extends StatefulWidget'));
     expect(realDirectory, contains('hospitalsRequest()'));
     expect(realDirectory, contains('Care360ServiceIntro('));

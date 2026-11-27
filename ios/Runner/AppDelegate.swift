@@ -1,6 +1,5 @@
 import UIKit
 import Flutter
-import GoogleMaps
 import Firebase
 import UserNotifications
 import FirebaseMessaging
@@ -11,14 +10,6 @@ import FirebaseMessaging
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // The Maps key comes from the selected (staging or production) build configuration.
-    // Never pass an unresolved Xcode build variable as a real API key.
-    if let mapsApiKey = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String,
-       !mapsApiKey.isEmpty,
-       !mapsApiKey.hasPrefix("$(") {
-      GMSServices.provideAPIKey(mapsApiKey)
-    }
-
     // FlutterFire may also initialize Firebase from Dart. Configure the
     // native default app only once to avoid a duplicate-default-app error.
     if FirebaseApp.app() == nil {

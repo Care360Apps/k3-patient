@@ -1,7 +1,13 @@
 /// Public map style configuration only. Never use a server-side API key.
 class MapLibreConfiguration {
-  static const style = String.fromEnvironment('CARE360_MAP_STYLE_URL');
-  static const attribution = String.fromEnvironment('CARE360_MAP_ATTRIBUTION');
+  static const style = String.fromEnvironment(
+    'CARE360_MAP_STYLE_URL',
+    defaultValue: 'https://tiles.openfreemap.org/styles/liberty',
+  );
+  static const attribution = String.fromEnvironment(
+    'CARE360_MAP_ATTRIBUTION',
+    defaultValue: 'OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors',
+  );
   static bool get enabled => isValid(style, attribution);
 
   static bool isValid(String style, String attribution) {

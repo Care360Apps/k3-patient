@@ -10,7 +10,6 @@ cd "$(dirname "$0")/.."
 : "${K3_IOS_LATEST_BUILD_NUMBER:?Read existing App Store Connect build number}"
 : "${K3_API_BASE_URL:?Set verified production HTTPS API base URL}"
 : "${K3_PRODUCTION_FIREBASE_PROJECT_ID:?Verify production Firebase project ID}"
-: "${K3_IOS_GOOGLE_MAPS_API_KEY:?Set restricted iOS Maps key privately}"
 : "${K3_IOS_DEVELOPMENT_TEAM:?Verify the Apple Developer Team ID}"
 : "${K3_IOS_FIREBASE_PLIST_PATH:?Set private production GoogleService-Info.plist path}"
 if [[ "${K3_OFFLINE_TEST:-false}" == "true" ]]; then

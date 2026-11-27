@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:doctro_patient/nearby/maplibre_marker_adapter.dart';
+import 'package:doctro_patient/nearby/maplibre_nearby_map.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../nearby/facility_directory_gateway.dart';
 
@@ -47,11 +48,12 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
     }
   }
 
-  Future<void> _directions(DirectoryFacility f) async {
+  Future<void> _openOnMap(DirectoryFacility f) async {
     if (f.latitude == null || f.longitude == null) return;
-    final url = Uri.https('www.google.com', '/maps/dir/', {
-      'api': '1', 'destination': '${f.latitude},${f.longitude}',
-    });
+    final url = Uri.https('www.openstreetmap.org', '/', {
+      'mlat': '${f.latitude}',
+      'mlon': '${f.longitude}',
+    }).replace(fragment: 'map=16/${f.latitude}/${f.longitude}');
     if (await canLaunchUrl(url)) await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
@@ -88,13 +90,13 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
         if (!_loading && _error == null && _facilities.isEmpty)
           const Padding(padding: EdgeInsets.all(16),
             child: Text('No reviewed facilities found for these filters.')),
-        if (mapped.isNotEmpty) SizedBox(height: 220, child: GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: LatLng(mapped.first.latitude!, mapped.first.longitude!), zoom: 10),
-          myLocationEnabled: false, myLocationButtonEnabled: false,
-          markers: mapped.map((f) => Marker(markerId: MarkerId('${f.id}'),
-            position: LatLng(f.latitude!, f.longitude!),
-            infoWindow: InfoWindow(title: f.name, snippet: f.address ?? f.state))).toSet(),
+        if (mapped.isNotEmpty) SizedBox(height: 220, child: MapLibreNearbyMap(
+          latitude: mapped.first.latitude!,
+          longitude: mapped.first.longitude!,
+          zoom: 10,
+          pins: mapped.map((f) => NearbyMapPin(id: 'hospital_${f.id}',
+            latitude: f.latitude!, longitude: f.longitude!,
+            title: f.name, subtitle: f.address ?? f.state)).toList(),
         )),
         Expanded(child: ListView.builder(itemCount: _facilities.length + (_hasMore && _facilities.isNotEmpty ? 1 : 0),
           itemBuilder: (context, index) {
@@ -106,8 +108,8 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
             return ListTile(title: Text(f.name),
               subtitle: Text('${f.state} • ${f.address ?? 'Address unavailable'}'),
               trailing: f.latitude != null && f.longitude != null
-                ? IconButton(tooltip: 'Directions', icon: const Icon(Icons.directions),
-                    onPressed: () => _directions(f)) : null);
+                ? IconButton(tooltip: 'Open in maps', icon: const Icon(Icons.map_outlined),
+                    onPressed: () => _openOnMap(f)) : null);
           })),
       ]),
     );

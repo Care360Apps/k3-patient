@@ -50,12 +50,11 @@ jobs:
           KEY_ALIAS: ${{ secrets.K3_PLAY_UPLOAD_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.K3_PLAY_UPLOAD_KEY_PASSWORD }}
           STORE_PASSWORD: ${{ secrets.K3_PLAY_UPLOAD_STORE_PASSWORD }}
-          MAPS_KEY: ${{ secrets.K3_ANDROID_MAPS_API_KEY }}
           API_URL: ${{ secrets.K3_PROD_API_URL }}
         run: |
           set -euo pipefail
           umask 077
-          for v in FIREBASE_B64 KEYSTORE_B64 KEY_ALIAS KEY_PASSWORD STORE_PASSWORD MAPS_KEY API_URL; do
+          for v in FIREBASE_B64 KEYSTORE_B64 KEY_ALIAS KEY_PASSWORD STORE_PASSWORD API_URL; do
             test -n "${!v}" || { echo "Required release secret missing: $v"; exit 1; }
           done
           printf '%s' "$FIREBASE_B64" | base64 --decode > android/app/google-services.json
@@ -90,7 +89,6 @@ jobs:
         env:
           VERSION_NAME: ${{ inputs.version_name }}
           VERSION_CODE: ${{ inputs.version_code }}
-          K3_ANDROID_MAPS_API_KEY: ${{ secrets.K3_ANDROID_MAPS_API_KEY }}
         run: |
           set -euo pipefail
           flutter config --enable-swift-package-manager

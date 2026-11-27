@@ -10,7 +10,9 @@ import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:doctro_patient/nearby/maplibre_marker_adapter.dart';
+import 'package:doctro_patient/nearby/maplibre_nearby_map.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import '../../api/base_model.dart';
 import '../../api/server_error.dart';
@@ -38,8 +40,6 @@ class AddLocation extends StatefulWidget {
 class _AddLocationState extends State<AddLocation> {
   bool loading = false;
 
-  BitmapDescriptor? sourceIcon;
-  BitmapDescriptor? destinationIcon;
 
   String address = "";
   double selectLat = 0.0;
@@ -49,8 +49,7 @@ class _AddLocationState extends State<AddLocation> {
   int _selectionRevision = 0;
 
   LatLng? _initialCameraPosition;
-  GoogleMapController? _controller;
-  BitmapDescriptor _markerIcon = BitmapDescriptor.defaultMarker;
+  double _mapZoom = 13;
 
   TextEditingController _textFullAddress = new TextEditingController();
   TextEditingController _textAddressLabel = new TextEditingController();
@@ -86,10 +85,6 @@ class _AddLocationState extends State<AddLocation> {
     _initialCameraPosition = LatLng(initialLat, initialLong);
   }
 
-  void _onMapCreated(GoogleMapController _cnTlr) {
-    _controller = _cnTlr;
-  }
-
   Future<void> _useCurrentLocation() async {
     setState(() => _locating = true);
     final revision = _selectionRevision;
@@ -100,7 +95,6 @@ class _AddLocationState extends State<AddLocation> {
       if (!mounted || revision != _selectionRevision) return;
       final point = LatLng(position.latitude, position.longitude);
       _selectPointOnMap(point);
-      await _controller?.animateCamera(CameraUpdate.newLatLng(point));
     } catch (_) {
       if (!mounted || revision != _selectionRevision) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -144,16 +138,6 @@ class _AddLocationState extends State<AddLocation> {
     );
   }
 
-  Set<Marker> _createMarker() {
-    return <Marker>{
-      Marker(
-        markerId: MarkerId("marker_1"),
-        position: _initialCameraPosition!,
-        icon: _markerIcon,
-      ),
-    };
-  }
-
   Future<bool> onWillPop() {
     if (widget.returnToPicker) return Future.value(!loading);
     Navigator.pushReplacement(
@@ -185,13 +169,20 @@ class _AddLocationState extends State<AddLocation> {
                   flex: 5,
                   child: Stack(
                     children: [
-                      GoogleMap(
-                        myLocationEnabled: false,
-                        markers: _createMarker(),
-                        mapType: MapType.normal,
-                        initialCameraPosition: CameraPosition(target: _initialCameraPosition!, zoom: 13),
-                        onMapCreated: _onMapCreated,
-                        onTap: _selectPointOnMap,
+                      MapLibreNearbyMap(
+                        latitude: _initialCameraPosition!.latitude,
+                        longitude: _initialCameraPosition!.longitude,
+                        zoom: _mapZoom,
+                        showRecenter: false,
+                        onMapTap: _selectPointOnMap,
+                        pins: [
+                          NearbyMapPin(
+                            id: 'selection',
+                            latitude: _initialCameraPosition!.latitude,
+                            longitude: _initialCameraPosition!.longitude,
+                            title: 'Selected location',
+                          ),
+                        ],
                       ),
                       Positioned(
                         right: 12,
@@ -258,15 +249,8 @@ class _AddLocationState extends State<AddLocation> {
                                       selectLang = place.longitude;
                                       _initialCameraPosition =
                                           LatLng(place.latitude, place.longitude);
+                                      _mapZoom = 17;
                                     });
-                                    await _controller?.animateCamera(
-                                      CameraUpdate.newCameraPosition(
-                                        CameraPosition(
-                                          target: LatLng(place.latitude, place.longitude),
-                                          zoom: 17,
-                                        ),
-                                      ),
-                                    );
                                   },
                                   child: Container(
                                     alignment: AlignmentDirectional.centerStart,

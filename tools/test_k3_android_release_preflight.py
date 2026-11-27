@@ -42,7 +42,7 @@ class AndroidReleaseGateTests(unittest.TestCase):
     def test_play_sdk_36_required(self):
         with tempfile.TemporaryDirectory() as folder:
             gradle = Path(folder) / "build.gradle"
-            gradle.write_text('compileSdk 36\ntargetSdk 36\nmanifestPlaceholders["k3GoogleMapsApiKey"] = mapsApiKey\n')
+            gradle.write_text('compileSdk 36\ntargetSdk 36\n')
             release_gate.validate_android_sdk(gradle)
             gradle.write_text('compileSdk 35\ntargetSdk 35\n')
             with self.assertRaises(ValueError):
@@ -51,17 +51,11 @@ class AndroidReleaseGateTests(unittest.TestCase):
     def test_android_release_manifest_drops_background_location(self):
         with tempfile.TemporaryDirectory() as folder:
             manifest = Path(folder) / "AndroidManifest.xml"
-            manifest.write_text('<meta-data android:value="${k3GoogleMapsApiKey}" />')
+            manifest.write_text('<manifest/>')
             release_gate.validate_android_manifest(manifest)
             manifest.write_text('<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />')
             with self.assertRaises(ValueError):
                 release_gate.validate_android_manifest(manifest)
-
-    def test_maps_key_must_be_supplied_at_release_time(self):
-        release_gate.validate_maps_key("AIzaEXAMPLE_REPLACE_WITH_REAL_RESTRICTED_KEY")
-        for candidate in ("", "Enter_Your_google_map_key", "placeholder", "$(MAP_KEY)", "key with space"):
-            with self.subTest(value=candidate), self.assertRaises(ValueError):
-                release_gate.validate_maps_key(candidate)
 
     def test_release_rejects_missing_upload_keystore(self):
         with tempfile.TemporaryDirectory() as folder:
