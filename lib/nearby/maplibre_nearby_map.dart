@@ -1,11 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as ml;
+import 'maplibre_configuration.dart';
 import 'maplibre_marker_adapter.dart';
 
 class MapLibreNearbyMap extends StatefulWidget {
   const MapLibreNearbyMap({super.key, required this.style,
-    required this.latitude, required this.longitude, required this.pins});
+    required this.latitude, required this.longitude, required this.pins,
+    this.zoom = 12, this.showRecenter = true, this.showAttribution = true,
+    this.onPointSelected});
+  final double zoom;
+  final bool showRecenter;
+  final bool showAttribution;
+  final void Function(double latitude, double longitude)? onPointSelected;
   final String style;
   final double latitude, longitude;
   final List<NearbyMapPin> pins;
@@ -108,7 +115,7 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
   }
 
   void _tap(ml.Circle circle) {
-    if (_busy || _dirty || !mounted) return;
+    if (widget.onPointSelected != null || _busy || _dirty || !mounted) return;
     final pin = _callbacks[circle.id];
     if (pin == null || !widget.pins.any((p) => p.id == pin.id)) return;
     showModalBottomSheet<void>(context: context, builder: (sheet) =>
@@ -142,7 +149,7 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
     if (_failed) return Center(child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('Map unavailable. Nearby care listings remain accessible.',
+        const Text('Map unavailable.',
           textAlign: TextAlign.center),
         TextButton(onPressed: _busy ? null : _retry, child: const Text('Retry map')),
       ],
@@ -153,7 +160,12 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
       key: ValueKey(generation),
       styleString: widget.style,
       initialCameraPosition: ml.CameraPosition(
-        target: ml.LatLng(widget.latitude, widget.longitude), zoom: 12),
+        target: ml.LatLng(widget.latitude, widget.longitude), zoom: widget.zoom),
+      onMapClick: (_, point) {
+        if (_ready) {
+          widget.onPointSelected?.call(point.latitude, point.longitude);
+        }
+      },
       onMapCreated: (controller) {
         if (!mounted || generation != _generation || _failed) return;
         _controller = controller;
@@ -167,10 +179,25 @@ class _MapLibreNearbyMapState extends State<MapLibreNearbyMap> {
       },
       ),
       if (!_ready) const Center(child: CircularProgressIndicator()),
-      if (_ready) Positioned(top: 72, right: 12,
+      if (_ready && widget.showAttribution)
+        Positioned(left: 12, bottom: 12, right: 12, child: Align(
+          alignment: Alignment.bottomRight,
+          child: _attribution(context),
+        )),
+      if (_ready && widget.showRecenter) Positioned(top: 72, right: 12,
         child: FloatingActionButton.small(
           heroTag: null, tooltip: 'Centre on selected location',
           onPressed: _recenter, child: const Icon(Icons.my_location))),
     ]);
   }
+
+  Widget _attribution(BuildContext context) => Material(
+    color: Theme.of(context).colorScheme.surface,
+    borderRadius: BorderRadius.circular(4),
+    child: const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: Text(MapLibreConfiguration.attribution,
+        style: TextStyle(fontSize: 11)),
+    ),
+  );
 }
