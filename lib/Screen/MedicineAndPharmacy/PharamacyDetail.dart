@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' hide Marker;
 import 'package:doctro_patient/Chat/loading_view.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../nearby/maplibre_configuration.dart';
+import '../../nearby/maplibre_marker_adapter.dart';
+import '../../nearby/maplibre_nearby_map.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -98,7 +101,6 @@ class _PharamacyDetailState extends State<PharamacyDetail> with TickerProviderSt
     height = MediaQuery.of(context).size.height;
     final parsedLat = double.tryParse(pharmacyLat ?? "");
     final parsedLng = double.tryParse(pharmacyLang ?? "");
-    final hasCoords = parsedLat != null && parsedLng != null;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -422,31 +424,47 @@ class _PharamacyDetailState extends State<PharamacyDetail> with TickerProviderSt
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    if (hasCoords) ...[
+                                    if (parsedLat != null && parsedLng != null) ...[
                                       SizedBox(height: 12),
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
-                                        child: AbsorbPointer(
-                                          child: SizedBox(
-                                            height: 160,
-                                            child: GoogleMap(
-                                              initialCameraPosition: CameraPosition(
-                                                target: LatLng(parsedLat ?? 0, parsedLng ?? 0),
-                                                zoom: 14,
-                                              ),
-                                              markers: {
-                                                Marker(
-                                                  markerId: MarkerId('pharmacy_location'),
-                                                  position: LatLng(parsedLat ?? 0, parsedLng ?? 0),
+                                        child: SizedBox(
+                                          height: 160,
+                                          child: MapLibreConfiguration.available
+                                              ? MapLibreNearbyMap(
+                                                  style: MapLibreConfiguration.style,
+                                                  latitude: parsedLat,
+                                                  longitude: parsedLng,
+                                                  zoom: 14,
+                                                  showRecenter: false,
+                                                  pins: [
+                                                    NearbyMapPin(
+                                                      id: 'pharmacy_location',
+                                                      latitude: parsedLat,
+                                                      longitude: parsedLng,
+                                                      title: 'Pharmacy location',
+                                                    ),
+                                                  ],
+                                                )
+                                              : AbsorbPointer(
+                                                  child: GoogleMap(
+                                                    initialCameraPosition: CameraPosition(
+                                                      target: LatLng(parsedLat, parsedLng),
+                                                      zoom: 14,
+                                                    ),
+                                                    markers: {
+                                                      Marker(
+                                                        markerId: MarkerId('pharmacy_location'),
+                                                        position: LatLng(parsedLat, parsedLng),
+                                                      ),
+                                                    },
+                                                    zoomControlsEnabled: false,
+                                                    myLocationButtonEnabled: false,
+                                                    mapToolbarEnabled: false,
+                                                    compassEnabled: false,
+                                                    tiltGesturesEnabled: false,
+                                                  ),
                                                 ),
-                                              },
-                                              zoomControlsEnabled: false,
-                                              myLocationButtonEnabled: false,
-                                              mapToolbarEnabled: false,
-                                              compassEnabled: false,
-                                              tiltGesturesEnabled: false,
-                                            ),
-                                          ),
                                         ),
                                       ),
                                     ],

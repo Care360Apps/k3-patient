@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../nearby/maplibre_configuration.dart';
+import '../../nearby/maplibre_marker_adapter.dart';
+import '../../nearby/maplibre_nearby_map.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../nearby/facility_directory_gateway.dart';
 
@@ -88,7 +91,22 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
         if (!_loading && _error == null && _facilities.isEmpty)
           const Padding(padding: EdgeInsets.all(16),
             child: Text('No reviewed facilities found for these filters.')),
-        if (mapped.isNotEmpty) SizedBox(height: 220, child: GoogleMap(
+        if (mapped.isNotEmpty) SizedBox(height: 220, child: MapLibreConfiguration.available
+          ? MapLibreNearbyMap(
+              style: MapLibreConfiguration.style,
+              latitude: mapped.first.latitude!,
+              longitude: mapped.first.longitude!,
+              zoom: 10,
+              showRecenter: false,
+              pins: mapped.map((facility) => NearbyMapPin(
+                id: '${facility.id}',
+                latitude: facility.latitude!,
+                longitude: facility.longitude!,
+                title: facility.name,
+                subtitle: facility.address ?? facility.state,
+              )).toList(growable: false),
+            )
+          : GoogleMap(
           initialCameraPosition: CameraPosition(
             target: LatLng(mapped.first.latitude!, mapped.first.longitude!), zoom: 10),
           myLocationEnabled: false, myLocationButtonEnabled: false,

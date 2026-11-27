@@ -11,6 +11,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../nearby/maplibre_configuration.dart';
+import '../../nearby/maplibre_marker_adapter.dart';
+import '../../nearby/maplibre_nearby_map.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 import '../../api/base_model.dart';
 import '../../api/server_error.dart';
@@ -132,6 +135,7 @@ class _AddLocationState extends State<AddLocation> {
       selectLat = point.latitude;
       selectLang = point.longitude;
       _initialCameraPosition = point;
+      if (address.isNotEmpty) _textFullAddress.clear();
       address = '';
     });
     ScaffoldMessenger.of(context).showSnackBar(
@@ -185,7 +189,25 @@ class _AddLocationState extends State<AddLocation> {
                   flex: 5,
                   child: Stack(
                     children: [
-                      GoogleMap(
+                      if (MapLibreConfiguration.available)
+                        MapLibreNearbyMap(
+                          style: MapLibreConfiguration.style,
+                          latitude: _initialCameraPosition!.latitude,
+                          longitude: _initialCameraPosition!.longitude,
+                          zoom: 13,
+                          showRecenter: false,
+                          pins: [
+                            NearbyMapPin(
+                              id: 'selected-address',
+                              latitude: _initialCameraPosition!.latitude,
+                              longitude: _initialCameraPosition!.longitude,
+                              title: 'Selected location',
+                            ),
+                          ],
+                          onPointSelected: (latitude, longitude) =>
+                              _selectPointOnMap(LatLng(latitude, longitude)),
+                        )
+                      else GoogleMap(
                         myLocationEnabled: false,
                         markers: _createMarker(),
                         mapType: MapType.normal,

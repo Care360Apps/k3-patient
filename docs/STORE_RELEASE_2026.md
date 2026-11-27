@@ -80,3 +80,9 @@ Do **not** copy passwords, Play signing certificates, raw Firebase JSON or healt
 - Explicit production Android/iOS configuration generator; local fail-closed preflight scripts; offline unit/source checks.
 
 **No build, production backend connection, signed AAB/IPA, Play Console upload or App Store Connect upload has been completed or claimed by this preparation.** Do not merge/submit until dependencies, credentials, app data and reviewer access have been verified by the authorised publisher.
+
+### MapLibre device acceptance
+
+Set the Actions variables `CARE360_MAP_STYLE_URL` and `CARE360_MAP_ATTRIBUTION` for an approved HTTPS map style. The URL is compiled into the mobile app. Use a public-client tiles credential if the provider requires one, and keep the backend Geoapify geocoder credential server-side. Apply the tile provider's project quota and monitor map traffic independently of the backend address-search budget.
+
+With both variables configured, exercise Nearby Care, Add Address, the facility directory, and laboratory and pharmacy details on Android and iOS. Verify marker details, attribution, address autocomplete restricted to Nigeria, GPS permission denial, manual point selection, and recovery after a style-load timeout. Confirm the staging backend is isolated before saving addresses or using synthetic accounts. Keep the existing Google Maps signing configuration during this verification.

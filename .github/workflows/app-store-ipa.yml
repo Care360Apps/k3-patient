@@ -26,6 +26,8 @@ jobs:
           VERSION: ${{ inputs.version_name }}
           BUILD: ${{ inputs.build_number }}
           FIREBASE: ${{ secrets.K3_PROD_IOS_FIREBASE_PLIST_B64 }}
+          CARE360_MAP_STYLE_URL: ${{ vars.CARE360_MAP_STYLE_URL }}
+          CARE360_MAP_ATTRIBUTION: ${{ vars.CARE360_MAP_ATTRIBUTION }}
           API: ${{ secrets.K3_PROD_API_URL }}
           PROJECT: ${{ vars.K3_PRODUCTION_FIREBASE_PROJECT_ID }}
         run: |
@@ -45,6 +47,8 @@ jobs:
           assert d['BUNDLE_ID']=='com.cnu.patient'
           assert os.environ['PROJECT'] and d['PROJECT_ID']==os.environ['PROJECT']
           vals=dict(K3_API_BASE_URL=os.environ['API'],K3_FIREBASE_API_KEY=d['API_KEY'],K3_FIREBASE_APP_ID=d['GOOGLE_APP_ID'],K3_FIREBASE_SENDER_ID=d['GCM_SENDER_ID'],K3_FIREBASE_PROJECT_ID=d['PROJECT_ID'],K3_FIREBASE_STORAGE_BUCKET=d.get('STORAGE_BUCKET',''))
+          vals['CARE360_MAP_STYLE_URL']=os.environ['CARE360_MAP_STYLE_URL']
+          vals['CARE360_MAP_ATTRIBUTION']=os.environ['CARE360_MAP_ATTRIBUTION']
           pathlib.Path(os.environ['RUNNER_TEMP'],'release.json').write_text(json.dumps(vals))
           PY
       - name: Install distribution identity and provisioning profiles

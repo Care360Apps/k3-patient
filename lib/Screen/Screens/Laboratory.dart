@@ -24,6 +24,9 @@ import 'package:flutterwave_standard/models/requests/customizations.dart';
 import 'package:flutterwave_standard/models/responses/charge_response.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../nearby/maplibre_configuration.dart';
+import '../../nearby/maplibre_marker_adapter.dart';
+import '../../nearby/maplibre_nearby_map.dart';
 import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../const/Palette.dart';
@@ -2355,7 +2358,23 @@ class _HospitalDetailScreenState extends State<HospitalDetailScreen> {
                             )
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: GoogleMap(
+                              child: MapLibreConfiguration.available
+                                    ? MapLibreNearbyMap(
+                                        style: MapLibreConfiguration.style,
+                                        latitude: lat,
+                                        longitude: lng,
+                                        zoom: 13,
+                                        showRecenter: false,
+                                        pins: [
+                                          NearbyMapPin(
+                                            id: 'facility',
+                                            latitude: lat,
+                                            longitude: lng,
+                                            title: 'Facility location',
+                                          ),
+                                        ],
+                                      )
+                                    : GoogleMap(
                                 initialCameraPosition: CameraPosition(
                                   target: LatLng(lat, lng),
                                   zoom: 13,
