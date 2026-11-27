@@ -3,6 +3,11 @@ name: K3 offline iOS Simulator (synthetic services; not clinical)
 # Avoid consuming macOS GitHub Actions minutes on Android/auth staging PRs.
 on:
   workflow_dispatch:
+    inputs:
+      refresh_agora_lock:
+        description: Resolve the changed Agora constraints and save the candidate lock
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -37,7 +42,12 @@ jobs:
         run: dart run build_runner build --delete-conflicting-outputs
       - name: Rewrite generated Retrofit URL to use Dart environment
         run: python3 tools/k3_rewrite_generated_url.py
+      - name: Resolve changed Agora pod constraints
+        if: inputs.refresh_agora_lock
+        working-directory: ios
+        run: pod update agora_rtc_engine AgoraIrisRTC_iOS AgoraRtcEngine_iOS --repo-update
       - name: Install locked native iOS dependencies
+        if: inputs.refresh_agora_lock != true
         working-directory: ios
         run: pod install --deployment
       - name: Save resolved iOS dependency lock
